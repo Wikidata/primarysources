@@ -1,0 +1,169 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Wikidata Primary Sources Tool API",
+        "description": "Access entities and statements from primary sources",
+        "version": "1.0.0"
+    },
+    "host": "tools.wmflabs.org",
+    "schemes": [
+        "https"
+    ],
+    "basePath": "/wikidata-primary-sources",
+    "produces": [
+        "application/json",
+        "application/vnd.wikidata+json",
+        "text/tsv"
+    ],
+    "paths": {
+        "/entities/{qid}": {
+            "get": {
+                "summary": "Get Entity by Wikidata QID",
+                "description": "The entities endpoint returns all statements referring to the\nentity with the given QID that have not yet been approved. The\nentity is returned in Wikidata JSON format, plain JSON format,\nor TSV format, depending on the value of the Accept header.\n",
+                "parameters": [
+                    {
+                        "name": "qid",
+                        "in": "path",
+                        "description": "Wikidata QID of the entity",
+                        "required": true,
+                        "type": "string",
+                        "format": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "entity with QID found, returned as a list of statements according \nto Accept header\n"
+                    },
+                    "404": {
+                        "description": "entity with QID not found"
+                    },
+                    "500": {
+                        "description": "server error"
+                    }
+                }
+            }
+        },
+        "/entities/any": {
+            "get": {
+                "summary": "Get Random Entity",
+                "description": "The entities endpoint returns all statements referring to a randomly\nselected entity that have not yet been approved. The\nentity is returned in Wikidata JSON format, plain JSON format,\nor TSV format, depending on the value of the Accept header.\n",
+                "responses": {
+                    "200": {
+                        "description": "entity found, returned as a list of statements according \nto Accept header\n"
+                    },
+                    "404": {
+                        "description": "no entity found"
+                    },
+                    "500": {
+                        "description": "server error"
+                    }
+                }
+            }
+        },
+        "/statements/{id}": {
+            "get": {
+                "summary": "Get Statement by Database ID",
+                "description": "The statements endpoint returns individual statements by database ID. \nThe statement is returned in Wikidata JSON format, plain JSON format,\nor TSV format, depending on the value of the Accept header.\n",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Database ID of the statement",
+                        "required": true,
+                        "type": "string",
+                        "format": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "statment with ID found, returned according to Accept header\n"
+                    },
+                    "404": {
+                        "description": "statement with ID not found"
+                    },
+                    "500": {
+                        "description": "server error"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Update Statement by Database ID",
+                "description": "The statements update endpoint allows marking statements as approved.\n",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Database ID of the statement",
+                        "required": true,
+                        "type": "string",
+                        "format": "string"
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "description": "new statement approval state",
+                        "type": "string",
+                        "format": "string",
+                        "default": "approved",
+                        "required": true,
+                        "enum": [
+                            "approved",
+                            "unapproved",
+                            "wrong",
+                            "othersource"
+                        ]
+                    },
+                    {
+                        "name": "user",
+                        "in": "query",
+                        "description": "Wikidata user issuing the request",
+                        "type": "string",
+                        "format": "string",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "statment with ID found and updated, returned according to Accept header\n"
+                    },
+                    "403": {
+                        "description": "no user given, or user does not have permission to update"
+                    },
+                    "404": {
+                        "description": "statement with ID not found"
+                    },
+                    "500": {
+                        "description": "server error"
+                    }
+                }
+            }
+        },
+        "/statements/any": {
+            "get": {
+                "summary": "Get Random Statement",
+                "description": "The statements endpoint returns a random individual unapproved statement.\nThe statement is returned in Wikidata JSON format, plain JSON format,\nor TSV format, depending on the value of the Accept header.\n",
+                "parameters": [
+                    {
+                        "name": "count",
+                        "in": "query",
+                        "description": "maximum number of random statements to return (default: 10)",
+                        "required": false,
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "statment with ID found and updated, returned according to Accept header\n"
+                    },
+                    "404": {
+                        "description": "no statement found"
+                    },
+                    "500": {
+                        "description": "server error"
+                    }
+                }
+            }
+        }
+    }
+}
