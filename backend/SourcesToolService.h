@@ -105,12 +105,6 @@ public:
    void getRandomStatements();
 
    /**
-    * Return a JSON object containing current status information like
-    * total number of statements, number of approved statements, etc.
-    */
-   void getStatus();
-
-   /**
    * Import a sequence of statements in Wikidata TSV format into the
    * database. The service reads the data from the raw request POST body.
    * Data may optionally be gzipped for better memory usage.
@@ -130,6 +124,13 @@ public:
    *     500: import failed (e.g. parse error)
    */
    void importStatements();
+
+   /**
+    * Return a JSON object containing current status information like
+    * total number of statements, number of approved statements, etc.
+    */
+   void getStatus();
+
 private:
    void handleGetPostStatement(std::string);
 

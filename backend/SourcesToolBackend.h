@@ -60,17 +60,18 @@ public:
     void updateStatement(cache_t& cache, int64_t id, ApprovalState state, std::string user);
 
     /**
-     * Return status information about the database, e.g. number of approved/
-     * unapproved statements, top users, etc.
-     */
-    Status getStatus();
-
-    /**
     * Import a (possibly large) list of statements in Wikidata TSV format
     * from the given input stream. The stream may optionally contain gzip'ed
     * data. Returns the number of statements imported.
     */
     int64_t importStatements(std::istream& in, bool gzip);
+
+    /**
+     * Return status information about the database, e.g. number of approved/
+     * unapproved statements, top users, etc.
+     */
+    Status getStatus();
+
 private:
 
     // CppDB uses a connection pool internally, so we just remember the

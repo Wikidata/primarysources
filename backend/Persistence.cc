@@ -324,9 +324,14 @@ std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t li
         sql.begin();
 
     cppdb::result res = (
-            sql << "SELECT count(*) FROM statement WHERE state = ?"
-            << );
+            sql << "SELECT user, count(id) AS activities FROM userlog LIMIT ?"
+                << limit
+    );
 
+    while(res.next()) {
+        std::pair<std::string, int64_t> entry(res.get(0), res.get(1));
+        result.push_back(entry);
+    }
 
     if (!managedTransactions)
         sql.commit();
