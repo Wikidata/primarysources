@@ -1,7 +1,31 @@
 // Copyright 2015 Google Inc. All Rights Reserved.
 // Author: Sebastian Schaffert <schaffert@google.com>
 
+#include <sys/types.h>
 #include "Persistence.h"
+#include "Statement.h"
+
+inline int64_t approvalStateToSQL(ApprovalState state) {
+    switch (state) {
+        case UNAPPROVED:  return 0;
+        case APPROVED:    return 1;
+        case OTHERSOURCE: return 2;
+        case WRONG:       return 3;
+        case SKIPPED:     return 4;
+    }
+    return 0;
+}
+
+inline ApprovalState sqlToApprovalState(int64_t state) {
+    switch (state) {
+        case 0: return UNAPPROVED;
+        case 1: return APPROVED;
+        case 2: return OTHERSOURCE;
+        case 3: return WRONG;
+        case 4: return SKIPPED;
+    }
+    return UNAPPROVED;
+}
 
 int64_t Persistence::addSnak(const PropertyValue &pv) {
     switch (pv.getValue().getType()) {
@@ -98,17 +122,8 @@ Statement Persistence::buildStatement(int64_t id, std::string qid,
         qualifiers.push_back(getSnak(snakid));
     }
 
-    ApprovalState approvalState;
-    switch (state) {
-        case 0: approvalState = UNAPPROVED; break;
-        case 1: approvalState = APPROVED; break;
-        case 2: approvalState = OTHERSOURCE; break;
-        case 3: approvalState = WRONG; break;
-        case 4: approvalState = SKIPPED; break;
-    }
-
     return Statement(id, qid, getSnak(snak),
-                     qualifiers, sources, approvalState);
+                     qualifiers, sources, sqlToApprovalState(state));
 }
 
 Persistence::Persistence(cppdb::session &sql, bool managedTransactions)
@@ -147,17 +162,19 @@ void Persistence::updateStatement(int64_t id, ApprovalState state) {
     if (!managedTransactions)
         sql.begin();
 
-    int _state = 0;
-    switch (state) {
-        case UNAPPROVED:  _state = 0; break;
-        case APPROVED:    _state = 1; break;
-        case OTHERSOURCE: _state = 2; break;
-        case WRONG:       _state = 3; break;
-        case SKIPPED:     _state = 4; break;
-    }
-
     sql << "UPDATE statement SET state = ? WHERE id = ?"
-        << _state << id << cppdb::exec;
+        << approvalStateToSQL(state) << id << cppdb::exec;
+
+    if (!managedTransactions)
+        sql.commit();
+}
+
+void Persistence::addUserlog(const std::string &user, int64_t stmtid, ApprovalState state) {
+    if (!managedTransactions)
+        sql.begin();
+
+    sql << "INSERT INTO userlog(user, stmt, state) VALUES (?, ?, ?)"
+        << user << stmtid << approvalStateToSQL(state) << cppdb::exec;
 
     if (!managedTransactions)
         sql.commit();

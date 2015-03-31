@@ -20,7 +20,7 @@ public:
         this->setg(base, base, base + size);
     }
 
-    Membuf(std::pair<void*, size_t> pair) : Membuf((char *) pair.first, pair.second) {};
+    Membuf(std::pair<void*, size_t> pair) : Membuf((char *) pair.first, pair.second) { };
 
     std::size_t written() const { return this->pptr() - this->pbase(); }
     std::size_t read() const    { return this->gptr() - this->eback(); }

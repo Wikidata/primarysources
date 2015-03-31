@@ -55,6 +55,13 @@ class Persistence {
     void updateStatement(int64_t id, ApprovalState state);
 
     /**
+    * Add an entry to the userlog, storing that the given user updated the
+    * approval state of the statement with the given id to the given state.
+    */
+    void addUserlog(
+            const std::string& user, int64_t stmtid, ApprovalState state);
+
+    /**
     * Retrieve the statement with the given database ID.
     */
     Statement getStatement(int64_t id);
