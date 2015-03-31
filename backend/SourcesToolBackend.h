@@ -5,6 +5,7 @@
 #define HAVE_SOURCESTOOL_BACKEND_H_
 
 #include "Statement.h"
+#include "Status.h"
 
 #include <vector>
 #include <map>
@@ -57,6 +58,12 @@ public:
     * Update the approval state of the statement with the given ID.
     */
     void updateStatement(cache_t& cache, int64_t id, ApprovalState state, std::string user);
+
+    /**
+     * Return status information about the database, e.g. number of approved/
+     * unapproved statements, top users, etc.
+     */
+    Status getStatus();
 
 private:
 

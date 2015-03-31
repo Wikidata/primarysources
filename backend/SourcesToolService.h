@@ -104,6 +104,12 @@ public:
    */
    void getRandomStatements();
 
+   /**
+    * Return a JSON object containing current status information like
+    * total number of statements, number of approved statements, etc.
+    */
+   void getStatus();
+
 private:
    void handleGetPostStatement(std::string);
 

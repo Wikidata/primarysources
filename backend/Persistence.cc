@@ -3,6 +3,28 @@
 
 #include "Persistence.h"
 
+inline ApprovalState getApprovalState(int16_t state) {
+    switch (state) {
+        case 0: return UNAPPROVED;
+        case 1: return APPROVED;
+        case 2: return OTHERSOURCE;
+        case 3: return WRONG;
+        case 4: return SKIPPED;
+        default: return UNAPPROVED;
+    }
+}
+
+inline int16_t getSQLState(ApprovalState state) {
+    switch (state) {
+        case UNAPPROVED:  return 0;
+        case APPROVED:    return 1;
+        case OTHERSOURCE: return 2;
+        case WRONG:       return 3;
+        case SKIPPED:     return 4;
+    }
+}
+
+
 int64_t Persistence::addSnak(const PropertyValue &pv) {
     switch (pv.getValue().getType()) {
         case ITEM:
@@ -98,17 +120,8 @@ Statement Persistence::buildStatement(int64_t id, std::string qid,
         qualifiers.push_back(getSnak(snakid));
     }
 
-    ApprovalState approvalState;
-    switch (state) {
-        case 0: approvalState = UNAPPROVED; break;
-        case 1: approvalState = APPROVED; break;
-        case 2: approvalState = OTHERSOURCE; break;
-        case 3: approvalState = WRONG; break;
-        case 4: approvalState = SKIPPED; break;
-    }
-
     return Statement(id, qid, getSnak(snak),
-                     qualifiers, sources, approvalState);
+                     qualifiers, sources, getApprovalState(state));
 }
 
 Persistence::Persistence(cppdb::session &sql, bool managedTransactions)
@@ -147,17 +160,8 @@ void Persistence::updateStatement(int64_t id, ApprovalState state) {
     if (!managedTransactions)
         sql.begin();
 
-    int _state = 0;
-    switch (state) {
-        case UNAPPROVED:  _state = 0; break;
-        case APPROVED:    _state = 1; break;
-        case OTHERSOURCE: _state = 2; break;
-        case WRONG:       _state = 3; break;
-        case SKIPPED:     _state = 4; break;
-    }
-
     sql << "UPDATE statement SET state = ? WHERE id = ?"
-        << _state << id << cppdb::exec;
+        << getSQLState(state) << id << cppdb::exec;
 
     if (!managedTransactions)
         sql.commit();
@@ -272,6 +276,61 @@ std::string Persistence::getRandomQID(bool unapprovedOnly) {
     }
 }
 
+
+int64_t Persistence::countStatements() {
+    int64_t result = 0;
+
+    if (!managedTransactions)
+        sql.begin();
+
+    cppdb::result res = sql << "SELECT count(*) FROM statement" << cppdb::row;
+
+    if (!res.empty()) {
+        result = res.get(0);
+    }
+
+    if (!managedTransactions)
+        sql.commit();
+
+    return result;
+}
+
+int64_t Persistence::countStatements(ApprovalState state) {
+    int64_t result = 0;
+
+    if (!managedTransactions)
+        sql.begin();
+
+    cppdb::result res = (
+            sql << "SELECT count(*) FROM statement WHERE state = ?"
+                << getSQLState(state) << cppdb::row);
+
+    if (!res.empty()) {
+        result = res.get(0);
+    }
+
+    if (!managedTransactions)
+        sql.commit();
+
+    return result;
+}
+
+std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t limit) {
+    std::vector<std::pair < std::string, int64_t>> result;
+
+    if (!managedTransactions)
+        sql.begin();
+
+    cppdb::result res = (
+            sql << "SELECT count(*) FROM statement WHERE state = ?"
+            << );
+
+
+    if (!managedTransactions)
+        sql.commit();
+
+    return result;
+}
 
 const char *PersistenceException::what() const noexcept {
     return message.c_str();

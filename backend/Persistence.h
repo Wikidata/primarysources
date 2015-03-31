@@ -97,6 +97,22 @@ class Persistence {
 //    std::string getRandomQIDByTopic(
 //            const std::string& topic, bool unapprovedOnly);
 
+    /**
+     * Return the total number of statements in the database.
+     */
+    int64_t countStatements();
+
+    /**
+     * Return the number of statements of a given state in the database
+     */
+    int64_t countStatements(ApprovalState state);
+
+    /**
+     * Return the top users with respect to the number of approved/rejected
+     * statements, ordered by descending number of activities.
+     */
+    std::vector<std::pair<std::string,int64_t>> getTopUsers(int32_t limit=10);
+
  private:
     // reference to the wrapped sql session
     cppdb::session& sql;

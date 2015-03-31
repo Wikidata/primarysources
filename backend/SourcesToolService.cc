@@ -174,6 +174,20 @@ void SourcesToolService::getRandomStatements() {
 }
 
 
+void SourcesToolService::getStatus() {
+    clock_t begin = std::clock();
+
+    cppcms::json::value result;
+
+
+
+    clock_t end = std::clock();
+    BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
+                                  << "GET /status time: "
+                                  << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
+                                  << "ms" << std::endl;
+}
+
 void SourcesToolService::serializeStatements(const std::vector<Statement> &statements) {
     if(request().http_accept() == "text/vnd.wikidata+tsv"
             || request().http_accept() == "text/tsv") {

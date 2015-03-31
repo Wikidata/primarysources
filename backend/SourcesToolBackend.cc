@@ -128,3 +128,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
 
     return statements;
 }
+
+Status SourcesToolBackend::getStatus() {
+    return Status();
+}
