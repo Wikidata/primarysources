@@ -163,6 +163,19 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip) {
 }
 
 Status SourcesToolBackend::getStatus() {
-    Status result();
+    Status result;
 
+    cppdb::session sql(connstr); // released when sql is destroyed
+
+    Persistence p(sql, true);
+    sql.begin();
+
+    result.setStatements(p.countStatements());
+    result.setApproved(p.countStatements(APPROVED));
+    result.setUnapproved(p.countStatements(UNAPPROVED));
+    result.setWrong(p.countStatements(WRONG));
+    result.setTopUsers(p.getTopUsers(10));
+
+    sql.commit();
+    return result;
 }

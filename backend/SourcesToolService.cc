@@ -42,6 +42,10 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
     dispatcher().assign("/import",
             &SourcesToolService::importStatements, this);
     mapper().assign("import", "/import");
+
+    dispatcher().assign("/status",
+                        &SourcesToolService::getStatus, this);
+    mapper().assign("status", "/status");
 }
 
 
@@ -186,9 +190,28 @@ void SourcesToolService::getRandomStatements() {
 void SourcesToolService::getStatus() {
     clock_t begin = std::clock();
 
+    addCORSHeaders();
+    addVersionHeaders();
+
     cppcms::json::value result;
 
+    Status status = backend.getStatus();
+    result["statements"]["total"] = status.getStatements();
+    result["statements"]["approved"] = status.getApproved();
+    result["statements"]["unapproved"] = status.getUnapproved();
+    result["statements"]["wrong"] = status.getWrong();
 
+    cppcms::json::array topusers;
+    for (auto entry : status.getTopUsers()) {
+        cppcms::json::value v;
+        v["name"] = entry.first;
+        v["activities"] = entry.second;
+        topusers.push_back(v);
+    }
+    result["topusers"] = topusers;
+
+    response().content_type("application/json");
+    response().out() << result;
 
     clock_t end = std::clock();
     BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
