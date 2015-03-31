@@ -30,4 +30,12 @@ CREATE TABLE source (
     snak     INTEGER REFERENCES snak(id)
 );
 
+CREATE TABLE userlog (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    user     VARCHAR(64),
+    stmt     INTEGER REFERENCES statement(id),
+    state    INT DEFAULT 0,
+    changed  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX idx_stmt_qid ON statement(subject);

@@ -65,6 +65,12 @@ public:
      */
     Status getStatus();
 
+    /**
+    * Import a (possibly large) list of statements in Wikidata TSV format
+    * from the given input stream. The stream may optionally contain gzip'ed
+    * data. Returns the number of statements imported.
+    */
+    int64_t importStatements(std::istream& in, bool gzip);
 private:
 
     // CppDB uses a connection pool internally, so we just remember the

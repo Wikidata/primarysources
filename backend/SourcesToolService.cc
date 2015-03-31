@@ -13,8 +13,8 @@
 #include "SerializerTSV.h"
 #include "SerializerJSON.h"
 #include "Persistence.h"
-
-
+#include "Membuf.h"
+#include "Version.h"
 
 SourcesToolService::SourcesToolService(cppcms::service &srv)
         : cppcms::application(srv), backend(settings()["database"]) {
@@ -39,6 +39,9 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
             &SourcesToolService::getRandomStatements, this);
     mapper().assign("stmt_by_random", "/statements/any");
 
+    dispatcher().assign("/import",
+            &SourcesToolService::importStatements, this);
+    mapper().assign("import", "/import");
 }
 
 
@@ -55,7 +58,8 @@ void SourcesToolService::getEntityByQID(std::string qid) {
 
     std::vector<Statement> statements = backend.getStatementsByQID(cache(), qid, true);
 
-    response().set_header("Access-Control-Allow-Origin", "*");
+    addCORSHeaders();
+    addVersionHeaders();
 
     if (statements.size() > 0) {
         serializeStatements(statements);
@@ -75,13 +79,13 @@ void SourcesToolService::getRandomEntity() {
 
     clock_t begin = std::clock();
 
-    std::vector<Statement> statements = backend.getStatementsByRandomQID(cache(), true);
+    addCORSHeaders();
+    addVersionHeaders();
 
-    response().set_header("Access-Control-Allow-Origin", "*");
-
-    if (statements.size() > 0) {
+    try {
+        std::vector<Statement> statements = backend.getStatementsByRandomQID(cache(), true);
         serializeStatements(statements);
-    } else {
+    } catch(PersistenceException const &e) {
         response().status(404, "no random unapproved entity found");
     }
 
@@ -95,12 +99,14 @@ void SourcesToolService::getRandomEntity() {
 void SourcesToolService::approveStatement(int64_t stid) {
     clock_t begin = std::clock();
 
-    ApprovalState state = UNAPPROVED;
+    ApprovalState state;
 
-    response().set_header("Access-Control-Allow-Origin", "*");
+    addCORSHeaders();
+    addVersionHeaders();
 
-    // return 403 forbidden when there is no user given
-    if (request().get("user") == "") {
+    // return 403 forbidden when there is no user given or the username is too
+    // long for the database
+    if (request().get("user") == "" || request().get("user").length() > 64) {
         response().status(403, "Forbidden: invalid or missing user");
         return;
     }
@@ -137,7 +143,8 @@ void SourcesToolService::approveStatement(int64_t stid) {
 void SourcesToolService::getStatement(int64_t stid) {
     clock_t begin = std::clock();
 
-    response().set_header("Access-Control-Allow-Origin", "*");
+    addCORSHeaders();
+    addVersionHeaders();
 
     // query for statement, wrap it in a vector and return it
     try {
@@ -163,7 +170,9 @@ void SourcesToolService::getRandomStatements() {
         count = std::stoi(request().get("count"));
     }
 
-    response().set_header("Access-Control-Allow-Origin", "*");
+    addCORSHeaders();
+    addVersionHeaders();
+
     serializeStatements(backend.getRandomStatements(cache(), count, true));
 
     clock_t end = std::clock();
@@ -205,3 +214,54 @@ void SourcesToolService::serializeStatements(const std::vector<Statement> &state
     }
 }
 
+void SourcesToolService::importStatements() {
+    addVersionHeaders();
+
+    if (request().request_method() == "POST") {
+        clock_t begin = std::clock();
+
+        // check if token matches
+        if (request().get("token") != settings()["token"].str()) {
+            response().status(401, "Invalid authorization token");
+            return;
+        }
+
+        // check if content is gzipped
+        bool gzip = false;
+        if (request().get("gzip") == "true") {
+            gzip = true;
+        }
+
+        // wrap raw post data into a memory stream
+        Membuf body(request().raw_post_data());
+        std::istream in(&body);
+
+        // import statements
+        int64_t count = backend.importStatements(in, gzip);
+
+        clock_t end = std::clock();
+
+        cppcms::json::value result;
+        result["count"] = count;
+        result["time"] = 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC);
+
+        response().content_type("application/json");
+        result.save(response().out(), cppcms::json::readable);
+
+        BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
+                << "POST /import time: "
+                << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
+                << "ms" << std::endl;
+    } else {
+        response().status(405, "Method not allowed");
+        response().set_header("Allow", "POST");
+    }
+}
+
+void SourcesToolService::addCORSHeaders() {
+    response().set_header("Access-Control-Allow-Origin", "*");
+}
+
+void SourcesToolService::addVersionHeaders() {
+    response().set_header("X-Powered-By", std::string("Wikidata Sources Tool/") + GIT_SHA1);
+}

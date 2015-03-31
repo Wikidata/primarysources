@@ -1,7 +1,9 @@
 // Copyright 2015 Google Inc. All Rights Reserved.
 // Author: Sebastian Schaffert <schaffert@google.com>
 
+#include <sys/types.h>
 #include "Persistence.h"
+#include "Statement.h"
 
 inline ApprovalState getApprovalState(int16_t state) {
     switch (state) {

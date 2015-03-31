@@ -110,11 +110,37 @@ public:
     */
    void getStatus();
 
+   /**
+   * Import a sequence of statements in Wikidata TSV format into the
+   * database. The service reads the data from the raw request POST body.
+   * Data may optionally be gzipped for better memory usage.
+   *
+   * Request:
+   *     POST /import?token=<token>&gzip=<true|false>
+   *
+   * The token is a kind of password configurable in config.json that
+   * is used as a very simple authentication mechanism. It is recommended
+   * to protect this service also on the webserver level (e.g. using
+   * HTTP authentication or IP-based access control).
+   *
+   * Status Codes:
+   *     200: request successful, statements imported; returns number of
+   *          imported statements as JSON
+   *     401: in case the token does not match the configured import token
+   *     500: import failed (e.g. parse error)
+   */
+   void importStatements();
 private:
    void handleGetPostStatement(std::string);
 
    // serialize list of statements according to content negotiation
    void serializeStatements(const std::vector<Statement>& stmts);
+
+   // add the CORS headers to the response
+   void addCORSHeaders();
+
+   // add the sourcestool version header to the response
+   void addVersionHeaders();
 
    SourcesToolBackend backend;
 
