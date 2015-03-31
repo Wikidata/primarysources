@@ -5,7 +5,7 @@ set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/modules/")
-include_directories("${CMAKE_INSTALL_PREFIX}/include")
+include_directories("${CMAKE_INSTALL_PREFIX}/include" "${CMAKE_SOURCE_DIR}")
 
 ADD_DEFINITIONS(
     -std=c++11 # Or -std=c++0x

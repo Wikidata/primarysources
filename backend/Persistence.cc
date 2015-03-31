@@ -169,6 +169,18 @@ void Persistence::updateStatement(int64_t id, ApprovalState state) {
         sql.commit();
 }
 
+void Persistence::addUserlog(const std::string &user, int64_t stmtid, ApprovalState state) {
+    if (!managedTransactions)
+        sql.begin();
+
+    sql << "INSERT INTO userlog(user, stmt, state) VALUES (?, ?, ?)"
+    << user << stmtid << getSQLState(state) << cppdb::exec;
+
+    if (!managedTransactions)
+        sql.commit();
+}
+
+
 Statement Persistence::getStatement(int64_t id) {
     if (!managedTransactions)
         sql.begin();
@@ -288,7 +300,7 @@ int64_t Persistence::countStatements() {
     cppdb::result res = sql << "SELECT count(*) FROM statement" << cppdb::row;
 
     if (!res.empty()) {
-        result = res.get(0);
+        result = res.get<int64_t>(0);
     }
 
     if (!managedTransactions)
@@ -308,7 +320,7 @@ int64_t Persistence::countStatements(ApprovalState state) {
                 << getSQLState(state) << cppdb::row);
 
     if (!res.empty()) {
-        result = res.get(0);
+        result = res.get<int64_t>(0);
     }
 
     if (!managedTransactions)
@@ -329,8 +341,9 @@ std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t li
     );
 
     while(res.next()) {
-        std::pair<std::string, int64_t> entry(res.get(0), res.get(1));
-        result.push_back(entry);
+        std::string user = res.get<std::string>(0);
+        int64_t activities = res.get<int64_t>(1);
+        result.push_back(std::pair<std::string, int64_t>(user, activities));
     }
 
     if (!managedTransactions)

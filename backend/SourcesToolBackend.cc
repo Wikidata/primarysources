@@ -163,5 +163,6 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip) {
 }
 
 Status SourcesToolBackend::getStatus() {
-    return Status();
+    Status result();
+
 }
