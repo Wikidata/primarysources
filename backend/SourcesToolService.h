@@ -128,6 +128,13 @@ public:
    /**
     * Return a JSON object containing current status information like
     * total number of statements, number of approved statements, etc.
+    *
+    * Request:
+    *     GET /status
+    *
+    * Status Codes:
+    *     200: request successful, status returned as JSON object
+    *     500: server error
     */
    void getStatus();
 
