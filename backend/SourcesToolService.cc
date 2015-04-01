@@ -211,7 +211,7 @@ void SourcesToolService::getStatus() {
     result["topusers"] = topusers;
 
     response().content_type("application/json");
-    response().out() << result;
+    result.save(response().out(), cppcms::json::readable);
 
     clock_t end = std::clock();
     BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
