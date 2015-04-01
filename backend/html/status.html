@@ -18,12 +18,17 @@
     <script>
         var statusApp = angular.module('statusApp', ['ui.bootstrap']);
 
-        statusApp.controller('StatusCtrl', function($scope, $http) {
+        statusApp.controller('StatusCtrl', function($scope, $http, $interval) {
             $scope.status = {};
 
-            $http.get('https://tools.wmflabs.org/wikidata-primary-sources/status').success(function(data) {
-               $scope.status = data;
-            });
+            var pollStatus = function() {
+                $http.get('https://tools.wmflabs.org/wikidata-primary-sources/status').success(function (data) {
+                    $scope.status = data;
+                });
+            };
+
+            pollStatus();
+            $interval(pollStatus, 60000);
         });
     </script>
 </head>
