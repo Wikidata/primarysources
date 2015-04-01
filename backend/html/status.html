@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html ng-app="statusApp">
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Wikidata Primary Sources - Status</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/0.12.1/ui-bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+
+    <style>
+        .nav, .pagination, .carousel, .panel-title a { cursor: pointer; }
+
+        td, th {
+            padding: 4px;
+        }
+    </style>
+    <script>
+        var statusApp = angular.module('statusApp', ['ui.bootstrap']);
+
+        statusApp.controller('StatusCtrl', function($scope, $http) {
+            $scope.status = {};
+
+            $http.get('https://tools.wmflabs.org/wikidata-primary-sources/status').success(function(data) {
+               $scope.status = data;
+            });
+        });
+    </script>
+</head>
+<body ng-controller="StatusCtrl">
+<div class="container">
+
+    <div class="page-header">
+        <h1>Wikidata Primary Sources - Status</h1>
+        <p class="lead">Status overview for Wikidata Primary Sources backend.</p>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h3>Statements</h3>
+
+            <table class="table table-condensed">
+                <thead>
+                    <tr>
+                        <th>Status</th><th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Approved:</td><td>{{status.statements.approved}}</td>
+                    </tr>
+                    <tr>
+                        <td>Wrong:</td><td>{{status.statements.wrong}}</td>
+                    </tr>
+                    <tr>
+                        <td>Unapproved:</td><td>{{status.statements.unapproved}}</td>
+                    </tr>
+                    <tr style="border-top: 1px solid black; font-weight: bold">
+                        <td>Total:</td><td>{{status.statements.total}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-md-6">
+            <h3>Top Users</h3>
+
+            <table class="table table-condensed">
+                <thead>
+                    <tr>
+                        <th>User</th><th>Activities</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="entry in status.topusers">
+                        <td><a href="https://www.wikidata.org/wiki/User:{{entry.name}}">{{entry.name}}</a></td>
+                        <td>{{entry.activities}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
