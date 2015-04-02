@@ -9,12 +9,47 @@
 #include <cppcms/http_request.h>
 #include <cppcms/url_dispatcher.h>
 #include <cppcms/url_mapper.h>
+#include <fstream>
 
 #include "SerializerTSV.h"
 #include "SerializerJSON.h"
 #include "Persistence.h"
 #include "Membuf.h"
 #include "Version.h"
+
+// initialise static counters for status reports
+time_t SourcesToolService::startupTime = std::time(NULL);
+int64_t SourcesToolService::reqGetEntityCount = 0;
+int64_t SourcesToolService::reqGetRandomCount = 0;
+int64_t SourcesToolService::reqGetStatementCount = 0;
+int64_t SourcesToolService::reqUpdateStatementCount = 0;
+int64_t SourcesToolService::reqStatusCount = 0;
+
+inline std::string formatGMT(time_t* time) {
+    char result[128];
+    std::strftime(result, 128, "%Y-%m-%dT%H:%M:%SZ", gmtime(time));
+    return std::string(result);
+}
+
+struct memstat {
+    double rss, shared_mem, private_mem;
+};
+
+inline memstat getMemStat() {
+    int tSize = 0, resident = 0, share = 0;
+    std::ifstream buffer("/proc/self/statm");
+    buffer >> tSize >> resident >> share;
+    buffer.close();
+
+    struct memstat result;
+
+    long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
+    result.rss = resident * page_size_kb;
+    result.shared_mem = share * page_size_kb;
+    result.private_mem = result.rss - result.shared_mem;
+
+    return result;
+}
 
 SourcesToolService::SourcesToolService(cppcms::service &srv)
         : cppcms::application(srv), backend(settings()["database"]) {
@@ -71,6 +106,8 @@ void SourcesToolService::getEntityByQID(std::string qid) {
         response().status(404, "no statements found for entity "+qid);
     }
 
+    reqGetEntityCount++;
+
     clock_t end = std::clock();
     BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
             << "GET /entities/" << qid << " time: "
@@ -92,6 +129,8 @@ void SourcesToolService::getRandomEntity() {
     } catch(PersistenceException const &e) {
         response().status(404, "no random unapproved entity found");
     }
+
+    reqGetRandomCount++;
 
     clock_t end = std::clock();
     BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
@@ -139,6 +178,7 @@ void SourcesToolService::approveStatement(int64_t stid) {
 
     // status needs to be updated
     cache().rise("STATUS");
+    reqUpdateStatementCount++;
 
     clock_t end = std::clock();
     BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
@@ -161,6 +201,8 @@ void SourcesToolService::getStatement(int64_t stid) {
         std::cerr << "error: " << e.what() << std::endl;
         response().status(404, "Statement not found");
     }
+
+    reqGetStatementCount++;
 
     clock_t end = std::clock();
     BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
@@ -219,8 +261,26 @@ void SourcesToolService::getStatus() {
     }
     result["topusers"] = topusers;
 
+    // system information
+    result["system"]["startup"] = formatGMT(&SourcesToolService::startupTime);
+    result["system"]["version"] = std::string(GIT_SHA1);
+
+    struct memstat meminfo = getMemStat();
+    result["system"]["shared_mem"] = meminfo.shared_mem;
+    result["system"]["private_mem"] = meminfo.private_mem;
+    result["system"]["rss"] = meminfo.rss;
+
+    // request statistics
+    result["requests"]["getentity"] = reqGetEntityCount;
+    result["requests"]["getrandom"] = reqGetRandomCount;
+    result["requests"]["getstatement"] = reqGetStatementCount;
+    result["requests"]["updatestatement"] = reqUpdateStatementCount;
+    result["requests"]["getstatus"] = reqStatusCount;
+
     response().content_type("application/json");
     result.save(response().out(), cppcms::json::readable);
+
+    reqStatusCount++;
 
     clock_t end = std::clock();
     BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "

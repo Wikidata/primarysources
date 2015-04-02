@@ -44,6 +44,10 @@
         <div class="col-md-6">
             <h3>Statements</h3>
 
+            <p>
+                Statement status counts.
+            </p>
+
             <table class="table table-condensed">
                 <thead>
                     <tr>
@@ -70,6 +74,10 @@
         <div class="col-md-6">
             <h3>Top Users</h3>
 
+            <p>
+                Top 10 most active users.
+            </p>
+
             <table class="table table-condensed">
                 <thead>
                     <tr>
@@ -80,6 +88,73 @@
                     <tr ng-repeat="entry in status.topusers">
                         <td><a href="https://www.wikidata.org/wiki/User:{{entry.name}}">{{entry.name}}</a></td>
                         <td>{{entry.activities}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <h3>System</h3>
+
+            <p>
+                Information about the currently running process.
+            </p>
+
+            <table class="table table-condensed">
+                <thead>
+                <tr>
+                    <th>Field</th><th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Startup Time:</td><td>{{status.system.startup}}</td>
+                    </tr>
+                    <tr>
+                        <td>GIT Version:</td><td>{{status.system.version}}</td>
+                    </tr>
+                    <tr>
+                        <td>Memory (Shared):</td><td>{{status.system.shared_mem}} kB</td>
+                    </tr>
+                    <tr>
+                        <td>Memory (Private):</td><td>{{status.system.private_mem}} kB</td>
+                    </tr>
+                    <tr>
+                        <td>Memory (Resident):</td><td>{{status.system.rss}} kB</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-md-6">
+            <h3>Requests</h3>
+
+            <p>
+                Number of requests of different types since last restart.
+            </p>
+
+            <table class="table table-condensed">
+                <thead>
+                <tr>
+                    <th>Type</th><th>Count</th>
+                </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Get Entity (by ID):</td><td>{{status.requests.getentity}}</td>
+                    </tr>
+                    <tr>
+                        <td>Get Entity (Random):</td><td>{{status.requests.getrandom}}</td>
+                    </tr>
+                    <tr>
+                        <td>Get Statement:</td><td>{{status.requests.getstatement}}</td>
+                    </tr>
+                    <tr>
+                        <td>Update Statement:</td><td>{{status.requests.updatestatement}}</td>
+                    </tr>
+                    <tr>
+                        <td>Get Status:</td><td>{{status.requests.getstatus}}</td>
                     </tr>
                 </tbody>
             </table>

@@ -138,6 +138,11 @@ public:
     */
    void getStatus();
 
+   // store startup time for status
+   static time_t startupTime;
+
+   // store request counts since last startup
+   static int64_t reqGetEntityCount, reqGetRandomCount, reqGetStatementCount, reqUpdateStatementCount, reqStatusCount;
 private:
    void handleGetPostStatement(std::string);
 
