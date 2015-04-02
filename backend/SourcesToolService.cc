@@ -25,16 +25,19 @@ int64_t SourcesToolService::reqGetStatementCount = 0;
 int64_t SourcesToolService::reqUpdateStatementCount = 0;
 int64_t SourcesToolService::reqStatusCount = 0;
 
+// format a time_t using ISO8601 GMT time
 inline std::string formatGMT(time_t* time) {
     char result[128];
     std::strftime(result, 128, "%Y-%m-%dT%H:%M:%SZ", gmtime(time));
     return std::string(result);
 }
 
+// represent memory statistics (used for status)
 struct memstat {
     double rss, shared_mem, private_mem;
 };
 
+// read memory statistics from /proc (used for status)
 inline memstat getMemStat() {
     int tSize = 0, resident = 0, share = 0;
     std::ifstream buffer("/proc/self/statm");
@@ -51,6 +54,7 @@ inline memstat getMemStat() {
     return result;
 }
 
+// initialise service mappings from URLs to methods
 SourcesToolService::SourcesToolService(cppcms::service &srv)
         : cppcms::application(srv), backend(settings()["database"]) {
 
@@ -116,8 +120,6 @@ void SourcesToolService::getEntityByQID(std::string qid) {
 }
 
 void SourcesToolService::getRandomEntity() {
-    // currently always return the test QID
-
     clock_t begin = std::clock();
 
     addCORSHeaders();
