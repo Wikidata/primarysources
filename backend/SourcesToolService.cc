@@ -137,6 +137,9 @@ void SourcesToolService::approveStatement(int64_t stid) {
         response().status(404, "Statement not found");
     }
 
+    // status needs to be updated
+    cache().rise("STATUS");
+
     clock_t end = std::clock();
     BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
               << "POST /statements/" << stid << " time: "
@@ -195,7 +198,13 @@ void SourcesToolService::getStatus() {
 
     cppcms::json::value result;
 
-    Status status = backend.getStatus();
+    Status status;
+
+    if(!cache().fetch_data("STATUS", status)) {
+        status = backend.getStatus();
+        cache().store_data("STATUS", status, 3600);
+    }
+
     result["statements"]["total"] = status.getStatements();
     result["statements"]["approved"] = status.getApproved();
     result["statements"]["unapproved"] = status.getUnapproved();

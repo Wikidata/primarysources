@@ -5,7 +5,9 @@
 #include <vector>
 #include <string>
 
-class Status {
+#include <cppcms/serialization.h>
+
+class Status : public cppcms::serializable {
 private:
     // current numbers of statements (total, and different states) in the
     // database
@@ -58,6 +60,8 @@ public:
     void setTopUsers(std::vector<std::pair<std::string, int64_t>> const &topUsers) {
         Status::topUsers = topUsers;
     }
+
+    void serialize(cppcms::archive &a) override;
 };
 
 

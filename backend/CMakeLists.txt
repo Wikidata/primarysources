@@ -26,7 +26,7 @@ get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.cc.in" "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" @ONLY)
 
 add_executable(freebase_inject inject.cc Parser.cc Statement.cc Persistence.cc)
-add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc Statement.cc Parser.cc Persistence.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc")
+add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc Statement.cc Parser.cc Persistence.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" Status.cc)
 
 target_link_libraries(freebase_backend ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIES} ${LIBCPPDB_LIBRARY} ${CPPDB_SQLITE_BACKEND} ${Boost_LIBRARIES})
 target_link_libraries(freebase_inject ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIES} ${LIBCPPDB_LIBRARY} ${CPPDB_SQLITE_BACKEND} ${Boost_LIBRARIES})
