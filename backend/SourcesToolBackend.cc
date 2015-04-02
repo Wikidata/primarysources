@@ -103,13 +103,26 @@ void SourcesToolBackend::updateStatement(
         cache_t& cache, int64_t id, ApprovalState state, std::string user) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
-    Persistence p(sql);
-    p.updateStatement(id, state);
-    p.addUserlog(user, id, state);
+    Persistence p(sql, true);
+    sql.begin();
 
-    // update cache
-    Statement st = p.getStatement(id);
-    cache.rise(st.getQID());
+    try {
+        // make sure statement exists; will throw an exception if not
+        Statement st = p.getStatement(id);
+
+        p.updateStatement(id, state);
+        p.addUserlog(user, id, state);
+
+        sql.commit();
+
+        // update cache
+        cache.rise(st.getQID());
+    } catch (PersistenceException const &e) {
+        sql.rollback();
+
+        throw e;
+    }
+
 }
 
 std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(

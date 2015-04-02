@@ -172,7 +172,6 @@ void SourcesToolService::approveStatement(int64_t stid) {
 
     // check if statement exists and update it with new state
     try {
-        Statement st = backend.getStatementByID(cache(), stid);
         backend.updateStatement(cache(), stid, state, request().get("user"));
     } catch(PersistenceException const &e) {
         response().status(404, "Statement not found");
