@@ -48,7 +48,7 @@ $(document).ready(function() {
     var LIST_OF_PROPERTIES_URL =
         'https://www.wikidata.org/wiki/Wikidata:List_of_properties/all';
     var WIKIDATA_ENTITY_DATA_URL =
-        'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.JSON';
+        'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
     var WIKIDATA_ENTITY_LABELS_URL = 'https://www.wikidata.org/w/api.php' +
         '?action=wbgetentities&languages={{languages}}&format=json' +
         '&props=labels&ids={{entities}}';
