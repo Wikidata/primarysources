@@ -689,9 +689,13 @@ $(document).ready(function() {
           });
 
           var freebaseObject = {
-            object: object.object,
+            object: labels && labels[object.object] ?
+                object.object :
+                object.object.replace(/^"/, '').replace(/"$/, ''),
             id: object.id,
-            objectLabel: labels[object.object].labels[language].value,
+            objectLabel: labels && labels[object.object] ?
+                labels[object.object].labels[language].value :
+                object.object.replace(/^"/, '').replace(/"$/, ''),
             objectType: object.valueType,
             qualifiers: object.qualifiers,
             sources: object.sources
