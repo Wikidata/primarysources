@@ -445,12 +445,8 @@ $(document).ready(function() {
       }
       /* jscs: enable */
       /* jshint ignore:end */
-      freebaseEntityData.filter(function(freebaseEntity) {
-        return freebaseEntity.format === 'v1' &&
-            freebaseEntity.state === 'unapproved';
-      })
       // Unify statements, as some statements may appear more than once
-      .filter(function(freebaseEntity, index, self) {
+      freebaseEntityData.filter(function(freebaseEntity, index, self) {
         var statementUnique = function(haystack, needle) {
           for (var i = 0, lenI = haystack.length; i < lenI; i++) {
             if (haystack[i].statement === needle) {
@@ -460,6 +456,11 @@ $(document).ready(function() {
           return -1;
         };
         return statementUnique(self, freebaseEntity.statement) === index;
+      })
+      // Only show v1 unapproved statements
+      .filter(function(freebaseEntity) {
+        return freebaseEntity.format === 'v1' &&
+            freebaseEntity.state === 'unapproved';
       })
       .forEach(function(freebaseEntity) {
         var statement = freebaseEntity.statement;
