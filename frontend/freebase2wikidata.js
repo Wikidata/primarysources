@@ -448,7 +448,20 @@ $(document).ready(function() {
       freebaseEntityData.filter(function(freebaseEntity) {
         return freebaseEntity.format === 'v1' &&
             freebaseEntity.state === 'unapproved';
-      }).forEach(function(freebaseEntity) {
+      })
+      // Unify statements, as some statements may appear more than once
+      .filter(function(freebaseEntity, index, self) {
+        var statementUnique = function(haystack, needle) {
+          for (var i = 0, lenI = haystack.length; i < lenI; i++) {
+            if (haystack[i].statement === needle) {
+              return i;
+            }
+          }
+          return -1;
+        };
+        return statementUnique(self, freebaseEntity.statement) === index;
+      })
+      .forEach(function(freebaseEntity) {
         var statement = freebaseEntity.statement;
         var id = freebaseEntity.id;
         var line = statement.split(/\t/);
