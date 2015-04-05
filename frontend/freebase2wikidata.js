@@ -774,9 +774,12 @@ $(document).ready(function() {
           var sources = claims[object].sources;
           var qualifiers = claims[object].qualifiers;
           newClaim.objects.push({
-            object: object,
+            object: objectLabels && objectLabels[object] ?
+                object : object.replace(/^"/, '').replace(/"$/, ''),
             id: id,
-            objectLabel: objectLabels[object].labels[lang].value,
+            objectLabel: objectLabels && objectLabels[object] ?
+                objectLabels[object].labels[lang].value :
+                object.replace(/^"/, '').replace(/"$/, ''),
             objectType: objectType,
             qualifiers: qualifiers,
             sources: sources
