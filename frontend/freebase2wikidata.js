@@ -98,6 +98,7 @@ $(document).ready(function() {
                   '</span>' +
                   ']' +
                 '</span>' +
+                '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                   '[' +
                   '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
                     '<a class="f2w-button f2w-source f2w-edit" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}">edit</a>' +
@@ -176,6 +177,8 @@ $(document).ready(function() {
                   '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}">approve</a>' +
                 '</span>' +
                 ']' +
+              '</span>' +
+              '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
                 '[' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
                   '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}">reject</a>' +
