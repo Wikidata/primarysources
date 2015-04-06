@@ -446,15 +446,15 @@ $(document).ready(function() {
       /* jscs: enable */
       /* jshint ignore:end */
       // Unify statements, as some statements may appear more than once
-      freebaseEntityData.filter(function(freebaseEntity, index, self) {
-        var statementUnique = function(haystack, needle) {
-          for (var i = 0, lenI = haystack.length; i < lenI; i++) {
-            if (haystack[i].statement === needle) {
-              return i;
-            }
+      var statementUnique = function(haystack, needle) {
+        for (var i = 0, lenI = haystack.length; i < lenI; i++) {
+          if (haystack[i].statement === needle) {
+            return i;
           }
-          return -1;
-        };
+        }
+        return -1;
+      };
+      freebaseEntityData.filter(function(freebaseEntity, index, self) {
         return statementUnique(self, freebaseEntity.statement) === index;
       })
       // Only show v1 unapproved statements
