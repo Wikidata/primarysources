@@ -257,6 +257,8 @@ void SourcesToolService::getStatus() {
     result["statements"]["total"] = status.getStatements();
     result["statements"]["approved"] = status.getApproved();
     result["statements"]["unapproved"] = status.getUnapproved();
+    result["statements"]["blacklisted"] = status.getBlacklisted();
+    result["statements"]["duplicate"] = status.getDuplicate();
     result["statements"]["wrong"] = status.getWrong();
 
     cppcms::json::array topusers;
