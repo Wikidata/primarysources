@@ -41,7 +41,7 @@ class Persistence {
     * Add a new statement to the database. Returns the database ID of the
     * newly added or existing statement.
     */
-    int64_t addStatement(const Statement& st);
+    int64_t addStatement(const Statement& st, bool check_duplicates = false);
 
     /**
     * Update the database state of the given statement. Currently only takes
@@ -132,6 +132,10 @@ class Persistence {
     // Return the existing snak id of the given property/value pair.
     // Returns -1 in case the snak does not exist yet.
     int64_t getSnakID(const PropertyValue &pv);
+
+    // helper method to distinguish between the case where we check duplicates and
+    // the case where we don't
+    int64_t getOrAddSnak(const PropertyValue &pv, bool check_duplicates);
 
     // Return the PropertyValue pair for the snak with the given ID.
     // Throws PersistenceException in case the snak with this ID is not found.

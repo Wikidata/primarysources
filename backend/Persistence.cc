@@ -179,33 +179,39 @@ Statement Persistence::buildStatement(int64_t id, std::string qid,
 Persistence::Persistence(cppdb::session &sql, bool managedTransactions)
         : sql(sql), managedTransactions(managedTransactions) { }
 
-int64_t Persistence::addStatement(const Statement& st) {
+// helper method to distinguish between the case where we check duplicates and
+// the case where we don't
+int64_t Persistence::getOrAddSnak(const PropertyValue &pv, bool check_duplicates) {
+    int64_t snakid = -1;
+    if (check_duplicates) {
+        snakid = getSnakID(pv);
+    }
+    if (snakid < 0) {
+        snakid = addSnak(pv);
+    }
+    return snakid;
+}
+
+int64_t Persistence::addStatement(const Statement& st, bool check_duplicates) {
     if (!managedTransactions)
         sql.begin();
 
-    int64_t snakid = getSnakID(st.getPropertyValue());
-    if (snakid < 0) {
-        snakid = addSnak(st.getPropertyValue());
-    }
+    int64_t snakid = getOrAddSnak(st.getPropertyValue(), check_duplicates);
 
     int64_t stmtid = (
             sql << "INSERT INTO statement(subject,mainsnak) VALUES (?,?)"
                 << st.getQID() << snakid << cppdb::exec).last_insert_id();
 
     for (const PropertyValue& pv : st.getQualifiers()) {
-        int64_t qualid = getSnakID(pv);
-        if (qualid < 0) {
-            qualid = addSnak(pv);
-        }
+        int64_t qualid = getOrAddSnak(pv, check_duplicates);
+
         sql << "INSERT INTO qualifier(stmt,snak) VALUES (?,?)"
             << stmtid << qualid << cppdb::exec;
     }
 
     for (const PropertyValue& pv : st.getSources()) {
-        int64_t qualid = getSnakID(pv);
-        if (qualid < 0) {
-            qualid = addSnak(pv);
-        }
+        int64_t qualid = getOrAddSnak(pv, check_duplicates);
+
         sql << "INSERT INTO source(stmt,snak) VALUES (?,?)"
             << stmtid << qualid << cppdb::exec;
     }
