@@ -93,6 +93,8 @@ namespace Serializer {
             case WRONG: (*out)["state"] = "wrong"; break;
             case OTHERSOURCE: (*out)["state"] = "othersource"; break;
             case SKIPPED: (*out)["state"] = "skipped"; break;
+            case DUPLICATE: (*out)["state"] = "duplicate"; break;
+            case BLACKLISTED: (*out)["state"] = "blacklisted"; break;
         }
     }
 

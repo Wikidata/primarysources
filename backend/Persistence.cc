@@ -12,6 +12,8 @@ inline ApprovalState getApprovalState(int16_t state) {
         case 2: return OTHERSOURCE;
         case 3: return WRONG;
         case 4: return SKIPPED;
+        case 5: return DUPLICATE;
+        case 6: return BLACKLISTED;
         default: return UNAPPROVED;
     }
 }
@@ -23,6 +25,8 @@ inline int16_t getSQLState(ApprovalState state) {
         case OTHERSOURCE: return 2;
         case WRONG:       return 3;
         case SKIPPED:     return 4;
+        case DUPLICATE:   return 5;
+        case BLACKLISTED: return 6;
     }
 }
 

@@ -12,7 +12,7 @@
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
 enum ApprovalState {
-    UNAPPROVED, APPROVED, OTHERSOURCE, WRONG, SKIPPED
+    UNAPPROVED, APPROVED, OTHERSOURCE, WRONG, SKIPPED, DUPLICATE, BLACKLISTED
 };
 
 enum ValueType {

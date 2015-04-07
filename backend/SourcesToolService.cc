@@ -167,6 +167,10 @@ void SourcesToolService::approveStatement(int64_t stid) {
         state = OTHERSOURCE;
     } else if(request().get("state") == "unapproved") {
         state = UNAPPROVED;
+    } else if(request().get("state") == "duplicate") {
+        state = DUPLICATE;
+    } else if(request().get("state") == "blacklisted") {
+        state = BLACKLISTED;
     } else {
         response().status(400, "Bad Request: invalid or missing state parameter");
         return;
