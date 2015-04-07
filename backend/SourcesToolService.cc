@@ -161,6 +161,8 @@ void SourcesToolService::approveStatement(int64_t stid) {
         state = APPROVED;
     } else if(request().get("state") == "wrong") {
         state = WRONG;
+    } else if(request().get("state") == "skipped") {
+        state = SKIPPED;
     } else if(request().get("state") == "othersource") {
         state = OTHERSOURCE;
     } else if(request().get("state") == "unapproved") {
