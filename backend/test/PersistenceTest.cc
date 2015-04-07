@@ -94,6 +94,15 @@ TEST_F(PersistenceTest, AddGetStatement) {
     ASSERT_EQ(stmt.getQID(), stmt2.getQID());
     ASSERT_EQ(stmt.getProperty(), stmt2.getProperty());
     ASSERT_EQ(stmt.getValue().getString(), stmt2.getValue().getString());
+
+    sql.begin();
+    std::vector<Statement> stmts = p.getStatementsByQID("Q123", false);
+    sql.commit();
+    ASSERT_EQ(stmts.size(), 1);
+    ASSERT_EQ(stmts[0].getQID(), stmt.getQID());
+    ASSERT_EQ(stmts[0].getProperty(), stmt.getProperty());
+    ASSERT_EQ(stmts[0].getValue().getString(), stmt.getValue().getString());
+
 }
 
 TEST_F(PersistenceTest, UpdateStatement) {
