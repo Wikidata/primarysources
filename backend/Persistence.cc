@@ -95,7 +95,7 @@ int64_t Persistence::getSnakID(const PropertyValue &pv) {
             break;
         case LOCATION:
             r = (sql << "SELECT id FROM snak "
-                        "WHERE property=? AND lat=? AMD lng=? "
+                        "WHERE property=? AND lat=? AND lng=? "
                         "AND vtype='location' "
                     << pv.getProperty() << pv.getValue().getLocation().first
                     << pv.getValue().getLocation().second << cppdb::row);

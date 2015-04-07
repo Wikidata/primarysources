@@ -3,6 +3,7 @@
 //
 #include "gtest.h"
 
+#include <ctime>
 #include <fstream>
 #include <sstream>
 #include <cppdb/frontend.h>
@@ -58,8 +59,14 @@ TEST_F(PersistenceTest, SchemaExists) {
 }
 
 TEST_F(PersistenceTest, AddGetSnak) {
+    time_t rawtime = std::time(NULL);
+    std::tm *t = std::gmtime(&rawtime);
+
     PropertyValue pvs[] = {
-            PropertyValue("P123", Value("Hello, World!", "en"))
+            PropertyValue("P123", Value("Hello, World!", "en")),
+            PropertyValue("P124", Value("Q321")),
+            PropertyValue("P125", Value(42.11, 11.32)),
+            PropertyValue("P126", Value(*t, 9)),
     };
 
     Persistence p(sql, true);
