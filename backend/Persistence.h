@@ -38,9 +38,10 @@ class Persistence {
     Persistence(cppdb::session &sql, bool managedTransactions = false);
 
     /**
-    * Add a new statement to the database.
+    * Add a new statement to the database. Returns the database ID of the
+    * newly added or existing statement.
     */
-    void addStatement(const Statement& st);
+    int64_t addStatement(const Statement& st);
 
     /**
     * Update the database state of the given statement. Currently only takes

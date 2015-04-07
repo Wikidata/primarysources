@@ -175,29 +175,41 @@ Statement Persistence::buildStatement(int64_t id, std::string qid,
 Persistence::Persistence(cppdb::session &sql, bool managedTransactions)
         : sql(sql), managedTransactions(managedTransactions) { }
 
-void Persistence::addStatement(const Statement& st) {
+int64_t Persistence::addStatement(const Statement& st) {
     if (!managedTransactions)
         sql.begin();
 
-    int64_t snakid = addSnak(st.getPropertyValue());
+    int64_t snakid = getSnakID(st.getPropertyValue());
+    if (snakid < 0) {
+        snakid = addSnak(st.getPropertyValue());
+    }
+
     int64_t stmtid = (
             sql << "INSERT INTO statement(subject,mainsnak) VALUES (?,?)"
                 << st.getQID() << snakid << cppdb::exec).last_insert_id();
 
     for (const PropertyValue& pv : st.getQualifiers()) {
-        int64_t qualid = addSnak(pv);
+        int64_t qualid = getSnakID(pv);
+        if (qualid < 0) {
+            qualid = addSnak(pv);
+        }
         sql << "INSERT INTO qualifier(stmt,snak) VALUES (?,?)"
             << stmtid << qualid << cppdb::exec;
     }
 
     for (const PropertyValue& pv : st.getSources()) {
-        int64_t qualid = addSnak(pv);
+        int64_t qualid = getSnakID(pv);
+        if (qualid < 0) {
+            qualid = addSnak(pv);
+        }
         sql << "INSERT INTO source(stmt,snak) VALUES (?,?)"
             << stmtid << qualid << cppdb::exec;
     }
 
     if (!managedTransactions)
         sql.commit();
+
+    return stmtid;
 }
 
 void Persistence::updateStatement(const Statement &st) {

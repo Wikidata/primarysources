@@ -82,6 +82,20 @@ TEST_F(PersistenceTest, AddGetSnak) {
     }
 }
 
+TEST_F(PersistenceTest, AddGetStatement) {
+    Statement stmt(-1, "Q123", PropertyValue("P456", Value("Q789")),
+                   Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+
+    Persistence p(sql, true);
+    sql.begin();
+    int64_t id1 = p.addStatement(stmt);
+    Statement stmt2 = p.getStatement(id1);
+    sql.commit();
+    ASSERT_EQ(stmt.getQID(), stmt2.getQID());
+    ASSERT_EQ(stmt.getProperty(), stmt2.getProperty());
+    ASSERT_EQ(stmt.getValue().getString(), stmt2.getValue().getString());
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
