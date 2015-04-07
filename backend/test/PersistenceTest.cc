@@ -105,10 +105,11 @@ TEST_F(PersistenceTest, UpdateStatement) {
     int64_t id1 = p.addStatement(stmt);
     p.updateStatement(id1, APPROVED);
     Statement stmt2 = p.getStatement(id1);
+    int64_t approvedCount = p.countStatements(APPROVED);
     sql.commit();
 
     ASSERT_EQ(stmt2.getApprovalState(), APPROVED);
-
+    ASSERT_EQ(approvedCount, 1);
 }
 
 int main(int argc, char **argv) {
