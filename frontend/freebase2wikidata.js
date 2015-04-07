@@ -48,7 +48,7 @@ $(document).ready(function() {
     var LIST_OF_PROPERTIES_URL =
         'https://www.wikidata.org/wiki/Wikidata:List_of_properties/all';
     var WIKIDATA_ENTITY_DATA_URL =
-        'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.JSON';
+        'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
     var WIKIDATA_ENTITY_LABELS_URL = 'https://www.wikidata.org/w/api.php' +
         '?action=wbgetentities&languages={{languages}}&format=json' +
         '&props=labels&ids={{entities}}';
@@ -98,6 +98,7 @@ $(document).ready(function() {
                   '</span>' +
                   ']' +
                 '</span>' +
+                '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                   '[' +
                   '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
                     '<a class="f2w-button f2w-source f2w-edit" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}">edit</a>' +
@@ -176,6 +177,8 @@ $(document).ready(function() {
                   '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}">approve</a>' +
                 '</span>' +
                 ']' +
+              '</span>' +
+              '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
                 '[' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
                   '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}">reject</a>' +
@@ -442,10 +445,24 @@ $(document).ready(function() {
       }
       /* jscs: enable */
       /* jshint ignore:end */
-      freebaseEntityData.filter(function(freebaseEntity) {
+      // Unify statements, as some statements may appear more than once
+      var statementUnique = function(haystack, needle) {
+        for (var i = 0, lenI = haystack.length; i < lenI; i++) {
+          if (haystack[i].statement === needle) {
+            return i;
+          }
+        }
+        return -1;
+      };
+      freebaseEntityData.filter(function(freebaseEntity, index, self) {
+        return statementUnique(self, freebaseEntity.statement) === index;
+      })
+      // Only show v1 unapproved statements
+      .filter(function(freebaseEntity) {
         return freebaseEntity.format === 'v1' &&
             freebaseEntity.state === 'unapproved';
-      }).forEach(function(freebaseEntity) {
+      })
+      .forEach(function(freebaseEntity) {
         var statement = freebaseEntity.statement;
         var id = freebaseEntity.id;
         var line = statement.split(/\t/);
@@ -672,9 +689,13 @@ $(document).ready(function() {
           });
 
           var freebaseObject = {
-            object: object.object,
+            object: labels && labels[object.object] ?
+                object.object :
+                object.object.replace(/^"/, '').replace(/"$/, ''),
             id: object.id,
-            objectLabel: labels[object.object].labels[language].value,
+            objectLabel: labels && labels[object.object] ?
+                labels[object.object].labels[language].value :
+                object.object.replace(/^"/, '').replace(/"$/, ''),
             objectType: object.valueType,
             qualifiers: object.qualifiers,
             sources: object.sources
@@ -757,9 +778,12 @@ $(document).ready(function() {
           var sources = claims[object].sources;
           var qualifiers = claims[object].qualifiers;
           newClaim.objects.push({
-            object: object,
+            object: objectLabels && objectLabels[object] ?
+                object : object.replace(/^"/, '').replace(/"$/, ''),
             id: id,
-            objectLabel: objectLabels[object].labels[lang].value,
+            objectLabel: objectLabels && objectLabels[object] ?
+                objectLabels[object].labels[lang].value :
+                object.replace(/^"/, '').replace(/"$/, ''),
             objectType: objectType,
             qualifiers: qualifiers,
             sources: sources
