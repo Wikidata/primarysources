@@ -11,7 +11,7 @@ class Status : public cppcms::serializable {
 private:
     // current numbers of statements (total, and different states) in the
     // database
-    int64_t statements, approved, unapproved, wrong;
+    int64_t statements, approved, unapproved, duplicate, blacklisted, wrong;
 
     // top users with count of statements processed
     std::vector<std::pair<std::string,int64_t>> topUsers;
@@ -51,6 +51,22 @@ public:
 
     void setWrong(int64_t wrong) {
         Status::wrong = wrong;
+    }
+
+    int64_t getDuplicate() const {
+        return duplicate;
+    }
+
+    void setDuplicate(int64_t duplicate) {
+        Status::duplicate = duplicate;
+    }
+
+    int64_t getBlacklisted() const {
+        return blacklisted;
+    }
+
+    void setBlacklisted(int64_t blacklisted) {
+        Status::blacklisted = blacklisted;
     }
 
     std::vector<std::pair<std::string, int64_t>> const &getTopUsers() const {

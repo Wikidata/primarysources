@@ -96,6 +96,21 @@ TEST_F(PersistenceTest, AddGetStatement) {
     ASSERT_EQ(stmt.getValue().getString(), stmt2.getValue().getString());
 }
 
+TEST_F(PersistenceTest, UpdateStatement) {
+    Statement stmt(-1, "Q1231", PropertyValue("P456", Value("Q789")),
+                   Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+
+    Persistence p(sql, true);
+    sql.begin();
+    int64_t id1 = p.addStatement(stmt);
+    p.updateStatement(id1, APPROVED);
+    Statement stmt2 = p.getStatement(id1);
+    sql.commit();
+
+    ASSERT_EQ(stmt2.getApprovalState(), APPROVED);
+
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

@@ -186,6 +186,8 @@ Status SourcesToolBackend::getStatus() {
     result.setStatements(p.countStatements());
     result.setApproved(p.countStatements(APPROVED));
     result.setUnapproved(p.countStatements(UNAPPROVED));
+    result.setDuplicate(p.countStatements(DUPLICATE));
+    result.setBlacklisted(p.countStatements(BLACKLISTED));
     result.setWrong(p.countStatements(WRONG));
     result.setTopUsers(p.getTopUsers(10));
 
