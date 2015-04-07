@@ -63,6 +63,52 @@ int64_t Persistence::addSnak(const PropertyValue &pv) {
     return -1;
 }
 
+int64_t Persistence::getSnakID(const PropertyValue &pv) {
+    cppdb::result r;
+    switch (pv.getValue().getType()) {
+        case ITEM:
+            r = (sql << "SELECT id FROM snak "
+                        "WHERE property=? AND svalue=? AND vtype='item'"
+                     << pv.getProperty() << pv.getValue().getString()
+                     << cppdb::row);
+            break;
+        case STRING:
+            r = (sql << "SELECT id FROM snak "
+                        "WHERE property=? AND svalue=? AND lang=? "
+                        "AND vtype='string'"
+                    << pv.getProperty() << pv.getValue().getString()
+                    << pv.getValue().getLanguage() << cppdb::row);
+            break;
+        case QUANTITY:
+            r= (sql << "SELECT id FROM snak "
+                       "WHERE property=? AND dvalue=? AND vtype='quantity'"
+                    << pv.getProperty()
+                    << static_cast<long double>(pv.getValue().getQuantity())
+                    << cppdb::row);
+            break;
+        case TIME:
+            r = (sql << "SELECT id FROM snak "
+                        "WHERE property=? AND tvalue=? AND precision=? "
+                        "AND vtype='time'"
+                    << pv.getProperty() << pv.getValue().getTime()
+                    << pv.getValue().getPrecision() << cppdb::row);
+            break;
+        case LOCATION:
+            r = (sql << "SELECT id FROM snak "
+                        "WHERE property=? AND lat=? AMD lng=? "
+                        "AND vtype='location' "
+                    << pv.getProperty() << pv.getValue().getLocation().first
+                    << pv.getValue().getLocation().second << cppdb::row);
+            break;
+    }
+
+    if (!r.empty()) {
+        return r.get<int64_t>("id");
+    } else {
+        return -1;
+    }
+}
+
 PropertyValue Persistence::getSnak(int64_t snakid) {
     cppdb::result res =(
             sql << "SELECT property, svalue, dvalue, tvalue, "

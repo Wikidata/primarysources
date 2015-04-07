@@ -128,10 +128,18 @@ class Persistence {
 
     int64_t addSnak(const PropertyValue &pv);
 
+    // Return the existing snak id of the given property/value pair.
+    // Returns -1 in case the snak does not exist yet.
+    int64_t getSnakID(const PropertyValue &pv);
+
+    // Return the PropertyValue pair for the snak with the given ID.
+    // Throws PersistenceException in case the snak with this ID is not found.
     PropertyValue getSnak(int64_t snakid);
 
     Statement buildStatement(int64_t id, std::string qid,
                              int64_t snak, int16_t state);
+
+    friend class PersistenceTest_AddGetSnak_Test;
 };
 
 #endif  // HAVE_PERSISTENCE_H_

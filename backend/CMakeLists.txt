@@ -4,6 +4,8 @@ set(VERSION_MAJOR 1)
 set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
 
+enable_testing()
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/modules/")
 include_directories("${CMAKE_INSTALL_PREFIX}/include" "${CMAKE_SOURCE_DIR}")
 
@@ -33,3 +35,5 @@ target_link_libraries(freebase_inject ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBR
 
 install(TARGETS freebase_inject freebase_backend
         RUNTIME DESTINATION bin)
+
+add_subdirectory(test)
