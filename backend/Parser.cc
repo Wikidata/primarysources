@@ -23,7 +23,7 @@ PropertyValue parsePropertyValue(std::string property, std::string value) {
     static boost::regex re_num("\\s*(\\+|-)\\d+(\\.\\d+)?\\s*");
 
     // locations (@LAT/LONG)
-    static boost::regex re_loc("\\s*@(\\d{2}(?:\\.\\d+)?)/(\\d{3}(?:\\.\\d+))?\\s*");
+    static boost::regex re_loc("\\s*@(\\d{1,2}(?:\\.\\d+)?)/(\\d{1,3}(?:\\.\\d+))?\\s*");
 
     // text (en:"He's a jolly good fellow")
     static boost::regex re_text("\\s*(?:(\\w{2}):)?\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\"\\s*");
