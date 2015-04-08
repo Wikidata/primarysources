@@ -282,6 +282,10 @@ class Statement : public cppcms::serializable {
     ApprovalState getApprovalState() const { return approved; }
 
 
+    void setApprovalState(ApprovalState const &approved) {
+        Statement::approved = approved;
+    }
+
     void serialize(cppcms::archive &a) override;
 
  private:

@@ -121,6 +121,21 @@ class Persistence {
      */
     std::vector<std::pair<std::string,int64_t>> getTopUsers(int32_t limit=10);
 
+    /**
+     * Iterate over all entities in the database, and mark all duplicate
+     * statements with approval state 'duplicate' so they no longer appear
+     * in the frontend.
+     *
+     * This is an expensive operation that should be run in the background.
+     * Duplicates could also be eliminated during import, but this would
+     * considerably slow down import performance. Sweep and mark is a
+     * reasonable alternative.
+     *
+     * Parameters:
+     * - start_id: database ID of first statement to consider
+     */
+    void markDuplicates(int64_t start_id = 0);
+
  private:
     // reference to the wrapped sql session
     cppdb::session& sql;

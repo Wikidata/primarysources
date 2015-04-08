@@ -337,10 +337,10 @@ std::string Persistence::getRandomQID(bool unapprovedOnly) {
     cppdb::result res =(
             sql << "SELECT subject "
                     "FROM statement WHERE (state = 0 OR ?) "
-                    "AND id >= abs(random()) % (SELECT max(id) FROM statement) "
+                    "AND id >= abs(random()) % (SELECT max(id) FROM statement WHERE (state = 0 OR ?)) "
                     "ORDER BY id "
                     "LIMIT 1"
-                    << !unapprovedOnly << cppdb::row);
+                    << !unapprovedOnly << !unapprovedOnly << cppdb::row);
 
 
     if (!res.empty()) {
@@ -419,6 +419,46 @@ std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t li
         sql.commit();
 
     return result;
+}
+
+
+void Persistence::markDuplicates(int64_t start_id) {
+
+    // always force batch operation in one transaction
+    bool hadManagedTransactions = managedTransactions;
+    if (!managedTransactions) {
+        sql.begin();
+        managedTransactions = true;
+    }
+
+    // list all entities with unapproved statements
+    cppdb::result r_entities =(
+            sql << "SELECT DISTINCT subject "
+                   "FROM statement WHERE state = 0 AND id > ?"
+                << start_id);
+
+    std::string qid;
+    std::vector<Statement> statements;
+    while (r_entities.next()) {
+        qid = r_entities.get<std::string>("subject");
+        statements = getStatementsByQID(qid, false);
+
+        for (auto it1 = statements.begin(); it1 != statements.end(); it1++) {
+            Statement s1 = *it1;
+            for (auto it2 = it1+1; it2 != statements.end(); it2++) {
+                Statement s2 = *it2;
+                if (s1 == s2 && s2.getApprovalState() == UNAPPROVED) {
+                    s2.setApprovalState(DUPLICATE);
+                    updateStatement(s2);
+                }
+            }
+        }
+    }
+
+    if (!hadManagedTransactions) {
+        sql.commit();
+        managedTransactions = hadManagedTransactions;
+    }
 }
 
 const char *PersistenceException::what() const noexcept {

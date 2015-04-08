@@ -119,3 +119,60 @@ TEST_F(PersistenceTest, UpdateStatement) {
     ASSERT_EQ(stmt2.getApprovalState(), APPROVED);
     ASSERT_EQ(approvedCount, 1);
 }
+
+
+TEST_F(PersistenceTest, MarkDuplicates) {
+    Statement stmt(-1, "Q1231", PropertyValue("P456", Value("Q789")),
+                   Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+
+    Persistence p(sql, true);
+    sql.begin();
+    for(int i=0; i<10; i++) {
+        p.addStatement(stmt);
+    }
+    sql.commit();
+
+    sql.begin();
+    p.markDuplicates();
+    sql.commit();
+
+    sql.begin();
+    int64_t unapprovedCount = p.countStatements(UNAPPROVED);
+    int64_t duplicateCount = p.countStatements(DUPLICATE);
+    sql.commit();
+
+    ASSERT_EQ(unapprovedCount, 1);
+    ASSERT_EQ(duplicateCount, 9);
+}
+
+
+TEST_F(PersistenceTest, RandomQID) {
+    Statement stmt1(-1, "Q123", PropertyValue("P456", Value("Q789")),
+                   Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+    Statement stmt2(-1, "Q124", PropertyValue("P456", Value("Q789")),
+                    Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+    Statement stmt3(-1, "Q125", PropertyValue("P456", Value("Q789")),
+                    Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+    Statement stmt4(-1, "Q126", PropertyValue("P456", Value("Q789")),
+                    Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+
+    Persistence p(sql, true);
+    sql.begin();
+    int64_t id1 = p.addStatement(stmt1);
+    int64_t id2 = p.addStatement(stmt2);
+    int64_t id3 = p.addStatement(stmt3);
+    int64_t id4 = p.addStatement(stmt4);
+    sql.commit();
+
+    std::string qid;
+    for(int i=0; i<4; i++) {
+        sql.begin();
+        qid = p.getRandomQID(true);
+        p.updateStatement(id4 - i, APPROVED);
+        sql.commit();
+        ASSERT_NE(qid, "");
+    }
+
+    // nothing left, expect exception
+    ASSERT_THROW(p.getRandomQID(true), PersistenceException);
+}
