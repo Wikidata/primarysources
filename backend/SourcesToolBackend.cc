@@ -158,7 +158,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
     return statements;
 }
 
-int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip) {
+int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip, bool dedup) {
     boost::iostreams::filtering_istreambuf zin;
     if (gzip) {
         zin.push(boost::iostreams::gzip_decompressor());
@@ -183,6 +183,12 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip) {
         }
     });
     sql.commit();
+
+    if (dedup) {
+        sql.begin();
+        p.markDuplicates(0);
+        sql.commit();
+    }
 
     return count;
 }

@@ -62,9 +62,10 @@ public:
     /**
     * Import a (possibly large) list of statements in Wikidata TSV format
     * from the given input stream. The stream may optionally contain gzip'ed
-    * data. Returns the number of statements imported.
+    * data. When the option dedup is set to true, will run a deduplication
+    * sweep at the end of importing. Returns the number of statements imported.
     */
-    int64_t importStatements(std::istream& in, bool gzip);
+    int64_t importStatements(std::istream& in, bool gzip, bool dedup=false);
 
     /**
      * Return status information about the database, e.g. number of approved/

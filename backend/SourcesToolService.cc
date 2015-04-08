@@ -328,12 +328,17 @@ void SourcesToolService::importStatements() {
             gzip = true;
         }
 
+        bool dedup = false;
+        if (request().get("deduplicate") == "true") {
+            dedup = true;
+        }
+
         // wrap raw post data into a memory stream
         Membuf body(request().raw_post_data());
         std::istream in(&body);
 
         // import statements
-        int64_t count = backend.importStatements(in, gzip);
+        int64_t count = backend.importStatements(in, gzip, dedup);
 
         clock_t end = std::clock();
 
