@@ -190,6 +190,8 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip, bool 
         sql.commit();
     }
 
+    cache.clear();
+
     return count;
 }
 
