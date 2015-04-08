@@ -120,8 +120,3 @@ TEST_F(PersistenceTest, UpdateStatement) {
     ASSERT_EQ(stmt2.getApprovalState(), APPROVED);
     ASSERT_EQ(approvedCount, 1);
 }
-
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

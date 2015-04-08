@@ -147,8 +147,15 @@ class Value : public cppcms::serializable {
     // needed for (de-)serialization
     friend class PropertyValue;
     friend class cppcms::archive;
+
+    friend bool operator==(const Value& lhs, const Value& rhs);
 };
 
+bool operator==(const Value& lhs, const Value& rhs);
+
+inline bool operator!=(const Value& lhs, const Value& rhs) {
+    return !(lhs == rhs);
+}
 
 /**
 * Property-value pair, also called 'snak' in Wikidata terminology. Used to
@@ -190,7 +197,16 @@ class PropertyValue : public cppcms::serializable {
     friend class cppcms::archive;
     friend void cppcms::details::archive_load_container<PropertyValue>(PropertyValue&, cppcms::archive&);
     friend void cppcms::details::archive_load_container<std::vector<PropertyValue>>(std::vector<PropertyValue>&, cppcms::archive&);
+    friend bool operator==(const PropertyValue& lhs, const PropertyValue& rhs);
 };
+
+
+bool operator==(const PropertyValue& lhs, const PropertyValue& rhs);
+
+inline bool operator!=(const PropertyValue& lhs, const PropertyValue& rhs) {
+    return !(lhs == rhs);
+}
+
 
 /**
 * Representation of a Freebase/Wikidata statement to be approved by users.
@@ -282,6 +298,15 @@ class Statement : public cppcms::serializable {
     friend class cppcms::archive;
     friend void cppcms::details::archive_load_container<Statement>(Statement&, cppcms::archive&);
     friend void cppcms::details::archive_load_container<std::vector<Statement>>(std::vector<Statement>&, cppcms::archive&);
+    friend bool operator==(const Statement& lhs, const Statement& rhs);
 };
+
+// equality does not take into account approval state and database ID
+bool operator==(const Statement& lhs, const Statement& rhs);
+
+inline bool operator!=(const Statement& lhs, const Statement& rhs) {
+    return !(lhs == rhs);
+}
+
 
 #endif  // HAVE_STATEMENT_H_

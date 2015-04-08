@@ -27,11 +27,14 @@ include(GetGitRevisionDescription)
 get_git_head_revision(GIT_REFSPEC GIT_SHA1)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.cc.in" "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" @ONLY)
 
-add_executable(freebase_inject inject.cc Parser.cc Statement.cc Persistence.cc)
-add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc Statement.cc Parser.cc Persistence.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" Status.cc)
+add_library(persistence STATIC Parser.cc Statement.cc Persistence.cc)
+target_link_libraries(persistence ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIES} ${LIBCPPDB_LIBRARY} ${Boost_LIBRARIES})
 
-target_link_libraries(freebase_backend ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIES} ${LIBCPPDB_LIBRARY} ${CPPDB_SQLITE_BACKEND} ${Boost_LIBRARIES})
-target_link_libraries(freebase_inject ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIES} ${LIBCPPDB_LIBRARY} ${CPPDB_SQLITE_BACKEND} ${Boost_LIBRARIES})
+add_executable(freebase_inject inject.cc)
+add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" Status.cc)
+
+target_link_libraries(freebase_backend persistence ${CPPDB_SQLITE_BACKEND})
+target_link_libraries(freebase_inject  persistence ${CPPDB_SQLITE_BACKEND})
 
 install(TARGETS freebase_inject freebase_backend
         RUNTIME DESTINATION bin)
