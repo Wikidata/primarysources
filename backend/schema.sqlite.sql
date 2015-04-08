@@ -39,3 +39,4 @@ CREATE TABLE userlog (
 );
 
 CREATE INDEX idx_stmt_qid ON statement(subject);
+CREATE INDEX idx_stmt_state ON statement(state);
