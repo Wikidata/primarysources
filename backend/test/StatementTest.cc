@@ -5,7 +5,7 @@
 
 #include "Statement.h"
 
-TEST(ValueTest,Equality) {
+TEST(ValueTest, Equality) {
     // entity values
     Value entity1("Q123"), entity2("Q123"), entity3("Q124");
 
@@ -45,4 +45,66 @@ TEST(ValueTest,Equality) {
 
     ASSERT_EQ(t1, t2);
     ASSERT_NE(t1, t3);
+}
+
+TEST(ValueTest, Serialize) {
+    cppcms::archive archive;
+
+    Value entity1("Q123");
+    entity1.save(archive);
+
+    Value entity2;
+    archive.mode(cppcms::archive::load_from_archive);
+    entity2.load(archive);
+
+    ASSERT_EQ(entity1, entity2);
+}
+
+TEST(PropertyValueTest, Equality) {
+    PropertyValue pv1("P123", Value("Q123")), pv2("P123", Value("Q123"));
+    PropertyValue pv3("P123", Value("Q123","en"));
+    PropertyValue pv4("P234", Value("Q123"));
+
+    ASSERT_EQ(pv1, pv2);
+    ASSERT_NE(pv1, pv3);
+    ASSERT_NE(pv1, pv4);
+}
+
+TEST(PropertyValueTest, Serialize) {
+    cppcms::archive archive;
+
+    PropertyValue pv1("P123", Value("Q123"));
+    pv1.save(archive);
+
+    PropertyValue pv2;
+    archive.mode(cppcms::archive::load_from_archive);
+    pv2.load(archive);
+
+    ASSERT_EQ(pv1, pv2);
+}
+
+TEST(StatementTest, Equality) {
+    Statement s1("Q123", PropertyValue("P123", Value("Q321")));
+    Statement s2("Q123", PropertyValue("P123", Value("Q321")));
+    Statement s3("Q124", PropertyValue("P123", Value("Q321")));
+    Statement s4("Q123", PropertyValue("P124", Value("Q321")));
+    Statement s5("Q123", PropertyValue("P123", Value("Q421")));
+
+    ASSERT_EQ(s1, s2);
+    ASSERT_NE(s1, s3);
+    ASSERT_NE(s1, s4);
+    ASSERT_NE(s1, s5);
+}
+
+TEST(StatementTest, Serialize) {
+    cppcms::archive archive;
+
+    Statement s1("Q123", PropertyValue("P123", Value("Q321")));
+    s1.save(archive);
+
+    Statement s2;
+    archive.mode(cppcms::archive::load_from_archive);
+    s2.load(archive);
+
+    ASSERT_EQ(s1, s2);
 }

@@ -147,6 +147,7 @@ class Value : public cppcms::serializable {
     // needed for (de-)serialization
     friend class PropertyValue;
     friend class cppcms::archive;
+    friend class ValueTest_Serialize_Test;
 
     friend bool operator==(const Value& lhs, const Value& rhs);
 };
@@ -195,6 +196,7 @@ class PropertyValue : public cppcms::serializable {
     // needed for (de-)serialization
     friend class Statement;
     friend class cppcms::archive;
+    friend class PropertyValueTest_Serialize_Test;
     friend void cppcms::details::archive_load_container<PropertyValue>(PropertyValue&, cppcms::archive&);
     friend void cppcms::details::archive_load_container<std::vector<PropertyValue>>(std::vector<PropertyValue>&, cppcms::archive&);
     friend bool operator==(const PropertyValue& lhs, const PropertyValue& rhs);
@@ -228,6 +230,9 @@ class Statement : public cppcms::serializable {
             : id(id), qid(qid), propertyValue(propertyValue),
               qualifiers(qualifiers), sources(sources), approved(approved) { }
 
+    Statement(std::string qid, PropertyValue propertyValue)
+            : id(-1), qid(qid), propertyValue(propertyValue),
+              approved(UNAPPROVED) {}
 
     // default copy constructor and assignment operator
     Statement(const Statement& other) = default;
@@ -296,6 +301,7 @@ class Statement : public cppcms::serializable {
 
     // needed for (de-)serialization
     friend class cppcms::archive;
+    friend class StatementTest_Serialize_Test;
     friend void cppcms::details::archive_load_container<Statement>(Statement&, cppcms::archive&);
     friend void cppcms::details::archive_load_container<std::vector<Statement>>(std::vector<Statement>&, cppcms::archive&);
     friend bool operator==(const Statement& lhs, const Statement& rhs);
