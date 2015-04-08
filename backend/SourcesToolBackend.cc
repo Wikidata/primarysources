@@ -13,6 +13,9 @@
 
 #include "Persistence.h"
 
+int64_t SourcesToolBackend::cacheHits = 0;
+int64_t SourcesToolBackend::cacheMisses = 0;
+
 std::string build_connection(
         const std::string& db_driver, const std::string& db_name,
         const std::string& db_host, const std::string& db_port,
@@ -79,6 +82,10 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
         Persistence p(sql);
         statements = p.getStatementsByQID(qid, unapprovedOnly);
         cache.store_data(qid, statements);
+
+        cacheMisses++;
+    } else {
+        cacheHits++;
     }
 
     return statements;
@@ -117,6 +124,7 @@ void SourcesToolBackend::updateStatement(
 
         // update cache
         cache.rise(st.getQID());
+        cache.rise("STATUS");
     } catch (PersistenceException const &e) {
         sql.rollback();
 
@@ -141,6 +149,10 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
         Persistence p(sql);
         statements = p.getStatementsByQID(qid, unapprovedOnly);
         cache.store_data(qid, statements);
+
+        cacheMisses++;
+    } else {
+        cacheHits++;
     }
 
     return statements;
@@ -175,22 +187,30 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip) {
     return count;
 }
 
-Status SourcesToolBackend::getStatus() {
+Status SourcesToolBackend::getStatus(cache_t& cache) {
     Status result;
 
-    cppdb::session sql(connstr); // released when sql is destroyed
+    if(!cache.fetch_data("STATUS", result)) {
+        cppdb::session sql(connstr); // released when sql is destroyed
 
-    Persistence p(sql, true);
-    sql.begin();
+        Persistence p(sql, true);
+        sql.begin();
 
-    result.setStatements(p.countStatements());
-    result.setApproved(p.countStatements(APPROVED));
-    result.setUnapproved(p.countStatements(UNAPPROVED));
-    result.setDuplicate(p.countStatements(DUPLICATE));
-    result.setBlacklisted(p.countStatements(BLACKLISTED));
-    result.setWrong(p.countStatements(WRONG));
-    result.setTopUsers(p.getTopUsers(10));
+        result.setStatements(p.countStatements());
+        result.setApproved(p.countStatements(APPROVED));
+        result.setUnapproved(p.countStatements(UNAPPROVED));
+        result.setDuplicate(p.countStatements(DUPLICATE));
+        result.setBlacklisted(p.countStatements(BLACKLISTED));
+        result.setWrong(p.countStatements(WRONG));
+        result.setTopUsers(p.getTopUsers(10));
 
-    sql.commit();
+        sql.commit();
+
+        cache.store_data("STATUS", result, 3600);
+
+        cacheMisses++;
+    } else {
+        cacheHits++;
+    }
     return result;
 }

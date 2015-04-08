@@ -183,8 +183,6 @@ void SourcesToolService::approveStatement(int64_t stid) {
         response().status(404, "Statement not found");
     }
 
-    // status needs to be updated
-    cache().rise("STATUS");
     reqUpdateStatementCount++;
 
     clock_t end = std::clock();
@@ -247,12 +245,7 @@ void SourcesToolService::getStatus() {
 
     cppcms::json::value result;
 
-    Status status;
-
-    if(!cache().fetch_data("STATUS", status)) {
-        status = backend.getStatus();
-        cache().store_data("STATUS", status, 3600);
-    }
+    Status status = backend.getStatus(cache());
 
     result["statements"]["total"] = status.getStatements();
     result["statements"]["approved"] = status.getApproved();
@@ -273,6 +266,8 @@ void SourcesToolService::getStatus() {
     // system information
     result["system"]["startup"] = formatGMT(&SourcesToolService::startupTime);
     result["system"]["version"] = std::string(GIT_SHA1);
+    result["system"]["cache_hits"] = backend.getCacheHits();
+    result["system"]["cache_misses"] = backend.getCacheMisses();
 
     struct memstat meminfo = getMemStat();
     result["system"]["shared_mem"] = meminfo.shared_mem;

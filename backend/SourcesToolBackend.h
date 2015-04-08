@@ -70,7 +70,23 @@ public:
      * Return status information about the database, e.g. number of approved/
      * unapproved statements, top users, etc.
      */
-    Status getStatus();
+    Status getStatus(cache_t& cache);
+
+    /**
+     * Return cache hit count, i.e. number of times an entity or status could
+     * be looked up in the cache instead of hitting the database
+     */
+    int64_t getCacheHits() const {
+        return cacheHits;
+    }
+
+    /**
+     * Return cache miss count, i.e. number of times an entity or status could
+     * NOT be looked up in the cache and was hitting the database
+     */
+    int64_t getCacheMisses() const {
+        return cacheMisses;
+    }
 
 private:
 
@@ -79,6 +95,8 @@ private:
     std::string connstr;
 
     cppcms::cache_interface& cache;
+
+    static int64_t cacheHits, cacheMisses;
 };
 
 
