@@ -65,7 +65,7 @@ public:
     * data. When the option dedup is set to true, will run a deduplication
     * sweep at the end of importing. Returns the number of statements imported.
     */
-    int64_t importStatements(std::istream& in, bool gzip, bool dedup=false);
+    int64_t importStatements(std::istream& in, bool gzip, bool dedup=true);
 
     /**
      * Return status information about the database, e.g. number of approved/

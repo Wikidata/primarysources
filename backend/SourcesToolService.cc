@@ -328,9 +328,9 @@ void SourcesToolService::importStatements() {
             gzip = true;
         }
 
-        bool dedup = false;
-        if (request().get("deduplicate") == "true") {
-            dedup = true;
+        bool dedup = true;
+        if (request().get("deduplicate") == "false") {
+            dedup = false;
         }
 
         // wrap raw post data into a memory stream

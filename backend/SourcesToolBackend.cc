@@ -159,6 +159,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
 }
 
 int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip, bool dedup) {
+    // prepare GZIP input stream
     boost::iostreams::filtering_istreambuf zin;
     if (gzip) {
         zin.push(boost::iostreams::gzip_decompressor());
@@ -171,9 +172,15 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip, bool 
     sql.begin();
     Persistence p(sql, true);
 
-    int64_t count = 0;
+    int64_t count = 0, first_id = -1, current_id;
     Parser::parseTSV(in, [&sql, &p, &count](Statement st)  {
-        p.addStatement(st);
+        current_id = p.addStatement(st);
+
+        // remember the ID of the first statement we add for deduplication
+        if (first_id == -1) {
+            first_id = current_id;
+        }
+
         count++;
 
         // batch commit
@@ -186,7 +193,7 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip, bool 
 
     if (dedup) {
         sql.begin();
-        p.markDuplicates(0);
+        p.markDuplicates(first_id);
         sql.commit();
     }
 
