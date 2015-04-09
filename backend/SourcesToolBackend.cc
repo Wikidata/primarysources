@@ -173,7 +173,7 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip, bool 
     Persistence p(sql, true);
 
     int64_t count = 0, first_id = -1, current_id;
-    Parser::parseTSV(in, [&sql, &p, &count, %first_id, &current_id](Statement st)  {
+    Parser::parseTSV(in, [&sql, &p, &count, &first_id, &current_id](Statement st)  {
         current_id = p.addStatement(st);
 
         // remember the ID of the first statement we add for deduplication
