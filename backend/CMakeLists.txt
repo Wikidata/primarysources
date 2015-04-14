@@ -20,6 +20,7 @@ find_package (Threads)
 find_package (CPPCMS REQUIRED)
 find_package (CPPDB REQUIRED)
 find_package (Boost 1.54.0 REQUIRED COMPONENTS iostreams regex)
+find_package (Tcmalloc)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -33,7 +34,7 @@ target_link_libraries(persistence ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIE
 add_executable(freebase_inject inject.cc)
 add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" Status.cc)
 
-target_link_libraries(freebase_backend persistence ${CPPDB_SQLITE_BACKEND})
+target_link_libraries(freebase_backend persistence ${CPPDB_SQLITE_BACKEND} ${Tcmalloc_LIBRARIES})
 target_link_libraries(freebase_inject  persistence ${CPPDB_SQLITE_BACKEND})
 
 install(TARGETS freebase_inject freebase_backend
