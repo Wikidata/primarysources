@@ -311,7 +311,10 @@ $(document).ready(function() {
               // Approve property
               var predicate = statement.property;
               var object = statement.object;
-              createClaim(predicate, object, function() {
+              createClaim(predicate, object, function(error) {
+                if (error) {
+                  return reportError(error);
+                }
                 approveStatement(id, function() {
                   debug.log('Approved property statement ' + id);
                   return document.location.reload();
@@ -346,7 +349,10 @@ $(document).ready(function() {
                 }
                 if (objectExists) {
                   createReference(predicate, object, sourceProperty,
-                      sourceObject, function() {
+                      sourceObject, function(error) {
+                    if (error) {
+                      return reportError(error);
+                    }
                     approveStatement(id, function() {
                       debug.log('Approved source statement ' + id);
                       return document.location.reload();
@@ -354,7 +360,10 @@ $(document).ready(function() {
                   });
                 } else {
                   createClaimWithReference(predicate, object, sourceProperty,
-                      sourceObject, function() {
+                      sourceObject, function(error) {
+                    if (error) {
+                      return reportError(error);
+                    }
                     approveStatement(id, function() {
                       debug.log('Approved source statement ' + id);
                       return document.location.reload();
@@ -420,6 +429,16 @@ $(document).ready(function() {
         matchClaims(wikidataClaims, freebaseClaims);
       });
     })();
+
+    function reportError(error) {
+      var errorMessage = document.createElement('div');
+      errorMessage.classList.add('alert-box');
+      errorMessage.classList.add('error');
+      errorMessage.innerHTML = '<span>error: </span> ' + error +
+          ' <button onclick="javascript:this.parentNode.remove();">Dismiss' +
+           '</button>';
+      document.body.appendChild(errorMessage);
+    }
 
     function parseFreebaseClaims(freebaseEntityData) {
       var freebaseClaims = {};
@@ -1072,18 +1091,19 @@ $(document).ready(function() {
         continue:'',
         meta:'tokens',
         format:'json'
-      })
-      .done(function(token) {
-        api.post({
+      }).then(function(token) {
+        return api.post({
           action: 'wbcreateclaim',
           entity: qid,
           property: predicate,
           snaktype: 'value',
           token: token.query.tokens.csrftoken,
           value: JSON.stringify(value)
-        }).done(function(data) {
-          return callback(null, data);
         });
+      }).done(function(data) {
+        return callback(null, data);
+      }).fail(function(error) {
+        return callback(error);
       });
     }
 
@@ -1129,6 +1149,8 @@ $(document).ready(function() {
         });
       }).done(function(data) {
         return callback(null, data);
+      }).fail(function(error) {
+        return callback(error);
       });
     }
 
@@ -1143,13 +1165,15 @@ $(document).ready(function() {
         format:'json'
       }).then(function(token) {
         sessionToken = token.query.tokens.csrftoken;
-        return api.post({
+        return api.get({
           action: 'wbgetclaims',
           entity: qid,
           property: predicate
         });
       }).done(function(data) {
         return callback(null, data.claims[predicate] || []);
+      }).fail(function(error) {
+        return callback(error);
       });
     }
 
@@ -1200,6 +1224,8 @@ $(document).ready(function() {
         });
       }).done(function(data) {
         return callback(null, data);
+      }).fail(function(error) {
+        return callback(error);
       });
     }
 
