@@ -419,6 +419,9 @@ $(document).ready(function() {
         wikidataEntityData: getWikidataEntityData.bind(null, qid),
         freebaseEntityData: getFreebaseEntityData.bind(null, qid),
       }, function(err, results) {
+        if (err) {
+          reportError(err);
+        }
         // See https://www.mediawiki.org/wiki/Wikibase/Notes/JSON
         var wikidataEntityData = results.wikidataEntityData;
         var wikidataClaims = wikidataEntityData.claims || {};
@@ -1009,10 +1012,18 @@ $(document).ready(function() {
     }
 
     function getWikidataEntityData(qid, callback) {
+      var revision = '';
+      var fragment = document.location.hash;
+      if (fragment && /revision=(\d+)/.test(fragment)) {
+        revision = fragment.replace(/.*?revision=(\d+).*?/, '$1');
+      }
       $.ajax({
-        url: WIKIDATA_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid)
+        url: WIKIDATA_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) +
+            (revision ? '?revision=' + revision : '')
       }).done(function(data) {
         return callback(null, data.entities[qid]);
+      }).fail(function() {
+        return callback('Invalid revision ID ' + revision);
       });
     }
 
