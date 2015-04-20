@@ -44,7 +44,8 @@ $(document).ready(function() {
   $.getScript(asyncSrc).done(function() {
 
     var DEBUG = JSON.parse(localStorage.getItem('debug')) || false;
-
+    var FAKE_OR_RANDOM_DATA =
+        JSON.parse(localStorage.getItem('fakeOrRandomData')) || false;
     var LIST_OF_PROPERTIES_URL =
         'https://www.wikidata.org/wiki/Wikidata:List_of_properties/all';
     var WIKIDATA_ENTITY_DATA_URL =
@@ -311,12 +312,16 @@ $(document).ready(function() {
               // Approve property
               var predicate = statement.property;
               var object = statement.object;
-              createClaim(predicate, object, function(error) {
+              createClaim(predicate, object, function(error, data) {
                 if (error) {
                   return reportError(error);
                 }
                 approveStatement(id, function() {
                   debug.log('Approved property statement ' + id);
+                  if (data.pageinfo && data.pageinfo.lastrevid) {
+                    document.location.hash = 'revision=' +
+                        data.pageinfo.lastrevid;
+                  }
                   return document.location.reload();
                 });
               });
@@ -349,23 +354,31 @@ $(document).ready(function() {
                 }
                 if (objectExists) {
                   createReference(predicate, object, sourceProperty,
-                      sourceObject, function(error) {
+                      sourceObject, function(error, data) {
                     if (error) {
                       return reportError(error);
                     }
                     approveStatement(id, function() {
                       debug.log('Approved source statement ' + id);
+                      if (data.pageinfo && data.pageinfo.lastrevid) {
+                        document.location.hash = 'revision=' +
+                            data.pageinfo.lastrevid;
+                      }
                       return document.location.reload();
                     });
                   });
                 } else {
                   createClaimWithReference(predicate, object, sourceProperty,
-                      sourceObject, function(error) {
+                      sourceObject, function(error, data) {
                     if (error) {
                       return reportError(error);
                     }
                     approveStatement(id, function() {
                       debug.log('Approved source statement ' + id);
+                      if (data.pageinfo && data.pageinfo.lastrevid) {
+                        document.location.hash = 'revision=' +
+                            data.pageinfo.lastrevid;
+                      }
                       return document.location.reload();
                     });
                   });
@@ -452,6 +465,8 @@ $(document).ready(function() {
           // The sandbox item can be written to
           document.getElementById('content').style.backgroundColor = 'lime';
         }
+      }
+      if (FAKE_OR_RANDOM_DATA) {
         freebaseEntityData.push({
           statement: qid + '\tP31\tQ1\tP580\t+00000001840-01-01T00:00:00Z/09\tS143\tQ48183'
         });
@@ -756,6 +771,8 @@ $(document).ready(function() {
       while (!container.classList.contains('wikibase-statementgroupview')) {
         container = container.parentNode;
       }
+      container = container.querySelector('a[title="' + object.object + '"]')
+          .parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
       // Open the references toggle
       var toggler = container.querySelector('a.ui-toggler');
       if (toggler.classList.contains('ui-toggler-toggle-collapsed')) {
@@ -1029,7 +1046,7 @@ $(document).ready(function() {
 
     function getFreebaseEntityData(qid, callback) {
       $.ajax({
-        url: DEBUG ?
+        url: FAKE_OR_RANDOM_DATA ?
             FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') :
             FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid)
       }).done(function(data) {
@@ -1200,19 +1217,20 @@ $(document).ready(function() {
         format:'json'
       }).then(function(token) {
         sessionToken = token.query.tokens.csrftoken;
-        return api.post({
+        return api.get({
           action: 'wbgetclaims',
           entity: qid,
           property: predicate
         });
       }).then(function(data) {
-        var index = 0;
+        var index = -1;
         for (var i = 0, lenI = data.claims[predicate].length; i < lenI; i++) {
-          var object = data.claims[predicate][i];
-          if (object.mainsnak.datatype !== 'wikibase-item') {
+          var claimsObject = data.claims[predicate][i];
+          if (claimsObject.mainsnak.datatype !== 'wikibase-item') {
             continue;
           }
-          if ('Q' + object.mainsnak.datavalue.value['numeric-id'] === object) {
+          var id = 'Q' + claimsObject.mainsnak.datavalue.value['numeric-id'];
+          if (id === object) {
             index = i;
             break;
           }
