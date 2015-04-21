@@ -136,7 +136,14 @@ class Persistence {
      */
     void markDuplicates(int64_t start_id = 0);
 
- private:
+
+    /**
+     * Delete statements with the given approval state.
+     */
+    void deleteStatements(ApprovalState state);
+
+
+private:
     // reference to the wrapped sql session
     cppdb::session& sql;
 

@@ -126,6 +126,23 @@ public:
    void importStatements();
 
    /**
+    * Delete statements with a specified state from the database.
+    *
+    * Request:
+    *     POST /delete?state=<state>&token=<token>
+    *
+    * The state is one of "approved", "wrong", "othersource", "blacklisted",
+    * "duplicate".
+    *
+    * The token is a kind of password configurable in config.json that
+    * is used as a very simple authentication mechanism. It is recommended
+    * to protect this service also on the webserver level (e.g. using
+    * HTTP authentication or IP-based access control).
+    *
+    */
+   void deleteStatements();
+
+   /**
     * Return a JSON object containing current status information like
     * total number of statements, number of approved statements, etc.
     *

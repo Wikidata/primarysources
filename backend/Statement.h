@@ -319,4 +319,21 @@ inline bool operator!=(const Statement& lhs, const Statement& rhs) {
 }
 
 
+class InvalidApprovalState : public std::exception {
+public:
+    explicit InvalidApprovalState(const std::string &message)
+            : message(message) { }
+
+    const char *what() const noexcept override {
+        return message.c_str();
+    }
+
+private:
+    std::string message;
+};
+
+// TODO: define as operator? but it will throw an exception...
+ApprovalState stateFromString(const std::string& state);
+std::string stateToString(ApprovalState state);
+
 #endif  // HAVE_STATEMENT_H_
