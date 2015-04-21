@@ -609,8 +609,8 @@ $(document).ready(function() {
                 if (blacklisted) {
                   debug.log('Encountered blacklisted source url ' + url);
                   (function(currentId, currentUrl) {
-                    disapproveStatement(currentId, function() {
-                      debug.log('Automatically disapproved statement ' +
+                    blacklistStatement(currentId, function() {
+                      debug.log('Automatically blacklisted statement ' +
                           currentId + ' with blacklisted source url ' +
                           currentUrl);
                     });
@@ -1149,6 +1149,16 @@ $(document).ready(function() {
     function unapproveStatement(id, callback) {
       var user = mw.user.getName();
       var state = 'unapproved';
+      var url = FREEBASE_STATEMENT_APPROVAL_URL
+          .replace(/\{\{user\}\}/, user)
+          .replace(/\{\{state\}\}/, state)
+          .replace(/\{\{id\}\}/, id);
+      $.post(url, callback);
+    }
+
+    function blacklistStatement(id, callback) {
+      var user = mw.user.getName();
+      var state = 'blacklisted';
       var url = FREEBASE_STATEMENT_APPROVAL_URL
           .replace(/\{\{user\}\}/, user)
           .replace(/\{\{state\}\}/, state)
