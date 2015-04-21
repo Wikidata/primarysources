@@ -43,9 +43,12 @@ $(document).ready(function() {
   //     User_script_interdependencies
   $.getScript(asyncSrc).done(function() {
 
-    var DEBUG = JSON.parse(localStorage.getItem('debug')) || false;
+    var DEBUG = JSON.parse(localStorage.getItem('f2w_debug')) || false;
     var FAKE_OR_RANDOM_DATA =
-        JSON.parse(localStorage.getItem('fakeOrRandomData')) || false;
+        JSON.parse(localStorage.getItem('f2w_fakeOrRandomData')) || false;
+
+    var CACHE_EXPIRY = 24 * 60 * 60 * 1000;
+
     var LIST_OF_PROPERTIES_URL =
         'https://www.wikidata.org/wiki/Wikidata:List_of_properties/all';
     var WIKIDATA_ENTITY_DATA_URL =
@@ -58,6 +61,9 @@ $(document).ready(function() {
     var FREEBASE_STATEMENT_APPROVAL_URL =
         'https://tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
         '?state={{state}}&user={{user}}';
+    var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
+        '?action=parse&format=json&prop=text' +
+        '&page=Wikidata:Primary_sources_tool/URL_blacklist';
 
     /* jshint ignore:start */
     /* jscs: disable */
@@ -274,6 +280,8 @@ $(document).ready(function() {
           }).done(function(data) {
             var newQid = data[0].statement.split(/\t/)[0];
             document.location.href = 'https://www.wikidata.org/wiki/' + newQid;
+          }).fail(function() {
+            return reportError('Could not obtain random Freebase item');
           });
         });
         var container = document.getElementById('p-navigation')
@@ -423,12 +431,13 @@ $(document).ready(function() {
 
       qid = getQid();
       if (!qid) {
-        return debug.log('Not on an item page.');
+        return debug.log('Not on an item page');
       }
       debug.log('On item page ' + qid);
 
       async.parallel({
         propertyNames: getPropertyNames,
+        blacklistedSourceUrls: getBlacklistedSourceUrls,
         wikidataEntityData: getWikidataEntityData.bind(null, qid),
         freebaseEntityData: getFreebaseEntityData.bind(null, qid),
       }, function(err, results) {
@@ -440,7 +449,9 @@ $(document).ready(function() {
         var wikidataClaims = wikidataEntityData.claims || {};
 
         var freebaseEntityData = results.freebaseEntityData;
-        var freebaseClaims = parseFreebaseClaims(freebaseEntityData);
+        var blacklistedSourceUrls = results.blacklistedSourceUrls;
+        var freebaseClaims = parseFreebaseClaims(freebaseEntityData,
+            blacklistedSourceUrls);
 
         matchClaims(wikidataClaims, freebaseClaims);
       });
@@ -456,7 +467,23 @@ $(document).ready(function() {
       document.body.appendChild(errorMessage);
     }
 
-    function parseFreebaseClaims(freebaseEntityData) {
+    function parseFreebaseClaims(freebaseEntityData, blacklistedSourceUrls) {
+
+      var blacklistedSourceUrlsLen = blacklistedSourceUrls.length;
+      var isBlacklisted = function(url) {
+        url = url.toString().replace(/^["']/, '').replace(/["']$/, '');
+        for (var i = 0; i < blacklistedSourceUrlsLen; i++) {
+          try {
+            if ((new URL(url)).host.indexOf(blacklistedSourceUrls[i]) !== -1) {
+              return true;
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+        return false;
+      };
+
       var freebaseClaims = {};
       /* jshint ignore:start */
       /* jscs: disable */
@@ -468,16 +495,34 @@ $(document).ready(function() {
       }
       if (FAKE_OR_RANDOM_DATA) {
         freebaseEntityData.push({
-          statement: qid + '\tP31\tQ1\tP580\t+00000001840-01-01T00:00:00Z/09\tS143\tQ48183'
+          statement: qid + '\tP31\tQ1\tP580\t+00000001840-01-01T00:00:00Z/09\tS143\tQ48183',
+          state: 'unapproved',
+          id: 0,
+          format: 'v1'
         });
         freebaseEntityData.push({
-          statement: qid + '\tP108\tQ95\tS854\t"http://research.google.com/pubs/vrandecic.html"'
+          statement: qid + '\tP108\tQ95\tS854\t"http://research.google.com/pubs/vrandecic.html"',
+          state: 'unapproved',
+          id: 0,
+          format: 'v1'
         });
         freebaseEntityData.push({
-          statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+00000002015-02-14T11:13:00Z/13'
+          statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+00000002015-02-14T11:13:00Z/13',
+          state: 'unapproved',
+          id: 0,
+          format: 'v1'
         });
         freebaseEntityData.push({
-          statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"'
+          statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
+          state: 'unapproved',
+          id: 0,
+          format: 'v1'
+        });
+        freebaseEntityData.push({
+          statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
+          state: 'unapproved',
+          id: 0,
+          format: 'v1'
         });
       }
       /* jscs: enable */
@@ -556,6 +601,26 @@ $(document).ready(function() {
                 sourceId: id
               });
             }
+            // Filter out blacklisted source URLs
+            sources = sources.filter(function(source) {
+              if (source.sourceType === 'url') {
+                var url = source.sourceObject;
+                var blacklisted = isBlacklisted(url);
+                if (blacklisted) {
+                  debug.log('Encountered blacklisted source url ' + url);
+                  (function(currentId, currentUrl) {
+                    disapproveStatement(currentId, function() {
+                      debug.log('Automatically disapproved statement ' +
+                          currentId + ' with blacklisted source url ' +
+                          currentUrl);
+                    });
+                  })(source.sourceId, url);
+                }
+                // Return the opposite, i.e., the whitelisted URLs
+                return !blacklisted;
+              }
+              return true;
+            });
           }
         }
         freebaseClaims[predicate] = freebaseClaims[predicate] || {};
@@ -1066,6 +1131,8 @@ $(document).ready(function() {
             .replace(/\{\{entities\}\}/, entities)
       }).done(function(data) {
         return callback(null, data.entities);
+      }).fail(function() {
+        return callback('Could not get entity labels');
       });
     }
 
@@ -1259,10 +1326,16 @@ $(document).ready(function() {
     }
 
     function getPropertyNames(callback) {
+      var now = Date.now();
       if (localStorage.getItem('f2w_properties')) {
-        debug.log('Using cached properties list.');
         var properties = JSON.parse(localStorage.getItem('f2w_properties'));
-        return callback(null, properties);
+        if (!properties.timestamp) {
+          properties.timestamp = 0;
+        }
+        if (now - properties.timestamp < CACHE_EXPIRY) {
+          debug.log('Using cached properties list');
+          return callback(null, properties.data);
+        }
       }
       var iframe = document.createElement('iframe');
       document.body.appendChild(iframe);
@@ -1284,12 +1357,68 @@ $(document).ready(function() {
         iframe.contentWindow.document.body.appendChild(script);
 
         var properties = iframe.contentWindow.scraperFunction();
-        debug.log('Caching properties list.');
-        localStorage.setItem('f2w_properties', JSON.stringify(properties));
+        debug.log('Caching properties list');
+        localStorage.setItem('f2w_properties', JSON.stringify({
+          timestamp: now,
+          data: properties
+        }));
         return callback(null, properties);
       }, false);
 
       iframe.src = LIST_OF_PROPERTIES_URL;
+    }
+
+    function getBlacklistedSourceUrls(callback) {
+      var now = Date.now();
+      if (localStorage.getItem('f2w_blacklist')) {
+        var blacklist = JSON.parse(localStorage.getItem('f2w_blacklist'));
+        if (!blacklist.timestamp) {
+          blacklist.timestamp = 0;
+        }
+        if (now - blacklist.timestamp < CACHE_EXPIRY) {
+          debug.log('Using cached source URL blacklist');
+          return callback(null, blacklist.data);
+        }
+      }
+      $.ajax({
+        url: FREEBASE_SOURCE_URL_BLACKLIST
+      }).done(function(data) {
+        if (data && data.parse && data.parse.text && data.parse.text['*']) {
+          var blacklist = data.parse.text['*']
+              .replace(/\n/g, '')
+              .replace(/^.*?<ul>(.*?)<\/ul>.*?$/g, '$1')
+              .replace(/<\/li>/g, '')
+              .split('<li>').slice(1)
+              .map(function(url) {
+                return url.trim();
+              })
+              .filter(function(url) {
+                var copy = url;
+                if (!/^https?:\/\//.test(copy)) {
+                  copy = 'http://' + url;
+                }
+                try {
+                  return (new URL(copy)).host !== '';
+                } catch (e) {
+                  return false;
+                }
+              });
+          debug.log('Caching source URL blacklist');
+          localStorage.setItem('f2w_blacklist', JSON.stringify({
+            timestamp: now,
+            data: blacklist
+          }));
+          return callback(null, blacklist);
+        } else {
+          // Fail silently
+          debug.log('Could not obtain blacklisted source URLs');
+          return callback(null);
+        }
+      }).fail(function() {
+        // Fail silently
+        debug.log('Could not obtain blacklisted source URLs');
+        return callback(null);
+      });
     }
   });
 });
