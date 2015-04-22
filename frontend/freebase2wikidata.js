@@ -65,6 +65,18 @@ $(document).ready(function() {
         '?action=parse&format=json&prop=text' +
         '&page=Wikidata:Primary_sources_tool/URL_blacklist';
 
+    var WIKIDATA_API_COMMENT =
+        'Added via https://github.com/google/primarysources';
+
+    var STATEMENT_STATES = {
+      approved: 'approved',
+      wrong: 'wrong',
+      duplicate: 'duplicate',
+      blacklisted: 'blacklisted',
+      unapproved: 'unapproved'
+    };
+    var STATEMENT_FORMAT = 'v1';
+
     /* jshint ignore:start */
     /* jscs: disable */
     var HTML_TEMPLATES = {
@@ -324,7 +336,7 @@ $(document).ready(function() {
                 if (error) {
                   return reportError(error);
                 }
-                approveStatement(id, function() {
+                setStatementState(id, STATEMENT_STATES.approved, function() {
                   debug.log('Approved property statement ' + id);
                   if (data.pageinfo && data.pageinfo.lastrevid) {
                     document.location.hash = 'revision=' +
@@ -335,7 +347,7 @@ $(document).ready(function() {
               });
             } else if (classList.contains('f2w-reject')) {
               // Reject property
-              disapproveStatement(id, function() {
+              setStatementState(id, STATEMENT_STATES.wrong, function() {
                 debug.log('Disapproved property statement ' + id);
                 return document.location.reload();
               });
@@ -366,7 +378,8 @@ $(document).ready(function() {
                     if (error) {
                       return reportError(error);
                     }
-                    approveStatement(id, function() {
+                    setStatementState(id, STATEMENT_STATES.approved,
+                        function() {
                       debug.log('Approved source statement ' + id);
                       if (data.pageinfo && data.pageinfo.lastrevid) {
                         document.location.hash = 'revision=' +
@@ -381,7 +394,8 @@ $(document).ready(function() {
                     if (error) {
                       return reportError(error);
                     }
-                    approveStatement(id, function() {
+                    setStatementState(id, STATEMENT_STATES.approved,
+                        function() {
                       debug.log('Approved source statement ' + id);
                       if (data.pageinfo && data.pageinfo.lastrevid) {
                         document.location.hash = 'revision=' +
@@ -394,7 +408,7 @@ $(document).ready(function() {
               });
             } else if (classList.contains('f2w-reject')) {
               // Reject source
-              disapproveStatement(id, function() {
+              setStatementState(id, STATEMENT_STATES.wrong, function() {
                 debug.log('Disapproved source statement ' + id);
                 return document.location.reload();
               });
@@ -496,33 +510,33 @@ $(document).ready(function() {
       if (FAKE_OR_RANDOM_DATA) {
         freebaseEntityData.push({
           statement: qid + '\tP31\tQ1\tP580\t+00000001840-01-01T00:00:00Z/09\tS143\tQ48183',
-          state: 'unapproved',
+          state: STATEMENT_STATES.unapproved,
           id: 0,
-          format: 'v1'
+          format: STATEMENT_FORMAT
         });
         freebaseEntityData.push({
           statement: qid + '\tP108\tQ95\tS854\t"http://research.google.com/pubs/vrandecic.html"',
-          state: 'unapproved',
+          state: STATEMENT_STATES.unapproved,
           id: 0,
-          format: 'v1'
+          format: STATEMENT_FORMAT
         });
         freebaseEntityData.push({
           statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+00000002015-02-14T11:13:00Z/13',
-          state: 'unapproved',
+          state: STATEMENT_STATES.unapproved,
           id: 0,
-          format: 'v1'
+          format: STATEMENT_FORMAT
         });
         freebaseEntityData.push({
           statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
-          state: 'unapproved',
+          state: STATEMENT_STATES.unapproved,
           id: 0,
-          format: 'v1'
+          format: STATEMENT_FORMAT
         });
         freebaseEntityData.push({
           statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
-          state: 'unapproved',
+          state: STATEMENT_STATES.unapproved,
           id: 0,
-          format: 'v1'
+          format: STATEMENT_FORMAT
         });
       }
       /* jscs: enable */
@@ -541,8 +555,8 @@ $(document).ready(function() {
       })
       // Only show v1 unapproved statements
       .filter(function(freebaseEntity) {
-        return freebaseEntity.format === 'v1' &&
-            freebaseEntity.state === 'unapproved';
+        return freebaseEntity.format === STATEMENT_FORMAT &&
+            freebaseEntity.state === STATEMENT_STATES.unapproved;
       })
       .forEach(function(freebaseEntity) {
         var statement = freebaseEntity.statement;
@@ -609,7 +623,8 @@ $(document).ready(function() {
                 if (blacklisted) {
                   debug.log('Encountered blacklisted source url ' + url);
                   (function(currentId, currentUrl) {
-                    blacklistStatement(currentId, function() {
+                    setStatementState(currentId, STATEMENT_STATES.blacklisted,
+                        function() {
                       debug.log('Automatically blacklisted statement ' +
                           currentId + ' with blacklisted source url ' +
                           currentUrl);
@@ -959,6 +974,7 @@ $(document).ready(function() {
       });
     }
 
+    /*
     function getQualifiersLabels(qualifiers, callback) {
       var qualifiersProperties = qualifiers.map(function(qualifier) {
         return qualifier.qualifierProperty;
@@ -969,6 +985,7 @@ $(document).ready(function() {
         });
       });
     }
+    */
 
     function getSourcesLabels(sources, callback) {
       var sourcesProperties = sources.map(function(source) {
@@ -1136,39 +1153,11 @@ $(document).ready(function() {
       });
     }
 
-    function approveStatement(id, callback) {
+    function setStatementState(id, state, callback) {
+      if (!STATEMENT_STATES[state]) {
+        return callback('Invalid statement state');
+      }
       var user = mw.user.getName();
-      var state = 'approved';
-      var url = FREEBASE_STATEMENT_APPROVAL_URL
-          .replace(/\{\{user\}\}/, user)
-          .replace(/\{\{state\}\}/, state)
-          .replace(/\{\{id\}\}/, id);
-      $.post(url, callback);
-    }
-
-    function unapproveStatement(id, callback) {
-      var user = mw.user.getName();
-      var state = 'unapproved';
-      var url = FREEBASE_STATEMENT_APPROVAL_URL
-          .replace(/\{\{user\}\}/, user)
-          .replace(/\{\{state\}\}/, state)
-          .replace(/\{\{id\}\}/, id);
-      $.post(url, callback);
-    }
-
-    function blacklistStatement(id, callback) {
-      var user = mw.user.getName();
-      var state = 'blacklisted';
-      var url = FREEBASE_STATEMENT_APPROVAL_URL
-          .replace(/\{\{user\}\}/, user)
-          .replace(/\{\{state\}\}/, state)
-          .replace(/\{\{id\}\}/, id);
-      $.post(url, callback);
-    }
-
-    function disapproveStatement(id, callback) {
-      var user = mw.user.getName();
-      var state = 'wrong';
       var url = FREEBASE_STATEMENT_APPROVAL_URL
           .replace(/\{\{user\}\}/, user)
           .replace(/\{\{state\}\}/, state)
@@ -1203,7 +1192,8 @@ $(document).ready(function() {
           property: predicate,
           snaktype: 'value',
           token: token.query.tokens.csrftoken,
-          value: JSON.stringify(value)
+          value: JSON.stringify(value),
+          summary: WIKIDATA_API_COMMENT
         });
       }).done(function(data) {
         return callback(null, data);
@@ -1233,7 +1223,8 @@ $(document).ready(function() {
             'entity-type': 'item',
             'numeric-id': object.replace(/^Q/, '')
           }),
-          token: sessionToken
+          token: sessionToken,
+          summary: WIKIDATA_API_COMMENT
         });
       }).then(function(data) {
         return api.post({
@@ -1250,7 +1241,8 @@ $(document).ready(function() {
               }
             }]
           }),
-          token: sessionToken
+          token: sessionToken,
+          summary: WIKIDATA_API_COMMENT
         });
       }).done(function(data) {
         return callback(null, data);
@@ -1326,7 +1318,8 @@ $(document).ready(function() {
               }
             }]
           }),
-          token: sessionToken
+          token: sessionToken,
+          summary: WIKIDATA_API_COMMENT
         });
       }).done(function(data) {
         return callback(null, data);
@@ -1404,6 +1397,9 @@ $(document).ready(function() {
               })
               .filter(function(url) {
                 var copy = url;
+                if (/\s/g.test(copy) || !/\./g.test(copy)) {
+                  return false;
+                }
                 if (!/^https?:\/\//.test(copy)) {
                   copy = 'http://' + url;
                 }
