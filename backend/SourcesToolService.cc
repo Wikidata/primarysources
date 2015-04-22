@@ -17,6 +17,13 @@
 #include "Membuf.h"
 #include "Version.h"
 
+#define TIMING(message, begin, end) \
+    BOOSTER_NOTICE("sourcestool") \
+        << request().remote_addr() << ": " \
+        << (message) << " time: " \
+        << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC) \
+        << "ms" << std::endl;
+
 // initialise static counters for status reports
 time_t SourcesToolService::startupTime = std::time(NULL);
 int64_t SourcesToolService::reqGetEntityCount = 0;
@@ -117,10 +124,7 @@ void SourcesToolService::getEntityByQID(std::string qid) {
     reqGetEntityCount++;
 
     clock_t end = std::clock();
-    BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
-            << "GET /entities/" << qid << " time: "
-            << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
-            << "ms" << std::endl;
+    TIMING("GET /entities/" + qid, begin, end);
 }
 
 void SourcesToolService::getRandomEntity() {
@@ -139,10 +143,7 @@ void SourcesToolService::getRandomEntity() {
     reqGetRandomCount++;
 
     clock_t end = std::clock();
-    BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
-            << "GET /entities/any time: "
-            << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
-            << "ms" << std::endl;
+    TIMING("GET /entities/any", begin, end);
 }
 
 void SourcesToolService::approveStatement(int64_t stid) {
@@ -172,10 +173,7 @@ void SourcesToolService::approveStatement(int64_t stid) {
     reqUpdateStatementCount++;
 
     clock_t end = std::clock();
-    BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
-              << "POST /statements/" << stid << " time: "
-              << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
-              << "ms" << std::endl;
+    TIMING("POST /statements" + stid, begin, end);
 }
 
 void SourcesToolService::getStatement(int64_t stid) {
@@ -196,10 +194,7 @@ void SourcesToolService::getStatement(int64_t stid) {
     reqGetStatementCount++;
 
     clock_t end = std::clock();
-    BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
-            << "GET /statements/" << stid << " time: "
-            << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
-            << "ms" << std::endl;
+    TIMING("GET /statements" + stid, begin, end);
 }
 
 void SourcesToolService::getRandomStatements() {
@@ -216,10 +211,7 @@ void SourcesToolService::getRandomStatements() {
     serializeStatements(backend.getRandomStatements(cache(), count, true));
 
     clock_t end = std::clock();
-    BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
-            << "GET /statements/any time: "
-            << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
-            << "ms" << std::endl;
+    TIMING("GET /statements/any", begin, end);
 }
 
 
@@ -273,10 +265,7 @@ void SourcesToolService::getStatus() {
     reqStatusCount++;
 
     clock_t end = std::clock();
-    BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
-                                  << "GET /status time: "
-                                  << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
-                                  << "ms" << std::endl;
+    TIMING("GET /status", begin, end);
 }
 
 void SourcesToolService::serializeStatements(const std::vector<Statement> &statements) {
@@ -335,10 +324,7 @@ void SourcesToolService::importStatements() {
         response().content_type("application/json");
         result.save(response().out(), cppcms::json::readable);
 
-        BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
-                << "POST /import time: "
-                << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
-                << "ms" << std::endl;
+        TIMING("POST /import", begin, end);
     } else {
         response().status(405, "Method not allowed");
         response().set_header("Allow", "POST");
@@ -369,10 +355,7 @@ void SourcesToolService::deleteStatements() {
 
         clock_t end = std::clock();
 
-        BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
-                                      << "POST /delete time: "
-                                      << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
-                                      << "ms" << std::endl;
+        TIMING("POST /delete", begin, end);
     } else {
         response().status(405, "Method not allowed");
         response().set_header("Allow", "POST");
