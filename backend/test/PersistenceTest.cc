@@ -176,3 +176,44 @@ TEST_F(PersistenceTest, RandomQID) {
     // nothing left, expect exception
     ASSERT_THROW(p.getRandomQID(true), PersistenceException);
 }
+
+
+TEST_F(PersistenceTest, DeleteStatements) {
+    Persistence p(sql, true);
+    sql.begin();
+    for(int i=0; i<10; i++) {
+        Statement stmt(-1, "Q1231", PropertyValue("P456", Value("Q789-" + i)),
+                       Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+
+        p.addStatement(stmt);
+    }
+    sql.commit();
+
+    sql.begin();
+
+    // SQLLite database IDs start at 1
+    for(int64_t i=1; i<6; i++) {
+        p.updateStatement(i, APPROVED);
+    }
+    sql.commit();
+
+    sql.begin();
+    int64_t unapprovedCount = p.countStatements(UNAPPROVED);
+    int64_t approvedCount = p.countStatements(APPROVED);
+    sql.commit();
+
+    ASSERT_EQ(unapprovedCount, 5);
+    ASSERT_EQ(approvedCount, 5);
+
+    sql.begin();
+    p.deleteStatements(UNAPPROVED);
+    sql.commit();
+
+    sql.begin();
+    unapprovedCount = p.countStatements(UNAPPROVED);
+    approvedCount = p.countStatements(APPROVED);
+    sql.commit();
+
+    ASSERT_EQ(unapprovedCount, 0);
+    ASSERT_EQ(approvedCount, 5);
+}
