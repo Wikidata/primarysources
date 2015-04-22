@@ -80,7 +80,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
 
         Persistence p(sql);
         statements = p.getStatementsByQID(qid, unapprovedOnly);
-        cache.store_data(qid, statements);
+        cache.store_data(qid, statements, 3600);
 
         cacheMisses++;
     } else {
@@ -147,7 +147,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
 
         Persistence p(sql);
         statements = p.getStatementsByQID(qid, unapprovedOnly);
-        cache.store_data(qid, statements);
+        cache.store_data(qid, statements, 3600);
 
         cacheMisses++;
     } else {

@@ -82,6 +82,10 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
             &SourcesToolService::importStatements, this);
     mapper().assign("import", "/import");
 
+    dispatcher().assign("/delete",
+                        &SourcesToolService::deleteStatements, this);
+    mapper().assign("import", "/delete");
+
     dispatcher().assign("/status",
                         &SourcesToolService::getStatus, this);
     mapper().assign("status", "/status");
@@ -358,7 +362,7 @@ void SourcesToolService::deleteStatements() {
         try {
             backend.deleteStatements(cache(), stateFromString(request().get("state")));
         } catch(PersistenceException const &e) {
-            response().status(404, "Statement not found");
+            response().status(404, "Could not delete statements");
         } catch(InvalidApprovalState const &e) {
             response().status(400, "Bad Request: invalid or missing state parameter");
         }
