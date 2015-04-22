@@ -1404,6 +1404,9 @@ $(document).ready(function() {
               })
               .filter(function(url) {
                 var copy = url;
+                if (/\s/g.test(copy) || !/\./g.test(copy)) {
+                  return false;
+                }
                 if (!/^https?:\/\//.test(copy)) {
                   copy = 'http://' + url;
                 }
