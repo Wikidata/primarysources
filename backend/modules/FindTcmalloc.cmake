@@ -13,9 +13,7 @@ else ()
   set(Tcmalloc_NAMES tcmalloc_minimal tcmalloc)
 endif ()
 
-find_library(Tcmalloc_LIBRARY NO_DEFAULT_PATH
-  NAMES ${Tcmalloc_NAMES}
-)
+find_library(Tcmalloc_LIBRARY NAMES ${Tcmalloc_NAMES})
 
 if (Tcmalloc_INCLUDE_DIR AND Tcmalloc_LIBRARY)
   set(Tcmalloc_FOUND TRUE)
