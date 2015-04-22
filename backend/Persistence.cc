@@ -461,6 +461,18 @@ void Persistence::markDuplicates(int64_t start_id) {
     }
 }
 
+
+void Persistence::deleteStatements(ApprovalState state) {
+    if (!managedTransactions)
+        sql.begin();
+
+    sql << "DELETE FROM statement WHERE state = ?"
+        << getSQLState(state) << cppdb::exec;
+
+    if (!managedTransactions)
+        sql.commit();
+}
+
 const char *PersistenceException::what() const noexcept {
     return message.c_str();
 }

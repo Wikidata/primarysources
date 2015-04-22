@@ -65,7 +65,14 @@ public:
     * data. When the option dedup is set to true, will run a deduplication
     * sweep at the end of importing. Returns the number of statements imported.
     */
-    int64_t importStatements(std::istream& in, bool gzip, bool dedup=true);
+    int64_t importStatements(cache_t& cache, std::istream& in, bool gzip, bool dedup=true);
+
+
+    /**
+     * Delete statements with the given approval state.
+     */
+    void deleteStatements(cache_t& cache, ApprovalState state);
+
 
     /**
      * Return status information about the database, e.g. number of approved/
@@ -94,8 +101,6 @@ private:
     // CppDB uses a connection pool internally, so we just remember the
     // connection string
     std::string connstr;
-
-    cppcms::cache_interface& cache;
 
     static int64_t cacheHits, cacheMisses;
 };

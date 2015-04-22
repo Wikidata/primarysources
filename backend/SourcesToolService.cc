@@ -156,31 +156,13 @@ void SourcesToolService::approveStatement(int64_t stid) {
         return;
     }
 
-    // determine the updated state or return 400 in case it is invalid
-    if (request().get("state") == "approved") {
-        state = APPROVED;
-    } else if(request().get("state") == "wrong") {
-        state = WRONG;
-    } else if(request().get("state") == "skipped") {
-        state = SKIPPED;
-    } else if(request().get("state") == "othersource") {
-        state = OTHERSOURCE;
-    } else if(request().get("state") == "unapproved") {
-        state = UNAPPROVED;
-    } else if(request().get("state") == "duplicate") {
-        state = DUPLICATE;
-    } else if(request().get("state") == "blacklisted") {
-        state = BLACKLISTED;
-    } else {
-        response().status(400, "Bad Request: invalid or missing state parameter");
-        return;
-    }
-
     // check if statement exists and update it with new state
     try {
-        backend.updateStatement(cache(), stid, state, request().get("user"));
+        backend.updateStatement(cache(), stid, stateFromString(request().get("state")), request().get("user"));
     } catch(PersistenceException const &e) {
         response().status(404, "Statement not found");
+    } catch(InvalidApprovalState const &e) {
+        response().status(400, "Bad Request: invalid or missing state parameter");
     }
 
     reqUpdateStatementCount++;
@@ -338,7 +320,7 @@ void SourcesToolService::importStatements() {
         std::istream in(&body);
 
         // import statements
-        int64_t count = backend.importStatements(in, gzip, dedup);
+        int64_t count = backend.importStatements(cache(), in, gzip, dedup);
 
         clock_t end = std::clock();
 
@@ -353,6 +335,40 @@ void SourcesToolService::importStatements() {
                 << "POST /import time: "
                 << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
                 << "ms" << std::endl;
+    } else {
+        response().status(405, "Method not allowed");
+        response().set_header("Allow", "POST");
+    }
+}
+
+void SourcesToolService::deleteStatements() {
+    addVersionHeaders();
+
+    if (request().request_method() == "POST") {
+
+        // check if token matches
+        if (request().get("token") != settings()["token"].str()) {
+            response().status(401, "Invalid authorization token");
+            return;
+        }
+
+        clock_t begin = std::clock();
+
+        // check if statement exists and update it with new state
+        try {
+            backend.deleteStatements(cache(), stateFromString(request().get("state")));
+        } catch(PersistenceException const &e) {
+            response().status(404, "Statement not found");
+        } catch(InvalidApprovalState const &e) {
+            response().status(400, "Bad Request: invalid or missing state parameter");
+        }
+
+        clock_t end = std::clock();
+
+        BOOSTER_NOTICE("sourcestool") << request().remote_addr() << ": "
+                                      << "POST /delete time: "
+                                      << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC)
+                                      << "ms" << std::endl;
     } else {
         response().status(405, "Method not allowed");
         response().set_header("Allow", "POST");

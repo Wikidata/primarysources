@@ -3,6 +3,30 @@
 
 #include "Statement.h"
 
+ApprovalState stateFromString(const std::string &state) {
+    if (state == "approved") {
+        return APPROVED;
+    } else if(state == "wrong") {
+        return WRONG;
+    } else if(state == "skipped") {
+        return SKIPPED;
+    } else if(state == "othersource") {
+        return OTHERSOURCE;
+    } else if(state == "unapproved") {
+        return UNAPPROVED;
+    } else if(state == "duplicate") {
+        return DUPLICATE;
+    } else if(state == "blacklisted") {
+        return BLACKLISTED;
+    } else {
+        throw InvalidApprovalState("Bad Request: invalid or missing state parameter ("+state+")");
+    }
+}
+
+std::string stateToString(ApprovalState state) {
+    return "";
+}
+
 void Value::serialize(cppcms::archive &a) {
     a & str & lang & cppcms::as_pod(time) & loc & precision
       & cppcms::as_pod(quantity) & cppcms::as_pod(type);

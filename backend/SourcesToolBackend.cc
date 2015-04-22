@@ -62,8 +62,7 @@ namespace cppcms {
     };
 } /* cppcms */
 
-SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
-        : cache(cache) {
+SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config) {
     connstr = build_connection(
             config["driver"].str(), config["name"].str(), config["host"].str(),
             config["port"].str(), config["user"].str(), config["password"].str());
@@ -158,7 +157,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
     return statements;
 }
 
-int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip, bool dedup) {
+int64_t SourcesToolBackend::importStatements(cache_t& cache, std::istream &_in, bool gzip, bool dedup) {
     // prepare GZIP input stream
     boost::iostreams::filtering_istreambuf zin;
     if (gzip) {
@@ -200,6 +199,15 @@ int64_t SourcesToolBackend::importStatements(std::istream &_in, bool gzip, bool 
     cache.clear();
 
     return count;
+}
+
+void SourcesToolBackend::deleteStatements(cache_t& cache, ApprovalState state) {
+    cppdb::session sql(connstr); // released when sql is destroyed
+
+    Persistence p(sql);
+    p.deleteStatements(state);
+
+    cache.clear();
 }
 
 Status SourcesToolBackend::getStatus(cache_t& cache) {
