@@ -84,7 +84,7 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
 
     dispatcher().assign("/delete",
                         &SourcesToolService::deleteStatements, this);
-    mapper().assign("import", "/delete");
+    mapper().assign("delete", "/delete");
 
     dispatcher().assign("/status",
                         &SourcesToolService::getStatus, this);
