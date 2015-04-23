@@ -66,7 +66,7 @@ $(document).ready(function() {
         '&page=Wikidata:Primary_sources_tool/URL_blacklist';
 
     var WIKIDATA_API_COMMENT =
-        'Added via https://github.com/google/primarysources';
+        'Added via [[Wikidata:Primary sources tool]]';
 
     var STATEMENT_STATES = {
       approved: 'approved',
