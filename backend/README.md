@@ -100,6 +100,12 @@ kind of password configurable in config.json that is used as a very simple authe
 It is recommended to protect this service also on the webserver level (e.g. using HTTP authentication 
 or IP-based access control).
 
+Status Codes:
+   * 200: request successful, statements deleted
+   * 401: in case the token does not match the configured delete token
+   * 500: delete failed (e.g. parse error)
+
+
 ## Content Negotiation
   
 GET requests to the backend webservices currently support 3 different serialization formats that
