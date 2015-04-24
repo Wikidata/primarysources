@@ -103,8 +103,20 @@ or IP-based access control).
 Status Codes:
    * 200: request successful, statements deleted
    * 401: in case the token does not match the configured delete token
-   * 500: delete failed (e.g. parse error)
+   * 500: delete failed
 
+## Status
+
+The status service returns a JSON object containing current status information like total number 
+of statements, number of approved statements, top users, system information, etc.
+
+Request:
+
+     GET /status
+
+Status Codes:
+    * 200: request successful, status returned as JSON object
+    * 500: server error
 
 ## Content Negotiation
   
