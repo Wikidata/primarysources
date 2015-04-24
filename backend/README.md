@@ -87,6 +87,19 @@ Status Codes:
    * 401: in case the token does not match the configured import token
    * 500: import failed (e.g. parse error)
   
+## Delete Statements
+
+The delete service allows to delete all statements with a specified state from the database.
+
+Request:
+
+    POST /delete?state=<state>&token=<token>
+
+The state is one of "approved", "wrong", "othersource", "blacklisted", "duplicate". The token is a 
+kind of password configurable in config.json that is used as a very simple authentication mechanism. 
+It is recommended to protect this service also on the webserver level (e.g. using HTTP authentication 
+or IP-based access control).
+
 ## Content Negotiation
   
 GET requests to the backend webservices currently support 3 different serialization formats that
