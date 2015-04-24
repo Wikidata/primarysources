@@ -115,8 +115,8 @@ Request:
      GET /status
 
 Status Codes:
-    * 200: request successful, status returned as JSON object
-    * 500: server error
+   * 200: request successful, status returned as JSON object
+   * 500: server error
 
 ## Content Negotiation
   
