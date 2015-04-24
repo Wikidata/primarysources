@@ -74,7 +74,8 @@ The backend provides a REST service to import sequence of statements in Wikidata
 into the database. The service reads the data from the raw request POST body. Data may 
 optionally be gzipped for better memory usage.
 
-Request
+Request:
+
     POST /import?token=<token>&gzip=<true|false>
 
 The token is a kind of password configurable in config.json that is used as a very simple 
