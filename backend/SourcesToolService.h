@@ -155,6 +155,11 @@ public:
     */
    void getStatus();
 
+   /**
+    * Return a JSON object with recent activities for the dashboard.
+    */
+   void getActivityLog();
+
    // store startup time for status
    static time_t startupTime;
 

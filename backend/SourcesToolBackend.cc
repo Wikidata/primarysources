@@ -3,8 +3,6 @@
 
 #include "SourcesToolBackend.h"
 
-#include <sstream>
-#include <iostream>
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
@@ -124,6 +122,7 @@ void SourcesToolBackend::updateStatement(
         // update cache
         cache.rise(st.getQID());
         cache.rise("STATUS");
+        cache.rise("ACTIVITIES");
     } catch (PersistenceException const &e) {
         sql.rollback();
 
@@ -235,5 +234,25 @@ Status SourcesToolBackend::getStatus(cache_t& cache) {
     } else {
         cacheHits++;
     }
+    return result;
+}
+
+
+Dashboard::ActivityLog SourcesToolBackend::getActivityLog(cache_t& cache) {
+
+    Dashboard::ActivityLog result;
+
+    if(!cache.fetch_data("ACTIVITIES", result)) {
+        cppdb::session sql(connstr); // released when sql is destroyed
+        Dashboard::Dashboard dashboard(sql);
+        result = dashboard.getActivityLog(7, 12, 10);
+
+        cache.store_data("ACTIVITIES", result, 3600);
+
+        cacheMisses++;
+    } else {
+        cacheHits++;
+    }
+
     return result;
 }

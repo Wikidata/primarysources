@@ -6,6 +6,7 @@
 
 #include "Statement.h"
 #include "Status.h"
+#include "Dashboard.h"
 
 #include <vector>
 #include <map>
@@ -95,6 +96,11 @@ public:
     int64_t getCacheMisses() const {
         return cacheMisses;
     }
+
+    /**
+     * Return an activity log for the current database.
+     */
+    Dashboard::ActivityLog getActivityLog(cache_t& cache);
 
 private:
 

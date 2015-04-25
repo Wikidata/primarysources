@@ -96,6 +96,10 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
     dispatcher().assign("/status",
                         &SourcesToolService::getStatus, this);
     mapper().assign("status", "/status");
+
+    dispatcher().assign("/dashboard/activitylog",
+                        &SourcesToolService::getActivityLog, this);
+    mapper().assign("activitylog", "/dashboard/activitylog");
 }
 
 
@@ -368,4 +372,53 @@ void SourcesToolService::addCORSHeaders() {
 
 void SourcesToolService::addVersionHeaders() {
     response().set_header("X-Powered-By", std::string("Wikidata Sources Tool/") + GIT_SHA1);
+}
+
+
+void SourcesToolService::getActivityLog() {
+    clock_t begin = std::clock();
+
+    addCORSHeaders();
+    addVersionHeaders();
+
+    cppcms::json::value result;
+
+    Dashboard::ActivityLog activities = backend.getActivityLog(cache());
+
+    std::vector<std::string> users(activities.getUsers().begin(), activities.getUsers().end());
+
+    result["users"] = users;
+    for(int i=0; i< activities.getActivities().size(); i++) {
+        Dashboard::ActivityEntry entry = activities.getActivities()[i];
+
+        if (entry.date != "") {
+            result["approved"][i][0] = entry.date;
+            for (int j = 0; j < users.size(); j++) {
+                if (entry.approved.find(users[j]) != entry.approved.end()) {
+                    result["approved"][i][j + 1] = entry.approved[users[j]];
+                } else {
+                    result["approved"][i][j + 1] = 0;
+                }
+            }
+
+            result["rejected"][i][0] = entry.date;
+            for (int j = 0; j < users.size(); j++) {
+                if (entry.rejected.find(users[j]) != entry.rejected.end()) {
+                    result["rejected"][i][j + 1] = entry.rejected[users[j]];
+                } else {
+                    result["rejected"][i][j + 1] = 0;
+                }
+            }
+        }
+
+    }
+
+
+    response().content_type("application/json");
+    result.save(response().out(), cppcms::json::readable);
+
+    reqStatusCount++;
+
+    clock_t end = std::clock();
+    TIMING("GET /dashboard/activitylog", begin, end);
 }
