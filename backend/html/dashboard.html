@@ -26,9 +26,9 @@
         }
     </style>
     <script>
-        var dashboardApp = angular.module('statusApp', ['ui.bootstrap']);
+        var dashboardApp = angular.module('dashboardApp', ['ui.bootstrap']);
 
-        dashboardApp.controller('DashboardCtrl', function($scope, $http, $interval) {
+        dashboardApp.controller('DashboardCtrl', function($scope, $http) {
             $scope.statements = {};
             $scope.activities = {};
 
