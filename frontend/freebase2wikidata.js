@@ -29,16 +29,17 @@
 */
 
 /* global
-  importStylesheet, console, mw, $, async, HTML_TEMPLATES
+  console, mw, $, async, HTML_TEMPLATES
 */
 
-importStylesheet('User:Tomayac/freebase2wikidata.css');
+mw.loader.load('https://www.wikidata.org/w/index.php?title=User:Tomayac/' +
+    'freebase2wikidata.css&action=raw&ctype=text/css', 'text/css');
 
 $(document).ready(function() {
   'use strict';
 
-  var asyncSrc = '/w/index.php?title=User:Tomayac/async.js&action=raw' +
-      '&ctype=text%2Fjavascript';
+  var asyncSrc = 'https://www.wikidata.org/w/index.php?title=User:Tomayac/' +
+      'async.js&action=raw&ctype=text%2Fjavascript';
   // See https://www.mediawiki.org/wiki/Thread:Project:Support_desk/ ↵
   //     User_script_interdependencies
   $.getScript(asyncSrc).done(function() {
