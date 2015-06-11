@@ -131,8 +131,10 @@ class Persistence {
      * considerably slow down import performance. Sweep and mark is a
      * reasonable alternative.
      *
+     * Parameters:
+     * - start_id: database ID of first statement to consider
      */
-    void markDuplicates();
+    void markDuplicates(int64_t start_id = 0);
 
 
     /**

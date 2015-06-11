@@ -9,7 +9,6 @@
 
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
 #include <cppdb/frontend.h>
 #include <cppcms/json.h>
 
@@ -84,7 +83,7 @@ int main(int argc, char **argv) {
 
         sql.begin();
         Persistence p(sql, true);
-        p.markDuplicates();
+        p.markDuplicates(start_id);
         sql.commit();
 
         std::cout << "DEDUPLICATE: deduplication finished" << std::endl;

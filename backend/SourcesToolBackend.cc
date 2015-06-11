@@ -170,9 +170,14 @@ int64_t SourcesToolBackend::importStatements(cache_t& cache, std::istream &_in, 
     sql.begin();
     Persistence p(sql, true);
 
-    int64_t count = 0, current_id;
-    Parser::parseTSV(in, [&sql, &p, &count, &current_id](Statement st)  {
+    int64_t count = 0, first_id = -1, current_id;
+    Parser::parseTSV(in, [&sql, &p, &count, &first_id, &current_id](Statement st)  {
         current_id = p.addStatement(st);
+
+        // remember the ID of the first statement we add for deduplication
+        if (first_id == -1) {
+            first_id = current_id;
+        }
 
         count++;
 
@@ -186,7 +191,7 @@ int64_t SourcesToolBackend::importStatements(cache_t& cache, std::istream &_in, 
 
     if (dedup) {
         sql.begin();
-        p.markDuplicates();
+        p.markDuplicates(first_id);
         sql.commit();
     }
 

@@ -422,7 +422,7 @@ std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t li
 }
 
 
-void Persistence::markDuplicates() {
+void Persistence::markDuplicates(int64_t start_id) {
 
     // always force batch operation in one transaction
     bool hadManagedTransactions = managedTransactions;
@@ -435,10 +435,9 @@ void Persistence::markDuplicates() {
 
     // list all entities with unapproved statements
     cppdb::result r_entities =(
-            sql << "SELECT subject "
-                   "FROM statement "
-                   "GROUP BY subject "
-                   "HAVING count(id) > 1");
+            sql << "SELECT DISTINCT subject "
+                   "FROM statement WHERE state = 0 AND id > ?"
+                << start_id);
 
     std::cout << "DEDUPLICATE: entities selected" << std::endl;
 
