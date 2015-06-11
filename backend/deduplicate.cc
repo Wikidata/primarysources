@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
 
         sql.begin();
         Persistence p(sql, true);
-        p.markDuplicates(start_id);
+        p.markDuplicates();
         sql.commit();
 
         std::cout << "DEDUPLICATE: deduplication finished" << std::endl;
