@@ -431,29 +431,43 @@ void Persistence::markDuplicates(int64_t start_id) {
         managedTransactions = true;
     }
 
+    std::cout << "DEDUPLICATE: start" << std::endl;
+
     // list all entities with unapproved statements
     cppdb::result r_entities =(
             sql << "SELECT DISTINCT subject "
                    "FROM statement WHERE state = 0 AND id > ?"
                 << start_id);
 
+    std::cout << "DEDUPLICATE: entities selected" << std::endl;
+
+    int64_t stmts_processed = 0, stmts_marked = 0;
     std::string qid;
     std::vector<Statement> statements;
     while (r_entities.next()) {
         qid = r_entities.get<std::string>("subject");
         statements = getStatementsByQID(qid, false);
 
-        for (auto it1 = statements.begin(); it1 != statements.end(); it1++) {
-            Statement s1 = *it1;
-            for (auto it2 = it1+1; it2 != statements.end(); it2++) {
-                Statement s2 = *it2;
-                if (s1 == s2 && s2.getApprovalState() == UNAPPROVED) {
-                    s2.setApprovalState(DUPLICATE);
-                    updateStatement(s2);
+        if (statements.size() > 1) {
+            for (auto it1 = statements.begin(); it1 != statements.end(); it1++) {
+                Statement s1 = *it1;
+                for (auto it2 = it1 + 1; it2 != statements.end(); it2++) {
+                    Statement s2 = *it2;
+                    if (s1 == s2 && s2.getApprovalState() == UNAPPROVED) {
+                        s2.setApprovalState(DUPLICATE);
+                        updateStatement(s2);
+                        stmts_marked++;
+                    }
+                    stmts_processed++;
+
+                    if (stmts_processed % 10000 == 0) {
+                        std::cout << "DEDUPLICATE: processed " << stmts_processed << " statements (" << stmts_marked << " duplicates)" << std::endl;
+                    }
                 }
             }
         }
     }
+    std::cout << "DEDUPLICATE: processed " << stmts_processed << " statements (" << stmts_marked << " duplicates)" << std::endl;
 
     if (!hadManagedTransactions) {
         sql.commit();
