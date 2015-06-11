@@ -31,13 +31,15 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.cc.in" "${CMAKE_CURRENT_BINA
 add_library(persistence STATIC Parser.cc Statement.cc Persistence.cc)
 target_link_libraries(persistence ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIES} ${LIBCPPDB_LIBRARY} ${Boost_LIBRARIES})
 
-add_executable(freebase_inject inject.cc)
+add_executable(inject inject.cc)
+add_executable(deduplicate deduplicate.cc)
 add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" Status.cc Dashboard.h Dashboard.cc)
 
 target_link_libraries(freebase_backend persistence ${CPPDB_SQLITE_BACKEND} ${Tcmalloc_LIBRARIES})
-target_link_libraries(freebase_inject  persistence ${CPPDB_SQLITE_BACKEND})
+target_link_libraries(inject  persistence ${CPPDB_SQLITE_BACKEND})
+target_link_libraries(deduplicate  persistence ${CPPDB_SQLITE_BACKEND})
 
-install(TARGETS freebase_inject freebase_backend
+install(TARGETS inject deduplicate freebase_backend
         RUNTIME DESTINATION bin)
 
 add_subdirectory(test)
