@@ -40,3 +40,5 @@ CREATE TABLE userlog (
 
 CREATE INDEX idx_stmt_qid ON statement(subject);
 CREATE INDEX idx_stmt_state ON statement(state);
+CREATE INDEX idx_qualifier_stmt ON qualifier(stmt);
+CREATE INDEX idx_source_stmt ON source(stmt);
