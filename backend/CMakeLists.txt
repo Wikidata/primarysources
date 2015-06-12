@@ -3,6 +3,7 @@ project(freebase_backend)
 set(VERSION_MAJOR 1)
 set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
+set(DATABASE sqlite3)
 
 enable_testing()
 
@@ -22,6 +23,12 @@ find_package (CPPDB REQUIRED)
 find_package (Boost 1.54.0 REQUIRED COMPONENTS iostreams regex)
 find_package (Tcmalloc)
 
+if(DATABASE STREQUAL sqlite3 AND CPPDB_SQLITE_BACKEND)
+    find_library(SQLITE3_LIB sqlite3)
+    set(DB_LIBS ${CPPDB_SQLITE_BACKEND} ${SQLITE3_LIB})
+    add_definitions(-DDB_SQLITE3)
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 include(GetGitRevisionDescription)
@@ -35,9 +42,9 @@ add_executable(inject inject.cc)
 add_executable(deduplicate deduplicate.cc)
 add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" Status.cc Dashboard.h Dashboard.cc)
 
-target_link_libraries(freebase_backend persistence ${CPPDB_SQLITE_BACKEND} ${Tcmalloc_LIBRARIES})
-target_link_libraries(inject  persistence ${CPPDB_SQLITE_BACKEND})
-target_link_libraries(deduplicate  persistence ${CPPDB_SQLITE_BACKEND})
+target_link_libraries(freebase_backend persistence ${DB_LIBS} ${Tcmalloc_LIBRARIES})
+target_link_libraries(inject  persistence ${DB_LIBS})
+target_link_libraries(deduplicate  persistence ${DB_LIBS})
 
 install(TARGETS inject deduplicate freebase_backend
         RUNTIME DESTINATION bin)

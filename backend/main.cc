@@ -12,8 +12,18 @@
 #include <cppcms/url_mapper.h>
 #include <booster/log.h>
 
+#ifdef DB_SQLITE3
+#include <sqlite3.h>
+#endif
+
 int main(int argc, char **argv) {
     try {
+
+#ifdef DB_SQLITE3
+        // turn on shared process cache
+        sqlite3_enable_shared_cache(true);
+#endif
+
         cppcms::service srv(argc, argv);
         srv.applications_pool().mount(
                 cppcms::applications_factory<SourcesToolService>()
