@@ -177,7 +177,7 @@ void SourcesToolService::approveStatement(int64_t stid) {
     reqUpdateStatementCount++;
 
     clock_t end = std::clock();
-    TIMING("POST /statements" + std::to_string(stid), begin, end);
+    TIMING("POST /statements/" + std::to_string(stid), begin, end);
 }
 
 void SourcesToolService::getStatement(int64_t stid) {
@@ -198,7 +198,7 @@ void SourcesToolService::getStatement(int64_t stid) {
     reqGetStatementCount++;
 
     clock_t end = std::clock();
-    TIMING("GET /statements" + std::to_string(stid), begin, end);
+    TIMING("GET /statements/" + std::to_string(stid), begin, end);
 }
 
 void SourcesToolService::getRandomStatements() {
