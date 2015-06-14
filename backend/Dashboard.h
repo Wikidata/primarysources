@@ -21,6 +21,9 @@ namespace Dashboard {
         // count of approved and rejected statements per top users
         std::map<std::string, int32_t> approved, rejected;
 
+        ActivityEntry() {}
+        ActivityEntry(std::string date) : date(date) {}
+
         void serialize(cppcms::archive &a) override;
     };
 

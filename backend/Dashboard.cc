@@ -1,16 +1,30 @@
 //
 // Created by wastl on 25.04.15.
 //
+#include <ctime>
+
 #include "Dashboard.h"
 #include "Statement.h"
 
 #include <iostream>
-#include <sstream>
 
 inline std::string sqlPeriod(int32_t period) {
-    std::stringstream s;
-    s << period << " days";
-    return s.str();
+    return std::to_string(period) + " days";
+}
+
+// Format a date relative to 'period' in ISO day format. E.g. when period is -7,
+// return the date of one week ago.
+inline std::string pastDate(int32_t period) {
+    std::time_t rawtime;
+    std::time(&rawtime);
+
+    rawtime += period * 24 * 60 * 60;
+
+    std::tm* ptm = std::gmtime(&rawtime);
+
+    char past_date[11];
+    std::strftime(past_date, 11, "%Y-%m-%d", ptm);
+    return std::string(past_date);
 }
 
 namespace Dashboard {
@@ -37,8 +51,6 @@ namespace Dashboard {
     ActivityLog Dashboard::getActivityLog(int32_t period, int32_t numperiods, int32_t numusers) {
         sql.begin();
 
-        std::cout << "SQL PERIOD: " << sqlPeriod(-period * numperiods) << std::endl;
-
         // first, return the top users in the given time period
         cppdb::result rusers = (
                 sql << "SELECT user, count(id) AS activities FROM userlog "
@@ -58,41 +70,39 @@ namespace Dashboard {
 
         // for each period, select the user activities
         for (int i = 0; i < numperiods; i++) {
-            ActivityEntry entry;
+            ActivityEntry entry(pastDate(-i * period));
 
             // approved
             cppdb::result rapproved = (
-                    sql << "SELECT date('now', ?) as date, user, count(id) AS activities "
+                    sql << "SELECT user, count(id) AS activities "
                             "FROM userlog WHERE state = 1 "
                             "AND changed > date('now', ?) AND changed <= datetime('now', ?) "
                             "GROUP BY user ORDER BY activities DESC LIMIT ?"
-                    << sqlPeriod(-i * period) << sqlPeriod((-i - 1) * period) << sqlPeriod(-i * period) << numusers
+                    << sqlPeriod((-i - 1) * period) << sqlPeriod(-i * period) << numusers
             );
 
             while (rapproved.next()) {
-                std::string user = rapproved.get<std::string>(1);
+                std::string user = rapproved.get<std::string>(0);
 
                 if (users.find(user) != users.end()) {
-                    entry.date = rapproved.get<std::string>(0);
-                    entry.approved[user] = rapproved.get<int32_t>(2);
+                    entry.approved[user] = rapproved.get<int32_t>(1);
                 }
             }
 
             // rejected
             cppdb::result rrejected = (
-                    sql << "SELECT date('now', ?) as date, user, count(id) AS activities "
+                    sql << "SELECT user, count(id) AS activities "
                             "FROM userlog WHERE state = 3 "
                             "AND changed > date('now', ?) AND changed <= datetime('now', ?) "
                             "GROUP BY user ORDER BY activities DESC LIMIT ?"
-                    << sqlPeriod(-i * period) << sqlPeriod((-i - 1) * period) << sqlPeriod(-i * period) << numusers
+                    << sqlPeriod((-i - 1) * period) << sqlPeriod(-i * period) << numusers
             );
 
             while (rrejected.next()) {
-                std::string user = rrejected.get<std::string>(1);
+                std::string user = rrejected.get<std::string>(0);
 
                 if (users.find(user) != users.end()) {
-                    entry.date = rrejected.get<std::string>(0);
-                    entry.rejected[user] = rrejected.get<int32_t>(2);
+                    entry.rejected[user] = rrejected.get<int32_t>(1);
                 }
             }
 
@@ -100,8 +110,6 @@ namespace Dashboard {
         }
 
         sql.commit();
-
-        std::cout << "ACTIVITYLOG: users " << result.getUsers().size() << std::endl;
 
         return result;
     }
