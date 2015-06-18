@@ -48,12 +48,12 @@ TEST(ParserTest, ParseLangString) {
 }
 
 TEST(ParserTest, ParseLocation) {
-    std::vector<Statement> result = parseString("Q123\tP123\t@47.11/10.09\n");
+    std::vector<Statement> result = parseString("Q123\tP123\t@47.11/-10.09\n");
 
     ASSERT_EQ(result.size(), 1);
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value(47.11,10.09));
+    ASSERT_EQ(result[0].getValue(), Value(47.11,-10.09));
 }
 
 TEST(ParserTest, ParseTime) {
