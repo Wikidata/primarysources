@@ -705,7 +705,7 @@ $(document).ready(function() {
           type: 'language-string',
           value: {
             language: value.replace(languageStringRegEx, '$1'),
-            string: value.replace(languageStringRegEx, '$2')
+            text: value.replace(languageStringRegEx, '$2')
           }
         };
       } else if (timeRegEx.test(value)) {
