@@ -1183,7 +1183,7 @@ $(document).ready(function() {
       var api = new mw.Api();
       api.get({
         action:'query',
-        continue:'',
+        'continue':'',
         meta:'tokens',
         format:'json'
       }).then(function(token) {
@@ -1210,7 +1210,7 @@ $(document).ready(function() {
       var sessionToken;
       api.get({
         action:'query',
-        continue:'',
+        'continue':'',
         meta:'tokens',
         format:'json'
       }).then(function(token) {
@@ -1258,7 +1258,7 @@ $(document).ready(function() {
       var sessionToken;
       api.get({
         action:'query',
-        continue:'',
+        'continue':'',
         meta:'tokens',
         format:'json'
       }).then(function(token) {
@@ -1282,7 +1282,7 @@ $(document).ready(function() {
       var sessionToken;
       api.get({
         action:'query',
-        continue:'',
+        'continue':'',
         meta:'tokens',
         format:'json'
       }).then(function(token) {
