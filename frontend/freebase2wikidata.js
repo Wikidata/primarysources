@@ -307,7 +307,7 @@ $(document).ready(function() {
 
         var isUrl = function(url) {
           try {
-            url = new URL(url.toString());
+            url = new URL(url.toString().replace(/^["']/, '').replace(/["']$/, ''));
             if ((url.protocol.indexOf('http' === 0)) && (url.host)) {
               return true;
             }
@@ -364,11 +364,10 @@ $(document).ready(function() {
                 var objectExists = false;
                 for (var i = 0, lenI = claims.length; i < lenI; i++) {
                   var claim = claims[i];
-                  if (claim.mainsnak.datatype !== 'wikibase-item') {
-                    continue;
-                  }
-                  var numericId = claim.mainsnak.datavalue.value['numeric-id'];
-                  if ('Q' + numericId === object) {
+                  if (
+                      claim.mainsnak.snaktype === 'value' &&
+                      jsonToTsvValue(claim.mainsnak.datavalue) === object
+                  ) {
                     objectExists = true;
                     break;
                   }
@@ -528,7 +527,7 @@ $(document).ready(function() {
           format: STATEMENT_FORMAT
         });
         freebaseEntityData.push({
-          statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
+          statement: qid + '\tP1451\ten:"foo bar"\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
           state: STATEMENT_STATES.unapproved,
           id: 0,
           format: STATEMENT_FORMAT
@@ -552,7 +551,7 @@ $(document).ready(function() {
           format: STATEMENT_FORMAT
         });
         freebaseEntityData.push({
-          statement: qid + '\tP569\t+00000001840-01-01T01:00:00Z/12',
+          statement: qid + '\tP569\t+00000001840-01-01T00:00:00Z/11',
           state: STATEMENT_STATES.unapproved,
           id: 0,
           format: STATEMENT_FORMAT
@@ -637,7 +636,7 @@ $(document).ready(function() {
             // Filter out blacklisted source URLs
             sources = sources.filter(function(source) {
               if (source.sourceType === 'url') {
-                var url = source.sourceObject;
+                var url = source.sourceObject.replace(/^"/, '').replace(/"$/, '');
                 var blacklisted = isBlacklisted(url);
                 if (blacklisted) {
                   debug.log('Encountered blacklisted source url ' + url);
@@ -761,7 +760,7 @@ $(document).ready(function() {
           type: 'monolingualtext',
           value: {
             language: value.replace(languageStringRegEx, '$1'),
-            string: value.replace(languageStringRegEx, '$2')
+            text: value.replace(languageStringRegEx, '$2')
           }
         };
       } else if (timeRegEx.test(value)) {
@@ -816,7 +815,7 @@ $(document).ready(function() {
             var lenI = wikidataClaims[property].length;
             for (var i = 0; i < lenI; i++) {
               var wikidataObject = wikidataClaims[property][i];
-              if (wikidataObject.mainsnak.type === 'value') {
+              if (wikidataObject.mainsnak.snaktype === 'value') {
                 existingWikidataObjects
                    [jsonToTsvValue(wikidataObject.mainsnak.datavalue)] = 1;
               }
@@ -895,9 +894,7 @@ $(document).ready(function() {
           });
 
           var freebaseObject = {
-            object: labels && labels[object.object] ?
-                object.object :
-                object.object.replace(/^"/, '').replace(/"$/, ''),
+            object: object.object,
             id: object.id,
             objectLabel: labels && labels[object.object] ?
                 labels[object.object].labels[language].value :
@@ -986,8 +983,7 @@ $(document).ready(function() {
           var sources = claims[object].sources;
           var qualifiers = claims[object].qualifiers;
           newClaim.objects.push({
-            object: objectLabels && objectLabels[object] ?
-                object : object.replace(/^"/, '').replace(/"$/, ''),
+            object: object,
             id: id,
             objectLabel: objectLabels && objectLabels[object] ?
                 objectLabels[object].labels[lang].value :
@@ -1123,6 +1119,14 @@ $(document).ready(function() {
       container.appendChild(fragment);
     }
 
+    function escapeHtml(html) {
+      return html
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\"/g, '&quot;');
+    }
+
     function getSourcesHtml(sources, property, object) {
       var sourcesHtml = '';
       sources.forEach(function(source) {
@@ -1132,19 +1136,18 @@ $(document).ready(function() {
             .replace(/\{\{data-source-property\}\}/g,
                   source.sourceProperty.replace(/^S/, 'P'))
             .replace(/\{\{data-property\}\}/g, property)
-            .replace(/\{\{data-object\}\}/g, object.object)
+            .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
             .replace(/\{\{source-property-label\}\}/g,
                 source.sourcePropertyLabel)
             .replace(/\{\{statement-id\}\}/g, source.sourceId);
         if (source.sourceType === 'url') {
-          source.sourceObject = source.sourceObject.replace(/^"/, '')
-              .replace(/"$/, '');
+          var url = source.sourceObject.replace(/^"/, '').replace(/"$/, '');
           localSourceHtml = localSourceHtml
               .replace(/\{\{source-object\}\}/g,
                     '<a target="_blank" rel="nofollow" class="external free" ' +
-                    'href="' + source.sourceObject + '" ' +
+                    'href="' + url + '" ' +
                     'id="f2w-' + source.sourceId + '">' +
-                    source.sourceObject +
+                    url +
                     '</a>');
         } else if (source.sourceType === 'wikibase-item') {
           localSourceHtml = localSourceHtml
@@ -1157,7 +1160,7 @@ $(document).ready(function() {
               .replace(/\{\{source-object\}\}/g, source.sourceObject);
         }
         localSourceHtml = localSourceHtml
-            .replace(/\{\{data-source-object\}\}/g, source.sourceObject);
+            .replace(/\{\{data-source-object\}\}/g, escapeHtml(source.sourceObject));
         sourcesHtml += localSourceHtml;
       });
       return sourcesHtml;
@@ -1176,7 +1179,7 @@ $(document).ready(function() {
             .replace(/\{\{qualifier-object\}\}/g,
                 qualifier.qualifierObject)
             .replace(/\{\{data-qualifier-object\}\}/g,
-                qualifier.qualifierObject);
+                escapeHtml(qualifier.qualifierObject));
         qualifiersHtml += localQualifierHtml;
       });
       return qualifiersHtml;
@@ -1186,10 +1189,10 @@ $(document).ready(function() {
       var sourcesHtml = getSourcesHtml(object.sources, property, object);
       var qualifiersHtml = getQualifiersHtml(object.qualifiers);
       return HTML_TEMPLATES.statementViewHtml
-          .replace(/\{\{object\}\}/g, object.object)
-          .replace(/\{\{data-object\}\}/g, object.object)
+          .replace(/\{\{object\}\}/g, escapeHtml(object.object))
+          .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
           .replace(/\{\{data-property\}\}/g, property)
-          .replace(/\{\{object-label\}\}/g, object.objectLabel)
+          .replace(/\{\{object-label\}\}/g, escapeHtml(object.objectLabel))
           .replace(/\{\{references\}\}/g,
               object.sources.length === 1 ?
                   object.sources.length + ' reference' :
@@ -1283,6 +1286,7 @@ $(document).ready(function() {
     // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
     function createClaimWithReference(predicate, object, sourceProperty,
         sourceObject, callback) {
+      var value = (tsvValueToJson(object)).value;
       var api = new mw.Api();
       var sessionToken;
       api.get({
@@ -1297,14 +1301,12 @@ $(document).ready(function() {
           entity: qid,
           property: predicate,
           snaktype: 'value',
-          value: JSON.stringify({
-            'entity-type': 'item',
-            'numeric-id': object.replace(/^Q/, '')
-          }),
+          value: JSON.stringify(value),
           token: sessionToken,
           summary: WIKIDATA_API_COMMENT
         });
       }).then(function(data) {
+        var dataValue = tsvValueToJson(sourceObject);
         return api.post({
           action: 'wbsetreference',
           statement: data.claim.id,
@@ -1312,10 +1314,9 @@ $(document).ready(function() {
             predicate: [{
               snaktype: 'value',
               property: sourceProperty,
-              datatype: 'url',
               datavalue: {
-                type: 'string',
-                value: sourceObject
+                type: getValueTypeFromDataValueType(dataValue.type),
+                value: dataValue.value
               }
             }]
           }),
@@ -1372,16 +1373,17 @@ $(document).ready(function() {
       }).then(function(data) {
         var index = -1;
         for (var i = 0, lenI = data.claims[predicate].length; i < lenI; i++) {
-          var claimsObject = data.claims[predicate][i];
-          if (claimsObject.mainsnak.datatype !== 'wikibase-item') {
-            continue;
-          }
-          var id = 'Q' + claimsObject.mainsnak.datavalue.value['numeric-id'];
-          if (id === object) {
+          var claimObject = data.claims[predicate][i];
+          if (
+              claimObject.mainsnak.snaktype === 'value' &&
+              jsonToTsvValue(claimObject.mainsnak.datavalue) === object
+          ) {
             index = i;
             break;
           }
         }
+        var dataValue = tsvValueToJson(sourceObject);
+        var type = getValueTypeFromDataValueType(dataValue.type);
         return api.post({
           action: 'wbsetreference',
           statement: data.claims[predicate][index].id,
@@ -1389,10 +1391,9 @@ $(document).ready(function() {
             predicate: [{
               snaktype: 'value',
               property: sourceProperty,
-              datatype: 'url',
               datavalue: {
-                type: 'string',
-                value: sourceObject
+                type: type,
+                value: dataValue.value
               }
             }]
           }),
@@ -1404,6 +1405,11 @@ $(document).ready(function() {
       }).fail(function(error) {
         return callback(error);
       });
+    }
+
+    function getValueTypeFromDataValueType(dataValueType) {
+      return wikibase.dataTypeStore.getDataType(dataValueType)
+          .getDataValueType();
     }
 
     function getPropertyNames(callback) {
