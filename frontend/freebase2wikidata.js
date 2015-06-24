@@ -1203,18 +1203,12 @@ $(document).ready(function() {
     }
 
     function getWikidataEntityData(qid, callback) {
-      var revision = '';
-      var fragment = document.location.hash;
-      if (fragment && /revision=(\d+)/.test(fragment)) {
-        revision = fragment.replace(/.*?revision=(\d+).*?/, '$1');
-      }
       $.ajax({
-        url: WIKIDATA_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) +
-            (revision ? '?revision=' + revision : '')
+        url: WIKIDATA_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '?revision=' + mw.config.get('wgRevisionId')
       }).done(function(data) {
         return callback(null, data.entities[qid]);
       }).fail(function() {
-        return callback('Invalid revision ID ' + revision);
+        return callback('Invalid revision ID ' + mw.config.get('wgRevisionId'));
       });
     }
 
