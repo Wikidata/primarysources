@@ -539,6 +539,24 @@ $(document).ready(function() {
           id: 0,
           format: STATEMENT_FORMAT
         });
+        freebaseEntityData.push({
+          statement: qid + '\tP1082\t-1234',
+          state: STATEMENT_STATES.unapproved,
+          id: 0,
+          format: STATEMENT_FORMAT
+        });
+        freebaseEntityData.push({
+          statement: qid + '\tP625\t@-12.12334556/23.1234',
+          state: STATEMENT_STATES.unapproved,
+          id: 0,
+          format: STATEMENT_FORMAT
+        });
+        freebaseEntityData.push({
+          statement: qid + '\tP569\t+00000001840-01-01T01:00:00Z/12',
+          state: STATEMENT_STATES.unapproved,
+          id: 0,
+          format: STATEMENT_FORMAT
+        });
       }
       /* jscs: enable */
       /* jshint ignore:end */
@@ -592,7 +610,7 @@ $(document).ready(function() {
               qualifiers.push({
                 qualifierProperty: qualifiersString[i],
                 qualifierObject: qualifiersString[i + 1],
-                qualifierType: (determineValueType(qualifiersString[i + 1]))
+                qualifierType: (tsvValueToJson(qualifiersString[i + 1]))
                     .type,
                 qualifierId: id
               });
@@ -612,7 +630,7 @@ $(document).ready(function() {
               sources.push({
                 sourceProperty: sourcesString[i],
                 sourceObject: sourcesString[i + 1],
-                sourceType: (determineValueType(sourcesString[i + 1])).type,
+                sourceType: (tsvValueToJson(sourcesString[i + 1])).type,
                 sourceId: id
               });
             }
@@ -642,7 +660,7 @@ $(document).ready(function() {
         freebaseClaims[predicate] = freebaseClaims[predicate] || {};
         if (!freebaseClaims[predicate][object]) {
           freebaseClaims[predicate][object] = {
-            valueType: (determineValueType(object)).type,
+            valueType: (tsvValueToJson(object)).type,
             id: id,
             qualifiers: [],
             sources: []
@@ -656,15 +674,34 @@ $(document).ready(function() {
       return freebaseClaims;
     }
 
-    function determineValueType(value) {
+    function computeCoordinatesPrecision(latitude, longitude) {
+      return Math.min(
+          Math.pow(10, -numberOfDecimalDigits(latitude)),
+          Math.pow(10, -numberOfDecimalDigits(longitude))
+      );
+    }
+
+    function numberOfDecimalDigits(number) {
+      var parts = number.split('.');
+      if(parts.length < 2) {
+        return 0;
+      }
+      return parts[1].length;
+    }
+
+    function tsvValueToJson(value) {
       // From https://www.wikidata.org/wiki/Special:ListDatatypes and
       // https://de.wikipedia.org/wiki/Wikipedia:Wikidata/Wikidata_Spielwiese
+      // https://www.wikidata.org/wiki/Special:EntityData/Q90.json
 
       // Q1
-      var entityRegEx = /^Q\d+$/;
+      var itemRegEx = /^Q\d+$/;
 
-      // @43.3111/16.6655
-      var coordinatesRegEx = /^@(\d+(?:.\d+)?)\/(\d+(?:.\d+))?$/;
+      // P1
+      var propertyRegEx = /^P\d+$/;
+
+      // @43.3111/-16.6655
+      var coordinatesRegEx = /^@([+\-]?\d+(?:.\d+)?)\/([+\-]?\d+(?:.\d+))?$/;
 
       // fr:"Les Misérables"
       var languageStringRegEx = /^(\w+):"([^"\\]*(?:\\.[^"\\]*)*)"$/;
@@ -673,6 +710,9 @@ $(document).ready(function() {
       /* jshint maxlen: false */
       var timeRegEx = /^[+-]\d{11}-[01]\d-[0-3]\dT[0-2]\d(?::[0-5]\d){2}(?:[.,]\d+)?([+-][0-2]\d:[0-5]\d|Z)(?:\/\d[0-4])?$/;
       /* jshint maxlen: 80 */
+
+      // +/-1234.4567
+      var quantityRegEx = /^[+-]\d+(\.\d+)?$/;
 
       // "http://research.google.com/pubs/vrandecic.html"
       var isUrl = function(url) {
@@ -687,40 +727,70 @@ $(document).ready(function() {
         return false;
       };
 
-      if (entityRegEx.test(value)) {
+      if (itemRegEx.test(value)) {
         return {
           type: 'wikibase-item',
-          value: value
+          value: {
+            'entity-type': 'item',
+            'numeric-id': parseInt(value.replace(/^Q/, ''))
+          }
+        };
+      } else if (propertyRegEx.test(value)) {
+        return {
+          type: 'wikibase-property',
+          value: {
+            'entity-type': 'property',
+            'numeric-id': parseInt(value.replace(/^P/, ''))
+          }
         };
       } else if (coordinatesRegEx.test(value)) {
+        var latitude = value.replace(coordinatesRegEx, '$1');
+        var longitude = value.replace(coordinatesRegEx, '$2');
         return {
-          type: 'coordinates',
+          type: 'globe-coordinate',
           value: {
-            latitude: value.replace(coordinatesRegEx, '$1'),
-            longitude: value.replace(coordinatesRegEx, '$2')
+            latitude: parseFloat(latitude),
+            longitude: parseFloat(longitude),
+            altitude: null,
+            precision: computeCoordinatesPrecision(latitude, longitude),
+            globe: 'http://www.wikidata.org/entity/Q2'
           }
         };
       } else if (languageStringRegEx.test(value)) {
         return {
-          type: 'language-string',
+          type: 'monolingualtext',
           value: {
             language: value.replace(languageStringRegEx, '$1'),
             string: value.replace(languageStringRegEx, '$2')
           }
         };
       } else if (timeRegEx.test(value)) {
+        var parts = value.split('/');
         return {
           type: 'time',
-          value: value
+          value: {
+            time: parts[0],
+            timezone: 0,
+            before: 0,
+            after: 0,
+            precision: parseInt(parts[1]),
+            calendarmodel: 'http://www.wikidata.org/entity/Q1985727'
+          }
         };
-      } else if (isUrl(value.replace(/^["']/, '').replace(/["']$/, ''))) {
+      } else if (quantityRegEx.test(value)) {
         return {
-          type: 'url',
-          value: value.replace(/^["']/, '').replace(/["']$/, '')
+          type: 'quantity',
+          value: {
+            amount: value,
+            unit: "1",
+            upperBound: value,
+            lowerBound: value
+          }
         };
       } else {
+        value = value.replace(/^["']/, '').replace(/["']$/, '');
         return {
-          type: 'string',
+          type: isUrl(value) ? 'url' : 'string',
           value: value
         };
       }
@@ -1168,18 +1238,7 @@ $(document).ready(function() {
 
     // https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
     function createClaim(predicate, object, callback) {
-      var type = (determineValueType(object)).type;
-      var value;
-      if (type === 'wikibase-item') {
-        value = {
-          'entity-type': 'item',
-          'numeric-id': object.replace(/^Q/, '')
-        };
-      } else if (type === 'string') {
-        value = object;
-      } else {
-        value = object;
-      }
+      var value = (tsvValueToJson(object)).value;
       var api = new mw.Api();
       api.get({
         action:'query',
