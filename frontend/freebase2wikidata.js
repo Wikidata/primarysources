@@ -683,7 +683,7 @@ $(document).ready(function() {
 
     function numberOfDecimalDigits(number) {
       var parts = number.split('.');
-      if(parts.length < 2) {
+      if (parts.length < 2) {
         return 0;
       }
       return parts[1].length;
@@ -782,7 +782,7 @@ $(document).ready(function() {
           type: 'quantity',
           value: {
             amount: value,
-            unit: "1",
+            unit: '1',
             upperBound: value,
             lowerBound: value
           }
@@ -816,8 +816,9 @@ $(document).ready(function() {
             var lenI = wikidataClaims[property].length;
             for (var i = 0; i < lenI; i++) {
               var wikidataObject = wikidataClaims[property][i];
-              if(wikidataObject.mainsnak.type === 'value') {
-                existingWikidataObjects[jsonToTsvValue(wikidataObject.mainsnak.datavalue)] = 1;
+              if (wikidataObject.mainsnak.type === 'value') {
+                existingWikidataObjects
+                   [jsonToTsvValue(wikidataObject.mainsnak.datavalue)] = 1;
               }
             }
             if (existingWikidataObjects[freebaseValue]) {
@@ -849,7 +850,7 @@ $(document).ready(function() {
     }
 
     function jsonToTsvValue(dataValue) {
-      switch(dataValue.type) {
+      switch (dataValue.type) {
       case 'quantity':
         return dataValue.value.amount;
       case 'time':
@@ -861,7 +862,7 @@ $(document).ready(function() {
       case 'string':
         return '"' + dataValue.value + '"';
       case 'wikibase-entityid':
-        switch(dataValue.value['entity-type']) {
+        switch (dataValue.value['entity-type']) {
           case 'item':
             return 'Q' + dataValue.value['numeric-id'];
           case 'property':
