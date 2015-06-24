@@ -816,15 +816,8 @@ $(document).ready(function() {
             var lenI = wikidataClaims[property].length;
             for (var i = 0; i < lenI; i++) {
               var wikidataObject = wikidataClaims[property][i];
-              var wikidataType = wikidataObject.mainsnak.datatype;
-              var wikidataValue = wikidataObject.mainsnak.datavalue ?
-                  wikidataObject.mainsnak.datavalue.value : null;
-              if (wikidataType === 'wikibase-item') {
-                existingWikidataObjects['Q' + wikidataValue['numeric-id']] = 1;
-              } else if (wikidataType === 'time') {
-                existingWikidataObjects[wikidataValue.time] = 1;
-              } else if (wikidataType === 'string') {
-                existingWikidataObjects[wikidataValue] = 1;
+              if(wikidataObject.mainsnak.type === 'value') {
+                existingWikidataObjects[jsonToTsvValue(wikidataObject.mainsnak.datavalue)] = 1;
               }
             }
             if (existingWikidataObjects[freebaseValue]) {
@@ -853,6 +846,30 @@ $(document).ready(function() {
           createNewClaim(property, propertyLabel, claims, language);
         }
       });
+    }
+
+    function jsonToTsvValue(dataValue) {
+      switch(dataValue.type) {
+      case 'quantity':
+        return dataValue.value.amount;
+      case 'time':
+        return dataValue.value.time + '/' + dataValue.value.precision;
+      case 'globecoordinate':
+        return '@' + dataValue.value.latitude + '/' + dataValue.value.longitude;
+      case 'monolingualtext':
+        return dataValue.value.language + ':"' + dataValue.value.text + '"';
+      case 'string':
+        return '"' + dataValue.value + '"';
+      case 'wikibase-entityid':
+        switch(dataValue.value['entity-type']) {
+          case 'item':
+            return 'Q' + dataValue.value['numeric-id'];
+          case 'property':
+            return 'P' + dataValue.value['numeric-id'];
+        }
+      }
+      debug.log('Unknown data value type ' + dataValue.type);
+      return dataValue.value;
     }
 
     function prepareNewWikidataStatement(property, object, language) {
