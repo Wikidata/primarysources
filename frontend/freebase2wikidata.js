@@ -111,21 +111,21 @@ $(document).ready(function() {
                 '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                   '[' +
                   '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                    '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}">approve</a>' +
+                    '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}" data-qualifiers="{{data-qualifiers}}">approve</a>' +
                   '</span>' +
                   ']' +
                 '</span>' +
                 '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                   '[' +
                   '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                    '<a class="f2w-button f2w-source f2w-edit" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}">edit</a>' +
+                    '<a class="f2w-button f2w-source f2w-edit" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}" data-qualifiers="{{data-qualifiers}}">edit</a>' +
                   '</span>' +
                   ']' +
                 '</span>' +
                 '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                   '[' +
                   '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                    '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}">reject</a>' +
+                    '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}" data-qualifiers="{{data-qualifiers}}">reject</a>' +
                   '</span>' +
                   '] source' +
                 '</span>' +
@@ -328,7 +328,8 @@ $(document).ready(function() {
               // Approve property
               var predicate = statement.property;
               var object = statement.object;
-              createClaim(predicate, object)
+              var qualifiers = JSON.parse(statement.qualifiers);
+              createClaim(predicate, object, qualifiers)
                 .fail(function(error) {
                   return reportError(error);
                 }).done(function(data) {
@@ -355,6 +356,7 @@ $(document).ready(function() {
               var object = statement.object;
               var sourceProperty = statement.sourceProperty;
               var sourceObject = statement.sourceObject;
+              var qualifiers = JSON.parse(statement.qualifiers);
               getClaims(predicate, function(err, claims) {
                 var objectExists = false;
                 for (var i = 0, lenI = claims.length; i < lenI; i++) {
@@ -384,7 +386,9 @@ $(document).ready(function() {
                     });
                   });
                 } else {
-                  createClaimWithReference(predicate, object, sourceProperty, sourceObject)
+                  var qualifiers = JSON.parse(statement.qualifiers);
+                  createClaimWithReference(predicate, object, qualifiers,
+                    sourceProperty, sourceObject)
                     .fail(function(error) {
                       return reportError(error);
                     })
@@ -1068,11 +1072,6 @@ $(document).ready(function() {
       var sourcesProperties = sources.map(function(source) {
         return source.sourceProperty;
       });
-      var sourcesObjects = sources.filter(function(source) {
-        return source.sourceType === 'wikibase-item';
-      }).map(function(source) {
-        return source.sourceObject;
-      });
       async.parallel({
         sourcesLabels: function(callback) {
           getEntityLabels(sourcesProperties,
@@ -1151,7 +1150,8 @@ $(document).ready(function() {
                 source.sourcePropertyLabel)
             .replace(/\{\{statement-id\}\}/g, source.sourceId)
             .replace(/\{\{source-object\}\}/g, formattedValue)
-            .replace(/\{\{data-source-object\}\}/g, escapeHtml(source.sourceObject));
+            .replace(/\{\{data-source-object\}\}/g, escapeHtml(source.sourceObject))
+            .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(object.qualifiers)));
         });
       });
 
@@ -1252,7 +1252,7 @@ $(document).ready(function() {
     }
 
     // https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
-    function createClaim(predicate, object) {
+    function createClaim(predicate, object, qualifiers) {
       var value = (tsvValueToJson(object)).value;
       var api = new mw.Api();
       return api.post({
@@ -1263,14 +1263,31 @@ $(document).ready(function() {
         token: mw.user.tokens.get('editToken'),
         value: JSON.stringify(value),
         summary: WIKIDATA_API_COMMENT
+      }).then(function(data) {
+        var qualifierPromises = qualifiers.map(function(qualifier) {
+          var value = (tsvValueToJson(qualifier.qualifierObject)).value;
+          return api.post({
+            action: 'wbsetqualifier',
+            claim: data.claim.id,
+            property: qualifier.qualifierProperty,
+            snaktype: 'value',
+            token: mw.user.tokens.get('editToken'),
+            value: JSON.stringify(value),
+            summary: WIKIDATA_API_COMMENT
+          })
+        });
+        return $.when.apply($, qualifierPromises).then(function() {
+          return data;
+        });
       });
     }
 
     // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
-    function createClaimWithReference(predicate, object, sourceProperty, sourceObject) {
+    function createClaimWithReference(predicate, object, qualifiers,
+      sourceProperty, sourceObject) {
       var value = (tsvValueToJson(object)).value;
       var api = new mw.Api();
-      return createClaim(predicate, object).then(function(data) {
+      return createClaim(predicate, object, qualifiers).then(function(data) {
         var dataValue = tsvValueToJson(sourceObject);
         return api.post({
           action: 'wbsetreference',
