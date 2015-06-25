@@ -351,6 +351,8 @@ $(document).ready(function() {
                 return document.location.reload();
               });
             }
+          } else if (classList.contains('f2w-qualifier')) {
+            return reportError('Saving of qualifiers is not supported yet');
           } else if (classList.contains('f2w-source')) {
             if (classList.contains('f2w-approve')) {
               // Approve source
