@@ -328,19 +328,19 @@ $(document).ready(function() {
               // Approve property
               var predicate = statement.property;
               var object = statement.object;
-              createClaim(predicate, object, function(error, data) {
-                if (error) {
+              createClaim(predicate, object)
+                .fail(function(error) {
                   return reportError(error);
-                }
-                setStatementState(id, STATEMENT_STATES.approved, function() {
-                  debug.log('Approved property statement ' + id);
-                  if (data.pageinfo && data.pageinfo.lastrevid) {
-                    document.location.hash = 'revision=' +
-                        data.pageinfo.lastrevid;
-                  }
-                  return document.location.reload();
+                }).done(function(data) {
+                  setStatementState(id, STATEMENT_STATES.approved, function() {
+                    debug.log('Approved property statement ' + id);
+                    if (data.pageinfo && data.pageinfo.lastrevid) {
+                      document.location.hash = 'revision=' +
+                          data.pageinfo.lastrevid;
+                    }
+                    return document.location.reload();
+                  });
                 });
-              });
             } else if (classList.contains('f2w-reject')) {
               // Reject property
               setStatementState(id, STATEMENT_STATES.wrong, function() {
@@ -384,21 +384,21 @@ $(document).ready(function() {
                     });
                   });
                 } else {
-                  createClaimWithReference(predicate, object, sourceProperty,
-                      sourceObject, function(error, data) {
-                    if (error) {
+                  createClaimWithReference(predicate, object, sourceProperty, sourceObject)
+                    .fail(function(error) {
                       return reportError(error);
-                    }
-                    setStatementState(id, STATEMENT_STATES.approved,
-                        function() {
-                      debug.log('Approved source statement ' + id);
-                      if (data.pageinfo && data.pageinfo.lastrevid) {
-                        document.location.hash = 'revision=' +
-                            data.pageinfo.lastrevid;
-                      }
-                      return document.location.reload();
+                    })
+                    .done(function(data) {
+                      setStatementState(id, STATEMENT_STATES.approved,
+                      function() {
+                        debug.log('Approved source statement ' + id);
+                        if (data.pageinfo && data.pageinfo.lastrevid) {
+                          document.location.hash = 'revision=' +
+                              data.pageinfo.lastrevid;
+                        }
+                        return document.location.reload();
+                      });
                     });
-                  });
                 }
               });
             } else if (classList.contains('f2w-reject')) {
@@ -1252,54 +1252,25 @@ $(document).ready(function() {
     }
 
     // https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
-    function createClaim(predicate, object, callback) {
+    function createClaim(predicate, object) {
       var value = (tsvValueToJson(object)).value;
       var api = new mw.Api();
-      api.get({
-        action:'query',
-        'continue':'',
-        meta:'tokens',
-        format:'json'
-      }).then(function(token) {
-        return api.post({
-          action: 'wbcreateclaim',
-          entity: qid,
-          property: predicate,
-          snaktype: 'value',
-          token: token.query.tokens.csrftoken,
-          value: JSON.stringify(value),
-          summary: WIKIDATA_API_COMMENT
-        });
-      }).done(function(data) {
-        return callback(null, data);
-      }).fail(function(error) {
-        return callback(error);
+      return api.post({
+        action: 'wbcreateclaim',
+        entity: qid,
+        property: predicate,
+        snaktype: 'value',
+        token: mw.user.tokens.get('editToken'),
+        value: JSON.stringify(value),
+        summary: WIKIDATA_API_COMMENT
       });
     }
 
     // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
-    function createClaimWithReference(predicate, object, sourceProperty,
-        sourceObject, callback) {
+    function createClaimWithReference(predicate, object, sourceProperty, sourceObject) {
       var value = (tsvValueToJson(object)).value;
       var api = new mw.Api();
-      var sessionToken;
-      api.get({
-        action:'query',
-        'continue':'',
-        meta:'tokens',
-        format:'json'
-      }).then(function(token) {
-        sessionToken = token.query.tokens.csrftoken;
-        return api.post({
-          action: 'wbcreateclaim',
-          entity: qid,
-          property: predicate,
-          snaktype: 'value',
-          value: JSON.stringify(value),
-          token: sessionToken,
-          summary: WIKIDATA_API_COMMENT
-        });
-      }).then(function(data) {
+      return createClaim(predicate, object).then(function(data) {
         var dataValue = tsvValueToJson(sourceObject);
         return api.post({
           action: 'wbsetreference',
@@ -1314,32 +1285,19 @@ $(document).ready(function() {
               }
             }]
           }),
-          token: sessionToken,
+          token: mw.user.tokens.get('editToken'),
           summary: WIKIDATA_API_COMMENT
         });
-      }).done(function(data) {
-        return callback(null, data);
-      }).fail(function(error) {
-        return callback(error);
       });
     }
 
     // https://www.wikidata.org/w/api.php?action=help&modules=wbgetclaims
     function getClaims(predicate, callback) {
       var api = new mw.Api();
-      var sessionToken;
       api.get({
-        action:'query',
-        'continue':'',
-        meta:'tokens',
-        format:'json'
-      }).then(function(token) {
-        sessionToken = token.query.tokens.csrftoken;
-        return api.get({
-          action: 'wbgetclaims',
-          entity: qid,
-          property: predicate
-        });
+        action: 'wbgetclaims',
+        entity: qid,
+        property: predicate
       }).done(function(data) {
         return callback(null, data.claims[predicate] || []);
       }).fail(function(error) {
@@ -1351,19 +1309,10 @@ $(document).ready(function() {
     function createReference(predicate, object, sourceProperty,
         sourceObject, callback) {
       var api = new mw.Api();
-      var sessionToken;
       api.get({
-        action:'query',
-        'continue':'',
-        meta:'tokens',
-        format:'json'
-      }).then(function(token) {
-        sessionToken = token.query.tokens.csrftoken;
-        return api.get({
-          action: 'wbgetclaims',
-          entity: qid,
-          property: predicate
-        });
+        action: 'wbgetclaims',
+        entity: qid,
+        property: predicate
       }).then(function(data) {
         var index = -1;
         for (var i = 0, lenI = data.claims[predicate].length; i < lenI; i++) {
@@ -1391,7 +1340,7 @@ $(document).ready(function() {
               }
             }]
           }),
-          token: sessionToken,
+          token: mw.user.tokens.get('editToken'),
           summary: WIKIDATA_API_COMMENT
         });
       }).done(function(data) {
