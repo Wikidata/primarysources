@@ -46,7 +46,7 @@ $(document).ready(function() {
 
     var DEBUG = JSON.parse(localStorage.getItem('f2w_debug')) || false;
     var FAKE_OR_RANDOM_DATA =
-        JSON.parse(localStorage.getItem('f2w_debug')) || false;
+        JSON.parse(localStorage.getItem('f2w_fakeOrRandomData')) || false;
 
     var CACHE_EXPIRY = 24 * 60 * 60 * 1000;
 
@@ -519,7 +519,7 @@ $(document).ready(function() {
           format: STATEMENT_FORMAT
         });
         freebaseEntityData.push({
-          statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+00000002015-02-14T11:13:00Z/13',
+          statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+00000002015-02-14T00:00:00Z/11',
           state: STATEMENT_STATES.unapproved,
           id: 0,
           format: STATEMENT_FORMAT
