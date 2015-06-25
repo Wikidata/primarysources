@@ -115,13 +115,14 @@ $(document).ready(function() {
                   '</span>' +
                   ']' +
                 '</span>' +
+                /* TODO: Broken by the last changes.
                 '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                   '[' +
                   '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
                     '<a class="f2w-button f2w-source f2w-edit" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}" data-qualifiers="{{data-qualifiers}}">edit</a>' +
                   '</span>' +
                   ']' +
-                '</span>' +
+                '</span>' +*/
                 '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                   '[' +
                   '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
