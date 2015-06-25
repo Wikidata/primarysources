@@ -46,7 +46,7 @@ $(document).ready(function() {
 
     var DEBUG = JSON.parse(localStorage.getItem('f2w_debug')) || false;
     var FAKE_OR_RANDOM_DATA =
-        JSON.parse(localStorage.getItem('f2w_fakeOrRandomData')) || false;
+        JSON.parse(localStorage.getItem('f2w_debug')) || false;
 
     var CACHE_EXPIRY = 24 * 60 * 60 * 1000;
 
@@ -549,7 +549,7 @@ $(document).ready(function() {
           format: STATEMENT_FORMAT
         });
         freebaseEntityData.push({
-          statement: qid + '\tP569\t+00000001840-01-01T00:00:00Z/11',
+          statement: qid + '\tP569\t+00000001840-01-01T00:00:00Z/11\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
           state: STATEMENT_STATES.unapproved,
           id: 0,
           format: STATEMENT_FORMAT
@@ -623,7 +623,7 @@ $(document).ready(function() {
             var sourcesStringLen = sourcesString.length;
             for (var i = 0; i < sourcesStringLen; i = i + 2) {
               sources.push({
-                sourceProperty: sourcesString[i],
+                sourceProperty: sourcesString[i].replace(/^S/, 'P'),
                 sourceObject: sourcesString[i + 1],
                 sourceType: (tsvValueToJson(sourcesString[i + 1])).type,
                 sourceId: id
@@ -812,12 +812,18 @@ $(document).ready(function() {
               var wikidataObject = wikidataClaims[property][i];
               if (wikidataObject.mainsnak.snaktype === 'value') {
                 existingWikidataObjects
-                   [jsonToTsvValue(wikidataObject.mainsnak.datavalue)] = 1;
+                   [jsonToTsvValue(wikidataObject.mainsnak.datavalue)] =
+                   wikidataObject;
               }
             }
             if (existingWikidataObjects[freebaseValue]) {
               // Existing object, maybe new sources?
-              prepareNewSources(property, freebaseObject, language);
+              prepareNewSources(
+                  property,
+                  freebaseObject,
+                  language,
+                  existingWikidataObjects[freebaseValue]
+              );
             } else {
               // New object
               prepareNewWikidataStatement(property, freebaseObject, language);
@@ -846,8 +852,9 @@ $(document).ready(function() {
     //Normalize year size to 16 digits
     function normalizeTime(time) {
       var matches = /^([-+])(\d+)\-(.*)$/.exec(time);
-      var year = ('00000000000' + matches[2]).slice(-11);
-      return matches[1] + year + '-' + matches[3];
+      return matches[1] +
+             ('00000000000' + matches[2]).slice(-11) +
+             '-' + matches[3];
     }
 
     function jsonToTsvValue(dataValue) {
@@ -879,9 +886,8 @@ $(document).ready(function() {
       getQualifiersAndSourcesLabels(object.qualifiers, object.sources,
           function(err, results) {
         object.sources.forEach(function(source) {
-          var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
           source.sourcePropertyLabel = results
-              .sourcesLabels[sourceProperty].labels[language].value;
+              .sourcesLabels[source.sourceProperty].labels[language].value;
         });
         object.qualifiers.forEach(function(qualifier) {
           var qualifierProperty = qualifier.qualifierProperty;
@@ -899,31 +905,55 @@ $(document).ready(function() {
       });
     }
 
-    function prepareNewSources(property, object, language) {
+    function prepareNewSources(property, object, language, wikidataStatement) {
+      var wikidataSources = ('references' in wikidataStatement) ?
+                  wikidataStatement.references :
+                  [];
+      var existingSources = {};
+      for (var i in wikidataSources) {
+        var wikidataObject = wikidataSources[i];
+        var snakBag = wikidataSources[i].snaks;
+        for (var prop in snakBag) {
+          if (!(prop in existingSources)) {
+            existingSources[prop] = {};
+          }
+          for (var j in snakBag[prop]) {
+            var snak = snakBag[prop][j];
+            if (snak.snaktype === 'value') {
+              existingSources[prop][jsonToTsvValue(snak.datavalue)] = true;
+            }
+          }
+        }
+      }
+      //Filter already present sources
+      object.sources = object.sources.filter(function(source) {
+        return !existingSources[source.sourceProperty] ||
+               !existingSources[source.sourceProperty][source.sourceObject];
+      });
+
       getSourcesLabels(object.sources, function(err, labels) {
         object.sources.forEach(function(source) {
-          var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
           source.sourcePropertyLabel = labels
-              .sourcesLabels[sourceProperty].labels[language].value;
+              .sourcesLabels[source.sourceProperty].labels[language].value;
         });
-        return createNewSources(object.sources, property, object);
+        return createNewSources(
+            object.sources,
+            property,
+            object,
+            wikidataStatement.id
+        );
       });
     }
 
-    function createNewSources(sources, property, object) {
+    function createNewSources(sources, property, object, statementId) {
       getSourcesHtml(sources, property, object).then(function(html) {
         var fragment = document.createDocumentFragment();
         var child = document.createElement('div');
         child.innerHTML = html;
         fragment.appendChild(child);
         // Need to find the correct reference
-        var container = document.getElementById(property)
-            .querySelector('a[href="/wiki/Property:' + property + '"]');
-        while (!container.classList.contains('wikibase-statementgroupview')) {
-          container = container.parentNode;
-        }
-        container = container.querySelector('a[title="' + object.object + '"]')
-            .parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+        var container = document
+            .getElementsByClassName('wikibase-statement-' + statementId)[0];
         // Open the references toggle
         var toggler = container.querySelector('a.ui-toggler');
         if (toggler.classList.contains('ui-toggler-toggle-collapsed')) {
@@ -982,9 +1012,8 @@ $(document).ready(function() {
                 return;
               }
               object.sources.forEach(function(source) {
-                var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
                 source.sourcePropertyLabel = results
-                    .sourcesLabels[sourceProperty].labels[lang].value;
+                    .sourcesLabels[source.sourceProperty].labels[lang].value;
               });
               object.qualifiers.forEach(function(qualifier) {
                 var qualifierProperty = qualifier.qualifierProperty;
@@ -1006,7 +1035,7 @@ $(document).ready(function() {
         return qualifier.qualifierProperty;
       });
       var sourcesProperties = sources.map(function(source) {
-        return source.sourceProperty.replace(/^S/, 'P');
+        return source.sourceProperty;
       });
       async.parallel({
         qualifiersLabels: function(callback) {
@@ -1040,7 +1069,7 @@ $(document).ready(function() {
 
     function getSourcesLabels(sources, callback) {
       var sourcesProperties = sources.map(function(source) {
-        return source.sourceProperty.replace(/^S/, 'P');
+        return source.sourceProperty;
       });
       var sourcesObjects = sources.filter(function(source) {
         return source.sourceType === 'wikibase-item';
@@ -1117,10 +1146,8 @@ $(document).ready(function() {
       var sourcePromises = sources.map(function(source) {
         return getValueHtml(source.sourceObject).then(function(formattedValue) {
           return HTML_TEMPLATES.sourceHtml
-            .replace(/\{\{source-property\}\}/g,
-                source.sourceProperty.replace(/^S/, 'P'))
-            .replace(/\{\{data-source-property\}\}/g,
-                source.sourceProperty.replace(/^S/, 'P'))
+            .replace(/\{\{source-property\}\}/g, source.sourceProperty)
+            .replace(/\{\{data-source-property\}\}/g, source.sourceProperty)
             .replace(/\{\{data-property\}\}/g, property)
             .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
             .replace(/\{\{source-property-label\}\}/g,
