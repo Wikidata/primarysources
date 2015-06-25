@@ -608,7 +608,8 @@ $(document).ready(function() {
               qualifiers.push({
                 qualifierProperty: qualifiersString[i],
                 qualifierObject: qualifiersString[i + 1],
-                qualifierId: id
+                qualifierId: id,
+                key: qualifiersString[i] + '\t' + qualifiersString[i + 1]
               });
             }
           }
@@ -627,7 +628,8 @@ $(document).ready(function() {
                 sourceProperty: sourcesString[i].replace(/^S/, 'P'),
                 sourceObject: sourcesString[i + 1],
                 sourceType: (tsvValueToJson(sourcesString[i + 1])).type,
-                sourceId: id
+                sourceId: id,
+                key: sourcesString[i] + '\t' + sourcesString[i + 1]
               });
             }
             // Filter out blacklisted source URLs
@@ -661,12 +663,30 @@ $(document).ready(function() {
             sources: []
           };
         }
+
         freebaseClaims[predicate][object].qualifiers =
-            freebaseClaims[predicate][object].qualifiers.concat(qualifiers);
+          arrayOfObjectWithKeyUnique(
+            freebaseClaims[predicate][object].qualifiers.concat(qualifiers)
+          );
         freebaseClaims[predicate][object].sources =
-            freebaseClaims[predicate][object].sources.concat(sources);
+          arrayOfObjectWithKeyUnique(
+            freebaseClaims[predicate][object].sources.concat(sources)
+          );
       });
       return freebaseClaims;
+    }
+
+    function arrayOfObjectWithKeyUnique(array) {
+      var table = {};
+      for (var i in array) {
+        table[array[i].key] = array[i];
+      }
+
+      var array = [];
+      for (var i in table) {
+        array.push(table[i]);
+      }
+      return array;
     }
 
     function computeCoordinatesPrecision(latitude, longitude) {
