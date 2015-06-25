@@ -177,9 +177,7 @@ $(document).ready(function() {
                   '<div class="wikibase-snakview-value-container" dir="auto">' +
                     '<div class="wikibase-snakview-typeselector"></div>' +
                     '<div class="wikibase-snakview-value wikibase-snakview-variation-valuesnak" style="height: auto;">' +
-                      '<div class="valueview valueview-instaticmode" aria-disabled="false">' +
-                        '<a title="{{object}}" href="/wiki/{{object}}">{{object-label}}</a>' +
-                      '</div>' +
+                      '<div class="valueview valueview-instaticmode" aria-disabled="false">{{object}}</div>' +
                     '</div>' +
                   '</div>' +
                 '</div>' +
@@ -880,12 +878,6 @@ $(document).ready(function() {
             var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
             source.sourcePropertyLabel = results
                 .sourcesLabels[sourceProperty].labels[language].value;
-            var sourceObject = source.sourceObject;
-            if (source.sourceType === 'wikibase-item') {
-              var sourceObject = source.sourceObject;
-              source.sourceObjectLabel = results
-                  .sourcesObjectsLabels[sourceObject].labels[language].value;
-            }
           });
           object.qualifiers.forEach(function(qualifier) {
             var qualifierProperty = qualifier.qualifierProperty;
@@ -914,58 +906,55 @@ $(document).ready(function() {
           var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
           source.sourcePropertyLabel = labels
               .sourcesLabels[sourceProperty].labels[language].value;
-          var sourceObject = source.sourceObject;
-          if (source.sourceType === 'wikibase-item') {
-            var sourceObject = source.sourceObject;
-            source.sourceObjectLabel = labels
-                .sourcesObjectsLabels[sourceObject].labels[language].value;
-          }
         });
         return createNewSources(object.sources, property, object);
       });
     }
 
     function createNewSources(sources, property, object) {
-      var html = getSourcesHtml(sources, property, object);
-      var fragment = document.createDocumentFragment();
-      var child = document.createElement('div');
-      child.innerHTML = html;
-      fragment.appendChild(child);
-      // Need to find the correct reference
-      var container = document.getElementById(property)
-          .querySelector('a[href="/wiki/Property:' + property + '"]');
-      while (!container.classList.contains('wikibase-statementgroupview')) {
-        container = container.parentNode;
-      }
-      container = container.querySelector('a[title="' + object.object + '"]')
-          .parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
-      // Open the references toggle
-      var toggler = container.querySelector('a.ui-toggler');
-      if (toggler.classList.contains('ui-toggler-toggle-collapsed')) {
-        toggler.click();
-      }
-      var label = toggler.querySelector('.ui-toggler-label');
-      var oldLabel =
-          parseInt(label.textContent.replace(/.*?(\d+).*?/, '$1'), 10);
-      // Update the label
-      var newLabel = oldLabel += sources.length;
-      newLabel = newLabel === 1 ? '1 reference' : newLabel + ' references';
-      label.textContent = newLabel;
-      // Append the references
-      container = container.querySelector('.wikibase-statementview-references')
-          .querySelector('.wikibase-listview');
-      container.appendChild(fragment);
+      getSourcesHtml(sources, property, object).then(function(html) {
+        var fragment = document.createDocumentFragment();
+        var child = document.createElement('div');
+        child.innerHTML = html;
+        fragment.appendChild(child);
+        // Need to find the correct reference
+        var container = document.getElementById(property)
+            .querySelector('a[href="/wiki/Property:' + property + '"]');
+        while (!container.classList.contains('wikibase-statementgroupview')) {
+          container = container.parentNode;
+        }
+        container = container.querySelector('a[title="' + object.object + '"]')
+            .parentNode.parentNode.parentNode.parentNode.parentNode.parentNode;
+        // Open the references toggle
+        var toggler = container.querySelector('a.ui-toggler');
+        if (toggler.classList.contains('ui-toggler-toggle-collapsed')) {
+          toggler.click();
+        }
+        var label = toggler.querySelector('.ui-toggler-label');
+        var oldLabel =
+            parseInt(label.textContent.replace(/.*?(\d+).*?/, '$1'), 10);
+        // Update the label
+        var newLabel = oldLabel += sources.length;
+        newLabel = newLabel === 1 ? '1 reference' : newLabel + ' references';
+        label.textContent = newLabel;
+        // Append the references
+        container = container
+            .querySelector('.wikibase-statementview-references')
+            .querySelector('.wikibase-listview');
+        container.appendChild(fragment);
+      });
     }
 
     function createNewStatement(property, object) {
-      var html = getStatementHtml(property, object);
-      var fragment = document.createDocumentFragment();
-      var child = document.createElement('div');
-      child.innerHTML = html;
-      fragment.appendChild(child.firstChild);
-      var container = document.getElementById(property)
-          .querySelector('.wikibase-statementlistview-listview');
-      container.appendChild(fragment);
+      getStatementHtml(property, object).then(function(html) {
+        var fragment = document.createDocumentFragment();
+        var child = document.createElement('div');
+        child.innerHTML = html;
+        fragment.appendChild(child.firstChild);
+        var container = document.getElementById(property)
+            .querySelector('.wikibase-statementlistview-listview');
+        container.appendChild(fragment);
+      });
     }
 
     function createNewClaim(property, propertyLabel, claims, lang) {
@@ -1003,11 +992,6 @@ $(document).ready(function() {
                   var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
                   source.sourcePropertyLabel = results
                       .sourcesLabels[sourceProperty].labels[lang].value;
-                  if (source.sourceType === 'wikibase-item') {
-                    var sourceObject = source.sourceObject;
-                    source.sourceObjectLabel = results
-                        .sourcesObjectsLabels[sourceObject].labels[lang].value;
-                  }
                 });
                 object.qualifiers.forEach(function(qualifier) {
                   var qualifierProperty = qualifier.qualifierProperty;
@@ -1048,11 +1032,6 @@ $(document).ready(function() {
           getEntityLabels(sourcesProperties, function(err, sourcesLabels) {
             return callback(null, sourcesLabels);
           });
-        },
-        sourcesObjectsLabels: function(callback) {
-          getEntityLabels(sourcesObjects, function(err, sourcesObjectsLabels) {
-            return callback(null, sourcesObjectsLabels);
-          });
         }
       }, function(err, results) {
         return callback(null, results);
@@ -1087,11 +1066,6 @@ $(document).ready(function() {
               function(err, sourcesLabels) {
             return callback(null, sourcesLabels);
           });
-        },
-        sourcesObjectsLabels: function(callback) {
-          getEntityLabels(sourcesObjects, function(err, sourcesObjectsLabels) {
-            return callback(null, sourcesObjectsLabels);
-          });
         }
       }, function(err, results) {
         return callback(null, results);
@@ -1102,21 +1076,24 @@ $(document).ready(function() {
       var container = document
           .querySelector('.wikibase-statementgrouplistview')
           .querySelector('.wikibase-listview');
-      var statementViewsHtml = '';
-      newClaim.objects.forEach(function(object) {
-        statementViewsHtml += getStatementHtml(newClaim.property, object);
+      var statementPromises = newClaim.objects.map(function(object) {
+        return getStatementHtml(newClaim.property, object);
       });
-      var mainHtml = HTML_TEMPLATES.mainHtml
-          .replace(/\{\{statement-views\}\}/g, statementViewsHtml)
-          .replace(/\{\{property\}\}/g, newClaim.property)
-          .replace(/\{\{data-property\}\}/g, newClaim.property)
-          .replace(/\{\{property-label\}\}/g, newClaim.propertyLabel);
 
-      var fragment = document.createDocumentFragment();
-      var child = document.createElement('div');
-      child.innerHTML = mainHtml;
-      fragment.appendChild(child.firstChild);
-      container.appendChild(fragment);
+      $.when.apply($, statementPromises).then(function() {
+        var statementViewsHtml = Array.prototype.slice.call(arguments).join('');
+        var mainHtml = HTML_TEMPLATES.mainHtml
+            .replace(/\{\{statement-views\}\}/g, statementViewsHtml)
+            .replace(/\{\{property\}\}/g, newClaim.property)
+            .replace(/\{\{data-property\}\}/g, newClaim.property)
+            .replace(/\{\{property-label\}\}/g, newClaim.propertyLabel);
+
+        var fragment = document.createDocumentFragment();
+        var child = document.createElement('div');
+        child.innerHTML = mainHtml;
+        fragment.appendChild(child.firstChild);
+        container.appendChild(fragment);
+      });
     }
 
     function escapeHtml(html) {
@@ -1127,79 +1104,93 @@ $(document).ready(function() {
           .replace(/\"/g, '&quot;');
     }
 
+    function getValueHtml(value) {
+      var parsed = tsvValueToJson(value);
+      var dataValue = {
+          type: getValueTypeFromDataValueType(parsed.type),
+          value: parsed.value
+        };
+      var options = {
+          'lang': mw.language.getFallbackLanguageChain()[0] || 'en'
+        };
+
+      var api = new mw.Api();
+      return api.get({
+        action:'wbformatvalue',
+        generate:'text/html',
+        datavalue:JSON.stringify(dataValue),
+        datatype:parsed.type,
+        options:JSON.stringify(options)
+      }).then(function(result) {
+        return result.result;
+      });
+    }
+
     function getSourcesHtml(sources, property, object) {
-      var sourcesHtml = '';
-      sources.forEach(function(source) {
-        var localSourceHtml = HTML_TEMPLATES.sourceHtml
+      var sourcePromises = sources.map(function(source) {
+        return getValueHtml(source.sourceObject).then(function(formattedValue) {
+          return HTML_TEMPLATES.sourceHtml
             .replace(/\{\{source-property\}\}/g,
-                  source.sourceProperty.replace(/^S/, 'P'))
+                source.sourceProperty.replace(/^S/, 'P'))
             .replace(/\{\{data-source-property\}\}/g,
-                  source.sourceProperty.replace(/^S/, 'P'))
+                source.sourceProperty.replace(/^S/, 'P'))
             .replace(/\{\{data-property\}\}/g, property)
             .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
             .replace(/\{\{source-property-label\}\}/g,
                 source.sourcePropertyLabel)
-            .replace(/\{\{statement-id\}\}/g, source.sourceId);
-        if (source.sourceType === 'url') {
-          var url = source.sourceObject.replace(/^"/, '').replace(/"$/, '');
-          localSourceHtml = localSourceHtml
-              .replace(/\{\{source-object\}\}/g,
-                    '<a target="_blank" rel="nofollow" class="external free" ' +
-                    'href="' + url + '" ' +
-                    'id="f2w-' + source.sourceId + '">' +
-                    url +
-                    '</a>');
-        } else if (source.sourceType === 'wikibase-item') {
-          localSourceHtml = localSourceHtml
-              .replace(/\{\{source-object\}\}/g,
-                  '<a href="/wiki/' + source.sourceObject + '" ' +
-                  'title="' + source.sourceObject + '">' +
-                  source.sourceObjectLabel + '</a>');
-        } else {
-          localSourceHtml = localSourceHtml
-              .replace(/\{\{source-object\}\}/g, source.sourceObject);
-        }
-        localSourceHtml = localSourceHtml
+            .replace(/\{\{statement-id\}\}/g, source.sourceId)
+            .replace(/\{\{source-object\}\}/g, formattedValue)
             .replace(/\{\{data-source-object\}\}/g, escapeHtml(source.sourceObject));
-        sourcesHtml += localSourceHtml;
+        });
       });
-      return sourcesHtml;
+
+      return $.when.apply($, sourcePromises).then(function() {
+        return Array.prototype.slice.call(arguments).join('');
+      });
     }
 
     function getQualifiersHtml(qualifiers) {
-      var qualifiersHtml = '';
-      qualifiers.forEach(function(qualifier) {
-        var localQualifierHtml = HTML_TEMPLATES.qualifierHtml
+      var qualifierPromises = qualifiers.map(function(qualifier) {
+        return getValueHtml(qualifier.qualifierObject).then(
+          function(formattedValue) {
+          return HTML_TEMPLATES.qualifierHtml
             .replace(/\{\{qualifier-property\}\}/g,
-                  qualifier.qualifierProperty)
+                qualifier.qualifierProperty)
             .replace(/\{\{data-qualifier-property\}\}/g,
-                  qualifier.qualifierProperty)
+                qualifier.qualifierProperty)
             .replace(/\{\{qualifier-property-label\}\}/g,
-                qualifier.qualifierPropertyLabel)
+              qualifier.qualifierPropertyLabel)
             .replace(/\{\{qualifier-object\}\}/g,
-                qualifier.qualifierObject)
+                formattedValue)
             .replace(/\{\{data-qualifier-object\}\}/g,
-                escapeHtml(qualifier.qualifierObject));
-        qualifiersHtml += localQualifierHtml;
+              escapeHtml(qualifier.qualifierObject));
+        });
       });
-      return qualifiersHtml;
+
+      return $.when.apply($, qualifierPromises).then(function() {
+        return Array.prototype.slice.call(arguments).join('');
+      });
     }
 
     function getStatementHtml(property, object) {
-      var sourcesHtml = getSourcesHtml(object.sources, property, object);
-      var qualifiersHtml = getQualifiersHtml(object.qualifiers);
-      return HTML_TEMPLATES.statementViewHtml
-          .replace(/\{\{object\}\}/g, escapeHtml(object.object))
+      return $.when(
+          getQualifiersHtml(object.qualifiers),
+          getSourcesHtml(object.sources, property, object),
+          getValueHtml(object.object)
+      ).then(function(qualifiersHtml, sourcesHtml, formattedValue) {
+        return HTML_TEMPLATES.statementViewHtml
+          .replace(/\{\{object\}\}/g, formattedValue)
           .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
           .replace(/\{\{data-property\}\}/g, property)
           .replace(/\{\{object-label\}\}/g, escapeHtml(object.objectLabel))
           .replace(/\{\{references\}\}/g,
-              object.sources.length === 1 ?
-                  object.sources.length + ' reference' :
-                  object.sources.length + ' references')
+            object.sources.length === 1 ?
+                object.sources.length + ' reference' :
+                object.sources.length + ' references')
           .replace(/\{\{sources\}\}/g, sourcesHtml)
           .replace(/\{\{qualifiers\}\}/g, qualifiersHtml)
           .replace(/\{\{statement-id\}\}/g, object.id);
+      });
     }
 
     function getWikidataEntityData(qid, callback) {
