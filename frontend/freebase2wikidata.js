@@ -843,12 +843,20 @@ $(document).ready(function() {
       });
     }
 
+    //Normalize year size to 16 digits
+    function normalizeTime(time) {
+      var matches = /^([-+])(\d+)\-(.*)$/.exec(time);
+      var year = ('00000000000' + matches[2]).slice(-11);
+      return matches[1] + year + '-' + matches[3];
+    }
+
     function jsonToTsvValue(dataValue) {
       switch (dataValue.type) {
       case 'quantity':
         return dataValue.value.amount;
       case 'time':
-        return dataValue.value.time + '/' + dataValue.value.precision;
+        return normalizeTime(dataValue.value.time) +
+               '/' + dataValue.value.precision;
       case 'globecoordinate':
         return '@' + dataValue.value.latitude + '/' + dataValue.value.longitude;
       case 'monolingualtext':
