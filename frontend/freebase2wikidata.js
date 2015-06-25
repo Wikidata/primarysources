@@ -483,7 +483,7 @@ $(document).ready(function() {
 
       var blacklistedSourceUrlsLen = blacklistedSourceUrls.length;
       var isBlacklisted = function(url) {
-        url = url.toString().replace(/^["']/, '').replace(/["']$/, '');
+        url = url.toString();
         for (var i = 0; i < blacklistedSourceUrlsLen; i++) {
           try {
             if ((new URL(url)).host.indexOf(blacklistedSourceUrls[i]) !== -1) {
@@ -607,8 +607,6 @@ $(document).ready(function() {
               qualifiers.push({
                 qualifierProperty: qualifiersString[i],
                 qualifierObject: qualifiersString[i + 1],
-                qualifierType: (tsvValueToJson(qualifiersString[i + 1]))
-                    .type,
                 qualifierId: id
               });
             }
@@ -657,7 +655,6 @@ $(document).ready(function() {
         freebaseClaims[predicate] = freebaseClaims[predicate] || {};
         if (!freebaseClaims[predicate][object]) {
           freebaseClaims[predicate][object] = {
-            valueType: (tsvValueToJson(object)).type,
             id: id,
             qualifiers: [],
             sources: []
@@ -871,32 +868,26 @@ $(document).ready(function() {
     }
 
     function prepareNewWikidataStatement(property, object, language) {
-      getEntityLabels([object.object], function(err, labels) {
-        getQualifiersAndSourcesLabels(object.qualifiers, object.sources,
-            function(err, results) {
-          object.sources.forEach(function(source) {
-            var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
-            source.sourcePropertyLabel = results
-                .sourcesLabels[sourceProperty].labels[language].value;
-          });
-          object.qualifiers.forEach(function(qualifier) {
-            var qualifierProperty = qualifier.qualifierProperty;
-            qualifier.qualifierPropertyLabel = results
-                .qualifiersLabels[qualifierProperty].labels[language].value;
-          });
-
-          var freebaseObject = {
-            object: object.object,
-            id: object.id,
-            objectLabel: labels && labels[object.object] ?
-                labels[object.object].labels[language].value :
-                object.object.replace(/^"/, '').replace(/"$/, ''),
-            objectType: object.valueType,
-            qualifiers: object.qualifiers,
-            sources: object.sources
-          };
-          return createNewStatement(property, freebaseObject);
+      getQualifiersAndSourcesLabels(object.qualifiers, object.sources,
+          function(err, results) {
+        object.sources.forEach(function(source) {
+          var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
+          source.sourcePropertyLabel = results
+              .sourcesLabels[sourceProperty].labels[language].value;
         });
+        object.qualifiers.forEach(function(qualifier) {
+          var qualifierProperty = qualifier.qualifierProperty;
+          qualifier.qualifierPropertyLabel = results
+              .qualifiersLabels[qualifierProperty].labels[language].value;
+        });
+
+        var freebaseObject = {
+          object: object.object,
+          id: object.id,
+          qualifiers: object.qualifiers,
+          sources: object.sources
+        };
+        return createNewStatement(property, freebaseObject);
       });
     }
 
@@ -964,49 +955,42 @@ $(document).ready(function() {
         objects: []
       };
       var objectsLength = Object.keys(claims).length;
-      getEntityLabels(Object.keys(claims), function(err, objectLabels) {
-        var i = 0;
-        for (var object in claims) {
-          var objectType = claims[object].valueType;
-          var id = claims[object].id;
-          var sources = claims[object].sources;
-          var qualifiers = claims[object].qualifiers;
-          newClaim.objects.push({
-            object: object,
-            id: id,
-            objectLabel: objectLabels && objectLabels[object] ?
-                objectLabels[object].labels[lang].value :
-                object.replace(/^"/, '').replace(/"$/, ''),
-            objectType: objectType,
-            qualifiers: qualifiers,
-            sources: sources
-          });
-          (function(currentNewClaim, currentObject) {
-            getQualifiersAndSourcesLabels(qualifiers, sources,
-                function(err, results) {
-              currentNewClaim.objects.forEach(function(object) {
-                if (object.object !== currentObject) {
-                  return;
-                }
-                object.sources.forEach(function(source) {
-                  var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
-                  source.sourcePropertyLabel = results
-                      .sourcesLabels[sourceProperty].labels[lang].value;
-                });
-                object.qualifiers.forEach(function(qualifier) {
-                  var qualifierProperty = qualifier.qualifierProperty;
-                  qualifier.qualifierPropertyLabel = results
-                      .qualifiersLabels[qualifierProperty].labels[lang].value;
-                });
-              });
-              i++;
-              if (i === objectsLength) {
-                return createNewClaimList(currentNewClaim);
+      var i = 0;
+      for (var object in claims) {
+        var id = claims[object].id;
+        var sources = claims[object].sources;
+        var qualifiers = claims[object].qualifiers;
+        newClaim.objects.push({
+          object: object,
+          id: id,
+          qualifiers: qualifiers,
+          sources: sources
+        });
+        (function(currentNewClaim, currentObject) {
+          getQualifiersAndSourcesLabels(qualifiers, sources,
+              function(err, results) {
+            currentNewClaim.objects.forEach(function(object) {
+              if (object.object !== currentObject) {
+                return;
               }
+              object.sources.forEach(function(source) {
+                var sourceProperty = source.sourceProperty.replace(/^S/, 'P');
+                source.sourcePropertyLabel = results
+                    .sourcesLabels[sourceProperty].labels[lang].value;
+              });
+              object.qualifiers.forEach(function(qualifier) {
+                var qualifierProperty = qualifier.qualifierProperty;
+                qualifier.qualifierPropertyLabel = results
+                    .qualifiersLabels[qualifierProperty].labels[lang].value;
+              });
             });
-          })(newClaim, object);
-        }
-      });
+            i++;
+            if (i === objectsLength) {
+              return createNewClaimList(currentNewClaim);
+            }
+          });
+        })(newClaim, object);
+      }
     }
 
     function getQualifiersAndSourcesLabels(qualifiers, sources, callback) {
@@ -1015,11 +999,6 @@ $(document).ready(function() {
       });
       var sourcesProperties = sources.map(function(source) {
         return source.sourceProperty.replace(/^S/, 'P');
-      });
-      var sourcesObjects = sources.filter(function(source) {
-        return source.sourceType === 'wikibase-item';
-      }).map(function(source) {
-        return source.sourceObject;
       });
       async.parallel({
         qualifiersLabels: function(callback) {
@@ -1182,7 +1161,6 @@ $(document).ready(function() {
           .replace(/\{\{object\}\}/g, formattedValue)
           .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
           .replace(/\{\{data-property\}\}/g, property)
-          .replace(/\{\{object-label\}\}/g, escapeHtml(object.objectLabel))
           .replace(/\{\{references\}\}/g,
             object.sources.length === 1 ?
                 object.sources.length + ' reference' :
