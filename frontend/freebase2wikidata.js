@@ -97,9 +97,6 @@ $(document).ready(function() {
                       '<div class="valueview valueview-instaticmode" aria-disabled="false">' +
                         '{{qualifier-object}}' +
                       '</div>' +
-                      '[<a class="f2w-button f2w-qualifier f2w-approve" href="#" data-statement-id="{{statement-id}}" data-qualifier-property="{{data-qualifier-property}}" data-qualifier-object="{{data-qualifier-object}}">approve</a>] ' +
-                      '[<a class="f2w-button f2w-qualifier f2w-edit" href="#" data-statement-id="{{statement-id}}" data-qualifier-property="{{data-qualifier-property}}" data-qualifier-object="{{data-qualifier-object}}">edit</a>] ' +
-                      '[<a class="f2w-button f2w-qualifier f2w-reject" href="#" data-statement-id="{{statement-id}}" data-qualifier-property="{{data-qualifier-property}}" data-qualifier-object="{{data-qualifier-object}}">reject</a>] qualifier' +
                     '</div>' +
                   '</div>' +
                 '</div>' +
@@ -192,14 +189,14 @@ $(document).ready(function() {
               '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
                 '[' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                  '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}">approve</a>' +
+                  '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}">approve</a>' +
                 '</span>' +
                 ']' +
               '</span>' +
               '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
                 '[' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                  '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}">reject</a>' +
+                  '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}">reject</a>' +
                 '</span>' +
                 '] property' +
               '</span>' +
@@ -351,8 +348,6 @@ $(document).ready(function() {
                 return document.location.reload();
               });
             }
-          } else if (classList.contains('f2w-qualifier')) {
-            return reportError('Saving of qualifiers is not supported yet');
           } else if (classList.contains('f2w-source')) {
             if (classList.contains('f2w-approve')) {
               // Approve source
@@ -1177,9 +1172,7 @@ $(document).ready(function() {
             .replace(/\{\{qualifier-property-label\}\}/g,
               qualifier.qualifierPropertyLabel)
             .replace(/\{\{qualifier-object\}\}/g,
-                formattedValue)
-            .replace(/\{\{data-qualifier-object\}\}/g,
-              escapeHtml(qualifier.qualifierObject));
+                formattedValue);
         });
       });
 
@@ -1204,7 +1197,8 @@ $(document).ready(function() {
                 object.sources.length + ' references')
           .replace(/\{\{sources\}\}/g, sourcesHtml)
           .replace(/\{\{qualifiers\}\}/g, qualifiersHtml)
-          .replace(/\{\{statement-id\}\}/g, object.id);
+          .replace(/\{\{statement-id\}\}/g, object.id)
+          .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(object.qualifiers)));
       });
     }
 
