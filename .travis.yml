@@ -13,9 +13,8 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - gcc-4.8
-    - g++-4.8
-    - libboost-all-dev
+    - gcc-4.9
+    - g++-4.9
 
 cache:
   apt: true
@@ -23,17 +22,23 @@ cache:
   - download
   - cppcms-1.0.5
   - cppdb-0.3.1
+  - boost_1_56_0
 
 before_install:
   - mkdir download && cd download
-  - if [ ! -f cppcms-1.0.5.tar.bz2 ]; then wget http://downloads.sourceforge.net/project/cppcms/cppcms/1.0.5/cppcms-1.0.5.tar.bz2; fi
-  - if [ ! -f cppdb-0.3.1.tar.bz2 ]; then wget http://downloads.sourceforge.net/project/cppcms/cppdb/0.3.1/cppdb-0.3.1.tar.bz2; fi
+  - if [ ! -f cppcms-1.0.5.tar.bz2 ]; then wget --no-verbose http://downloads.sourceforge.net/project/cppcms/cppcms/1.0.5/cppcms-1.0.5.tar.bz2; fi
+  - if [ ! -f cppdb-0.3.1.tar.bz2 ]; then wget --no-verbose http://downloads.sourceforge.net/project/cppcms/cppdb/0.3.1/cppdb-0.3.1.tar.bz2; fi
+  - if [ ! -f boost_1_56_0.tar.bz2 ]; then wget --no-verbose http://downloads.sourceforge.net/project/boost/boost/1.56.0/boost_1_56_0.tar.bz2; fi
   - cd ..
   - if [ ! -d cppdb-0.3.1 ]; then tar xjf download/cppdb-0.3.1.tar.bz2; fi
   - if [ ! -d cppcms-1.0.5 ]; then tar xjf download/cppcms-1.0.5.tar.bz2; fi
+  - if [ ! -d boost_1_56_0 ]; then tar xjf download/boost_1_56_0.tar.bz2; fi
 
 install:
-  - export CXX="g++-4.8" CC="gcc-4.8"
+  - export CXX="g++-4.9" CC="gcc-4.9"
+  - (cd boost_1_56_0; ./bootstrap.sh --with-libraries=multiprecision,iostreams,regex)
+  - (cd boost_1_56_0; sudo ./b2 threading=multi --prefix=/usr/local -d0 install)
+  - cd ..
   - mkdir -p cppcms-1.0.5/build && cd cppcms-1.0.5/build
   - cmake .. && make && sudo make install
   - cd ../..
