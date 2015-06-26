@@ -1,1 +1,1 @@
-script: sh -c 'cd backend && cmake --build && make test
+script: sh -c 'cd backend && cmake --build && make test'
