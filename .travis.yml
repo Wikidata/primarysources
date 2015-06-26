@@ -2,12 +2,12 @@ before_install:
   - wget http://downloads.sourceforge.net/project/cppcms/cppcms/1.0.5/cppcms-1.0.5.tar.bz2
   - tar xjf cppcms-1.0.5.tar.bz2
   - mkdir -p cppcms-1.0.5/build && cd cppcms-1.0.5/build
-  - cmake .. && make && make install
+  - cmake .. && make && sudo make install
   - cd ../..
   - wget http://downloads.sourceforge.net/project/cppcms/cppdb/0.3.1/cppdb-0.3.1.tar.bz2
   - tar xjf cppdb-0.3.1.tar.bz2
   - mkdir -p cppdb-0.3.1/build && cd cppdb-0.3.1/build
-  - cmake .. && make && make install
+  - cmake .. && make && sudo make install
   - cd ../..
 
 script: sh -c 'cd backend && mkdir build && cd build && cmake .. && make && make test'
