@@ -30,7 +30,6 @@ before_install:
   - cd ..
   - tar xjf download/cppdb-0.3.1.tar.bz2
   - tar xjf download/cppcms-1.0.5.tar.bz2
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 
 install:
   - export CXX="g++-4.8" CC="gcc-4.8"
