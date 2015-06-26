@@ -1,3 +1,6 @@
+sudo: required
+language: cpp
+
 before_install:
   - wget http://downloads.sourceforge.net/project/cppcms/cppcms/1.0.5/cppcms-1.0.5.tar.bz2
   - tar xjf cppcms-1.0.5.tar.bz2
