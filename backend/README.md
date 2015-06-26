@@ -99,7 +99,7 @@ Request:
 
     POST /delete?state=<state>&token=<token>
 
-The state is one of "approved", "wrong", "othersource", "blacklisted", "duplicate". The token is a 
+The state is one of "approved", "wrong", "othersource", "blacklisted", "duplicate". The token is a
 kind of password configurable in config.json that is used as a very simple authentication mechanism. 
 It is recommended to protect this service also on the webserver level (e.g. using HTTP authentication 
 or IP-based access control).
@@ -109,9 +109,15 @@ Status Codes:
    * 401: in case the token does not match the configured delete token
    * 500: delete failed
 
+## Get datasets
+
+The following HTTP request returns a JSON array with the list of all datasets:
+
+    GET /datasets/all
+
 ## Status
 
-The status service returns a JSON object containing current status information like total number 
+The status service returns a JSON object containing current status information like total number
 of statements, number of approved statements, top users, system information, etc.
 
 Request:

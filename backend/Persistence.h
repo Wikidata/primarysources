@@ -145,6 +145,11 @@ class Persistence {
      */
     void deleteStatements(ApprovalState state);
 
+    /**
+     * Returns the list of all datasets
+     */
+    std::vector<std::string> getDatasets();
+
 
 private:
     // reference to the wrapped sql session

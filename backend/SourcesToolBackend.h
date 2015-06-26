@@ -100,6 +100,11 @@ public:
     }
 
     /**
+     * Returns the list of all datasets
+     */
+    std::vector<std::string> getDatasets(cache_t& cache);
+
+    /**
      * Return an activity log for the current database.
      */
     Dashboard::ActivityLog getActivityLog(cache_t& cache);

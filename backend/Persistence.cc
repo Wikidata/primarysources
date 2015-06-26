@@ -345,7 +345,7 @@ std::string Persistence::getRandomQID(bool unapprovedOnly, std::string dataset) 
             sql << "SELECT subject "
                     "FROM statement WHERE (state = 0 OR ?) AND (dataset = ? OR ?) "
                     "AND id >= abs(random()) % (SELECT max(id) FROM statement "
-			        "WHERE (state = 0 OR ?) AND (dataset = ? OR ?)) "
+                    "WHERE (state = 0 OR ?) AND (dataset = ? OR ?)) "
                     "ORDER BY id "
                     "LIMIT 1"
                     << !unapprovedOnly << dataset << (dataset == "")
@@ -495,6 +495,28 @@ void Persistence::deleteStatements(ApprovalState state) {
     if (!managedTransactions)
         sql.commit();
 }
+
+
+std::vector<std::string> Persistence::getDatasets() {
+    if (!managedTransactions)
+        sql.begin();
+
+    std::vector<std::string> result;
+
+    cppdb::result res =(
+            sql << "SELECT DISTINCT dataset FROM statement");
+
+
+    while (res.next()) {
+        result.push_back(res.get<std::string>("dataset"));
+    }
+
+    if (!managedTransactions)
+        sql.commit();
+
+    return result;
+}
+
 
 const char *PersistenceException::what() const noexcept {
     return message.c_str();

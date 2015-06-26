@@ -93,6 +93,10 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
                         &SourcesToolService::deleteStatements, this);
     mapper().assign("delete", "/delete");
 
+    dispatcher().assign("/datasets/all",
+                            &SourcesToolService::getAllDatasets, this);
+        mapper().assign("datasets_all", "/datasets/all");
+
     dispatcher().assign("/status",
                         &SourcesToolService::getStatus, this);
     mapper().assign("status", "/status");
@@ -339,6 +343,21 @@ void SourcesToolService::importStatements() {
         response().status(405, "Method not allowed");
         response().set_header("Allow", "POST");
     }
+}
+
+void SourcesToolService::getAllDatasets() {
+	addCORSHeaders();
+	addVersionHeaders();
+
+	std::vector<std::string> datasets = backend.getDatasets(cache());
+
+	cppcms::json::value result;
+	for(std::string id : datasets) {
+        result[id]["id"] = id;
+	}
+
+    response().content_type("application/json");
+    result.save(response().out(), cppcms::json::readable);
 }
 
 void SourcesToolService::deleteStatements() {

@@ -143,6 +143,14 @@ public:
    void deleteStatements();
 
    /**
+    * Return a JSON array with the datasets.
+    *
+    * Request:
+    *     GET /datasets/all
+    */
+   void getAllDatasets();
+
+   /**
     * Return a JSON object containing current status information like
     * total number of statements, number of approved statements, etc.
     *

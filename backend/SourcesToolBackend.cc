@@ -59,6 +59,28 @@ namespace cppcms {
             serialized_object = a.str();
         }
     };
+
+    template<>
+        struct serialization_traits<std::vector<std::string>> {
+            ///
+            /// Convert string to object
+            ///
+            static void load(std::string const &serialized_object,std::vector<std::string> &real_object)
+            {
+                archive a;
+                a.str(serialized_object);
+                cppcms::details::archive_load_container<std::vector<std::string>>(real_object, a);
+            }
+            ///
+            /// Convert object to string
+            ///
+            static void save(std::vector<std::string> const &real_object,std::string &serialized_object)
+            {
+                archive a;
+                cppcms::details::archive_save_container<std::vector<std::string>>(real_object, a);
+                serialized_object = a.str();
+            }
+        };
 } /* cppcms */
 
 SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config) {
@@ -263,4 +285,24 @@ Dashboard::ActivityLog SourcesToolBackend::getActivityLog(cache_t& cache) {
     }
 
     return result;
+}
+
+
+std::vector<std::string> SourcesToolBackend::getDatasets(cache_t& cache) {
+    std::vector<std::string> datasets;
+
+    // look up in cache and only hit backend in case of a cache miss
+    if(!cache.fetch_data("datasets", datasets)) {
+        cppdb::session sql(connstr); // released when sql is destroyed
+
+        Persistence p(sql);
+        datasets = p.getDatasets();
+        cache.store_data("datasets", datasets, 3600);
+
+        cacheMisses++;
+    } else {
+        cacheHits++;
+    }
+
+    return datasets;
 }
