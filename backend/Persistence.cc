@@ -337,17 +337,19 @@ std::vector<Statement> Persistence::getRandomStatements(
     return result;
 }
 
-std::string Persistence::getRandomQID(bool unapprovedOnly) {
+std::string Persistence::getRandomQID(bool unapprovedOnly, std::string dataset) {
     if (!managedTransactions)
         sql.begin();
 
     cppdb::result res =(
             sql << "SELECT subject "
-                    "FROM statement WHERE (state = 0 OR ?) "
-                    "AND id >= abs(random()) % (SELECT max(id) FROM statement WHERE (state = 0 OR ?)) "
+                    "FROM statement WHERE (state = 0 OR ?) AND (dataset = ? OR ?) "
+                    "AND id >= abs(random()) % (SELECT max(id) FROM statement "
+			        "WHERE (state = 0 OR ?) AND (dataset = ? OR ?)) "
                     "ORDER BY id "
                     "LIMIT 1"
-                    << !unapprovedOnly << !unapprovedOnly << cppdb::row);
+                    << !unapprovedOnly << dataset << (dataset == "")
+                    << !unapprovedOnly  << dataset << (dataset == "") << cppdb::row);
 
 
     if (!res.empty()) {

@@ -134,21 +134,22 @@ void SourcesToolBackend::updateStatement(
 }
 
 std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
-        cache_t& cache, bool unapprovedOnly) {
+        cache_t& cache, bool unapprovedOnly, std::string dataset) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
-    std::string qid = p.getRandomQID(unapprovedOnly);
+    std::string qid = p.getRandomQID(unapprovedOnly, dataset);
 
     std::vector<Statement> statements;
+    std::string cacheKey = qid + "-" + dataset;
 
     // look up in cache and only hit backend in case of a cache miss
-    if(!cache.fetch_data(qid, statements)) {
+    if(!cache.fetch_data(cacheKey, statements)) {
         cppdb::session sql(connstr); // released when sql is destroyed
 
         Persistence p(sql);
-        statements = p.getStatementsByQID(qid, unapprovedOnly);
-        cache.store_data(qid, statements, 3600);
+        statements = p.getStatementsByQID(qid, unapprovedOnly, dataset);
+        cache.store_data(cacheKey, statements, 3600);
 
         cacheMisses++;
     } else {

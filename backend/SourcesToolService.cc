@@ -138,7 +138,7 @@ void SourcesToolService::getRandomEntity() {
     addVersionHeaders();
 
     try {
-        std::vector<Statement> statements = backend.getStatementsByRandomQID(cache(), true);
+        std::vector<Statement> statements = backend.getStatementsByRandomQID(cache(), true, request().get("dataset"));
         serializeStatements(statements);
     } catch(PersistenceException const &e) {
         response().status(404, "no random unapproved entity found");

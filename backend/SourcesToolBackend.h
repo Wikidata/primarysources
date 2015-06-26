@@ -49,7 +49,7 @@ public:
     * Return a list of statements for a randomly selected entity ID. If unapprovedOnly
     * is set, return only statements with state "unapproved".
     */
-    std::vector<Statement> getStatementsByRandomQID(cache_t& cache,bool unapprovedOnly);
+    std::vector<Statement> getStatementsByRandomQID(cache_t& cache,bool unapprovedOnly, std::string dataset = "");
 
     /**
     * Return a list of count random statements.

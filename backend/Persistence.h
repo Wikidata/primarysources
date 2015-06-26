@@ -91,10 +91,13 @@ class Persistence {
     * Retrieve a random QID from the database. If unapprovedOnly is true,
     * only return QIDs of entities with at least one unapproved statement.
     *
+    * If dataset is set only returns QIDs of entites with at least one
+    * statement in this dataset.
+    *
     * Throws PersistenceException in case there are no entities (or no
     * unapproved entities).
     */
-    std::string getRandomQID(bool unapprovedOnly);
+    std::string getRandomQID(bool unapprovedOnly, std::string dataset = "");
 
 
     /**

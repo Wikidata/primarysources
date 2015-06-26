@@ -24,10 +24,11 @@ Status Codes:
 The following HTTP request retrieves a random entity, optionally by topic. The selection procedure is
 left to the backend and might be improved in the future based on user profile etc.
 
-    GET /entities/any?topic=<TOPIC>&user=<WikidataUser>
+    GET /entities/any?topic=<TOPIC>&user=<WikidataUser>&dataset=<DATASET>
       
-Both topic and user are optional, in which case the backend selects a random unapproved entity.
-    
+Both `topic` and `user` are optional, in which case the backend selects a random unapproved entity.
+`dataset` is optional too and allows to only select an entity with statements from a specific dataset.
+
 Status Codes:
 
   * 200: entity found, returned as JSON
