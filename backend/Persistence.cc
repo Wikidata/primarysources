@@ -153,7 +153,8 @@ PropertyValue Persistence::getSnak(int64_t snakid) {
 }
 
 Statement Persistence::buildStatement(int64_t id, std::string qid,
-                                      int64_t snak, int16_t state) {
+                                      int64_t snak, std::string dataset,
+                                      int64_t upload, int16_t state) {
     Statement::extensions_t qualifiers, sources;
 
     // qualifiers
@@ -199,8 +200,11 @@ int64_t Persistence::addStatement(const Statement& st, bool check_duplicates) {
     int64_t snakid = getOrAddSnak(st.getPropertyValue(), check_duplicates);
 
     int64_t stmtid = (
-            sql << "INSERT INTO statement(subject,mainsnak) VALUES (?,?)"
-                << st.getQID() << snakid << cppdb::exec).last_insert_id();
+            sql << "INSERT INTO statement(subject,mainsnak, dataset, upload) "
+                   "VALUES (?,?,?,?)"
+                << st.getQID() << snakid
+                << st.getDataset() << st.getUpload() << cppdb::exec
+    ).last_insert_id();
 
     for (const PropertyValue& pv : st.getQualifiers()) {
         int64_t qualid = getOrAddSnak(pv, check_duplicates);
@@ -254,14 +258,15 @@ Statement Persistence::getStatement(int64_t id) {
         sql.begin();
 
     cppdb::result res =(
-            sql << "SELECT id, subject, mainsnak, state "
+            sql << "SELECT id, subject, mainsnak, state, dataset, upload "
                    "FROM statement WHERE id = ?"
                     << id << cppdb::row);
 
     if (!res.empty()) {
         Statement result = buildStatement(
                 res.get<int64_t>("id"), res.get<std::string>("subject"),
-                res.get<int64_t>("mainsnak"), res.get<int16_t>("state"));
+                res.get<int64_t>("mainsnak"), res.get<std::string>("dataset"),
+                res.get<int64_t>("upload"), res.get<int16_t>("state"));
 
         if (!managedTransactions)
             sql.commit();
@@ -283,17 +288,17 @@ std::vector<Statement> Persistence::getStatementsByQID(
     std::vector<Statement> result;
 
     cppdb::result res =(
-            sql << "SELECT id, subject, mainsnak, state "
+            sql << "SELECT id, subject, mainsnak, state, dataset, upload "
                     "FROM statement WHERE subject = ?"
                     " AND (state = 0 OR ?)"
                     << qid << !unapprovedOnly);
 
 
     while (res.next()) {
-        result.push_back(
-                buildStatement(
+        result.push_back(buildStatement(
                 res.get<int64_t>("id"), res.get<std::string>("subject"),
-                res.get<int64_t>("mainsnak"), res.get<int16_t>("state")));
+                res.get<int64_t>("mainsnak"), res.get<std::string>("dataset"),
+                res.get<int64_t>("upload"), res.get<int16_t>("state")));
     }
 
     if (!managedTransactions)
@@ -311,7 +316,7 @@ std::vector<Statement> Persistence::getRandomStatements(
     std::vector<Statement> result;
 
     cppdb::result res =(
-            sql << "SELECT id, subject, mainsnak, state "
+            sql << "SELECT id, subject, mainsnak, state, dataset, upload "
                     "FROM statement WHERE (state = 0 OR ?) "
                     "AND id >= abs(random()) % (SELECT max(id) FROM statement) "
                     "ORDER BY id LIMIT ?"
@@ -321,7 +326,8 @@ std::vector<Statement> Persistence::getRandomStatements(
     while (res.next()) {
         result.push_back(buildStatement(
                 res.get<int64_t>("id"), res.get<std::string>("subject"),
-                res.get<int64_t>("mainsnak"), res.get<int16_t>("state")));
+                res.get<int64_t>("mainsnak"), res.get<std::string>("dataset"),
+                res.get<int64_t>("upload"), res.get<int16_t>("state")));
     }
 
     if (!managedTransactions)

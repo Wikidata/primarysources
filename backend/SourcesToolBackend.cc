@@ -6,6 +6,7 @@
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
+#include <chrono>
 
 #include "Parser.h"
 
@@ -156,7 +157,8 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
     return statements;
 }
 
-int64_t SourcesToolBackend::importStatements(cache_t& cache, std::istream &_in, bool gzip, bool dedup) {
+int64_t SourcesToolBackend::importStatements(cache_t& cache, std::istream &_in,
+                                             const std::string& dataset, bool gzip, bool dedup) {
     // prepare GZIP input stream
     boost::iostreams::filtering_istreambuf zin;
     if (gzip) {
@@ -170,8 +172,12 @@ int64_t SourcesToolBackend::importStatements(cache_t& cache, std::istream &_in, 
     sql.begin();
     Persistence p(sql, true);
 
+    // get timestamp and use it as upload id
+    int64_t upload = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+
     int64_t count = 0, first_id = -1, current_id;
-    Parser::parseTSV(in, [&sql, &p, &count, &first_id, &current_id](Statement st)  {
+    Parser::parseTSV(dataset, upload, in, [&sql, &p, &count, &first_id, &current_id](Statement st)  {
         current_id = p.addStatement(st);
 
         // remember the ID of the first statement we add for deduplication

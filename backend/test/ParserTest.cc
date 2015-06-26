@@ -13,7 +13,7 @@ std::vector<Statement> parseString(const std::string& data) {
     std::stringstream buf(data);
     std::vector<Statement> result;
 
-    Parser::parseTSV(buf, [&result](Statement st) {
+    Parser::parseTSV("freebase", 0, buf, [&result](Statement st) {
         result.push_back(st);
     });
 

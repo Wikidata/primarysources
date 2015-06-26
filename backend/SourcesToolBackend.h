@@ -66,7 +66,8 @@ public:
     * data. When the option dedup is set to true, will run a deduplication
     * sweep at the end of importing. Returns the number of statements imported.
     */
-    int64_t importStatements(cache_t& cache, std::istream& in, bool gzip, bool dedup=true);
+    int64_t importStatements(cache_t& cache, std::istream& in,
+                             const std::string& dataset, bool gzip, bool dedup=true);
 
 
     /**

@@ -164,7 +164,8 @@ private:
     PropertyValue getSnak(int64_t snakid);
 
     Statement buildStatement(int64_t id, std::string qid,
-                             int64_t snak, int16_t state);
+                             int64_t snak, std::string dataset,
+                             int64_t upload, int16_t state);
 
     friend class PersistenceTest_AddGetSnak_Test;
 };

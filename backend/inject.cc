@@ -12,6 +12,7 @@
 #include <boost/iostreams/filter/gzip.hpp>
 #include <cppdb/frontend.h>
 #include <cppcms/json.h>
+#include <chrono>
 
 #include "Parser.h"
 #include "Persistence.h"
@@ -36,26 +37,30 @@ std::string build_connection(const cppcms::json::value& config) {
 
 
 void usage(char *cmd) {
-    std::cout << "Usage: " << cmd << " [-z] -c config.json -i datafile" << std::endl;
+    std::cout << "Usage: " << cmd << " [-z] -c config.json -i datafile -d dataset" << std::endl;
     std::cout << "Options:" <<std::endl;
     std::cout << " -c config.json     backend configuration file to read database configuration" << std::endl;
     std::cout << " -i datafile        input data file containing statements in TSV format" << std::endl;
+    std::cout << " -d dataset         name of the dataset we are importing (e,g, \"freebase\")" << std::endl;
     std::cout << " -z                 input is compressed with GZIP" << std::endl;
 }
 
 int main(int argc, char **argv) {
     int opt;
     bool gzipped = false;
-    std::string datafile, configfile;
+    std::string datafile, configfile, dataset;
 
     // read options from command line
-    while( (opt = getopt(argc,argv,"zc:i:")) != -1) {
+    while( (opt = getopt(argc,argv,"zc:i:d:")) != -1) {
         switch(opt) {
             case 'c':
                 configfile = optarg;
                 break;
             case 'i':
                 datafile = optarg;
+                break;
+            case 'd':
+                dataset = optarg;
                 break;
             case 'z':
                 gzipped = true;
@@ -66,8 +71,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (datafile == "" || configfile == "") {
-        std::cerr << "Options -c and -i are required." << std::endl << std::endl;
+    if (datafile == "" || configfile == "" || dataset == "") {
+        std::cerr << "Options -d, -c and -i are required." << std::endl << std::endl;
         usage(argv[0]);
         return 1;
     }
@@ -101,8 +106,12 @@ int main(int argc, char **argv) {
         sql.begin();
         Persistence p(sql, true);
 
+        // get timestamp and use it as upload id
+        int64_t upload = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+
         int64_t count = 0;
-        Parser::parseTSV(in, [&sql, &p, &count](Statement st)  {
+        Parser::parseTSV(dataset, upload, in, [&sql, &p, &count](Statement st)  {
             p.addStatement(st);
             count++;
 

@@ -230,6 +230,13 @@ class Statement : public cppcms::serializable {
             : id(id), qid(qid), propertyValue(propertyValue),
               qualifiers(qualifiers), sources(sources), approved(approved) { }
 
+    Statement(int64_t id, std::string qid, PropertyValue propertyValue,
+              extensions_t qualifiers, extensions_t sources,
+              std::string dataset, int64_t upload, ApprovalState approved)
+            : id(id), qid(qid), propertyValue(propertyValue),
+              qualifiers(qualifiers), sources(sources),
+              dataset(dataset), upload(upload), approved(approved) { }
+
     Statement(std::string qid, PropertyValue propertyValue)
             : id(-1), qid(qid), propertyValue(propertyValue),
               approved(UNAPPROVED) {}
@@ -276,7 +283,15 @@ class Statement : public cppcms::serializable {
         return sources;
     }
 
-    /**
+    const std::string &getDataset() const {
+        return dataset;
+    }
+
+    int64_t getUpload() const {
+        return upload;
+    }
+
+/**
     * Return true if this statement has already been approved, false otherwise.
     */
     ApprovalState getApprovalState() const { return approved; }
@@ -300,6 +315,11 @@ class Statement : public cppcms::serializable {
     extensions_t qualifiers;
     extensions_t sources;
 
+    // a string identifying the dataset this statement belongs to
+    std::string dataset;
+
+    // an integer id identifying the upload this statement was part of
+    int64_t upload;
 
     ApprovalState approved;
 

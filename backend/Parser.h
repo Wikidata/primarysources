@@ -18,7 +18,8 @@ namespace Parser {
     * parser then creates a new Statement and directly passes it to the
     * handler function given as argument.
     */
-    void parseTSV(std::istream &in, std::function<void(Statement)> handler);
+    void parseTSV(const std::string& dataset, int64_t upload,
+                  std::istream &in, std::function<void(Statement)> handler);
 
 }  // namespace Parser
 

@@ -53,7 +53,8 @@ PropertyValue parsePropertyValue(std::string property, std::string value) {
     }
 }
 
-void Parser::parseTSV(std::istream &in, std::function<void(Statement)> handler) {
+void Parser::parseTSV(const std::string& dataset, int64_t upload,
+                      std::istream &in, std::function<void(Statement)> handler) {
     typedef boost::tokenizer< boost::char_separator<char> > Tokenizer;
     boost::char_separator<char> sep("\t");
 
@@ -77,6 +78,6 @@ void Parser::parseTSV(std::istream &in, std::function<void(Statement)> handler) 
         }
 
         handler(Statement(-1, vec[0], parsePropertyValue(vec[1], vec[2]),
-                          qualifiers, sources, UNAPPROVED));
+                          qualifiers, sources, dataset, upload, UNAPPROVED));
     }
 }

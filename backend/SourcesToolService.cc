@@ -301,6 +301,11 @@ void SourcesToolService::importStatements() {
             return;
         }
 
+        if (request().get("dataset") == "") {
+            response().status(400, "Missing argument: dataset");
+            return;
+        }
+
         // check if content is gzipped
         bool gzip = false;
         if (request().get("gzip") == "true") {
@@ -317,7 +322,8 @@ void SourcesToolService::importStatements() {
         std::istream in(&body);
 
         // import statements
-        int64_t count = backend.importStatements(cache(), in, gzip, dedup);
+        int64_t count = backend.importStatements(
+                cache(), in, request().get("dataset"), gzip, dedup);
 
         clock_t end = std::clock();
 

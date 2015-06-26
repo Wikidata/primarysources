@@ -15,7 +15,9 @@ CREATE TABLE statement (
     id       INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     subject  VARCHAR(32),
     mainsnak INTEGER REFERENCES snak(id),
-    state    INT DEFAULT 0
+    state    INT DEFAULT 0,
+    dataset  VARCHAR(32),
+    upload   INTEGER DEFAULT 0
 );
 
 CREATE TABLE qualifier (
