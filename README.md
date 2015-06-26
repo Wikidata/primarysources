@@ -1,6 +1,9 @@
 Primary Sources Tool for Wikidata
+=================================
 
-Freebase was launched to be a “Wikipedia for structured data”, because in
+[![Build Status](https://travis-ci.org/google/primarysources.svg?branch=master)](https://travis-ci.org/google/primarysources)
+
+[Freebase](https://freebase.com) was launched to be a “Wikipedia for structured data”, because in
 2007 there was no such project. But now we do have Wikidata, and Wikidata
 and its community is developing very fast. Today, the goals of Freebase
 might be better served by supporting Wikidata.
