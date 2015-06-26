@@ -40,9 +40,10 @@ public:
 
     /**
     * Return a list of statements for the given entity ID. If unapprovedOnly
-    * is set, return only statements with state "unapproved".
+    * is set, return only statements with state "unapproved". If dataset
+    * is set return only statements in this dataset
     */
-    std::vector<Statement> getStatementsByQID(cache_t& cache, std::string &qid, bool unapprovedOnly);
+    std::vector<Statement> getStatementsByQID(cache_t& cache, std::string &qid, bool unapprovedOnly, std::string dataset = "");
 
     /**
     * Return a list of statements for a randomly selected entity ID. If unapprovedOnly

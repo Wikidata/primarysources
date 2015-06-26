@@ -71,7 +71,7 @@ class Persistence {
     * Return a list of all statements with the given QID as subject.
     */
     std::vector<Statement> getStatementsByQID(
-            const std::string& qid, bool unapprovedOnly);
+            const std::string& qid, bool unapprovedOnly, std::string dataset = "");
 
     /**
     * Return a list of count random statements. Selection is up to the backend.

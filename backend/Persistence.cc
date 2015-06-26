@@ -282,7 +282,7 @@ Statement Persistence::getStatement(int64_t id) {
 }
 
 std::vector<Statement> Persistence::getStatementsByQID(
-        const std::string &qid, bool unapprovedOnly) {
+        const std::string &qid, bool unapprovedOnly, std::string dataset) {
     if (!managedTransactions)
         sql.begin();
 
@@ -291,8 +291,8 @@ std::vector<Statement> Persistence::getStatementsByQID(
     cppdb::result res =(
             sql << "SELECT id, subject, mainsnak, state, dataset, upload "
                     "FROM statement WHERE subject = ?"
-                    " AND (state = 0 OR ?)"
-                    << qid << !unapprovedOnly);
+                    " AND (state = 0 OR ?) AND (dataset = ? OR ?)"
+                    << qid << !unapprovedOnly << dataset << (dataset == ""));
 
 
     while (res.next()) {

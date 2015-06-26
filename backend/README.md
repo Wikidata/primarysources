@@ -6,10 +6,11 @@
 
 The following HTTP request retrieves an entity by Wikidata QID:
 
-    GET /entities/<QID>
+    GET /entities/<QID>?dataset=<DATASET>
       
 The service is modeled after the Wikidata REST API, and supports retrieving data in JSON and TSV format
-(see content negotiation below).
+(see content negotiation below). `dataset` is an optional parameter allowing to only retrieve statements
+from a specific dataset.
     
 Status Codes:
 
