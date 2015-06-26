@@ -163,8 +163,8 @@ private:
     // Throws PersistenceException in case the snak with this ID is not found.
     PropertyValue getSnak(int64_t snakid);
 
-    Statement buildStatement(int64_t id, std::string qid,
-                             int64_t snak, std::string dataset,
+    Statement buildStatement(int64_t id, const std::string& qid,
+                             int64_t snak, const std::string& dataset,
                              int64_t upload, int16_t state);
 
     friend class PersistenceTest_AddGetSnak_Test;

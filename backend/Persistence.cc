@@ -152,8 +152,8 @@ PropertyValue Persistence::getSnak(int64_t snakid) {
     }
 }
 
-Statement Persistence::buildStatement(int64_t id, std::string qid,
-                                      int64_t snak, std::string dataset,
+Statement Persistence::buildStatement(int64_t id, const std::string& qid,
+                                      int64_t snak, const std::string& dataset,
                                       int64_t upload, int16_t state) {
     Statement::extensions_t qualifiers, sources;
 
@@ -174,7 +174,8 @@ Statement Persistence::buildStatement(int64_t id, std::string qid,
     }
 
     return Statement(id, qid, getSnak(snak),
-                     qualifiers, sources, getApprovalState(state));
+                     qualifiers, sources,
+                     dataset, upload, getApprovalState(state));
 }
 
 Persistence::Persistence(cppdb::session &sql, bool managedTransactions)

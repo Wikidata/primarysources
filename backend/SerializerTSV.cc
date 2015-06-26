@@ -86,6 +86,8 @@ namespace Serializer {
         (*out)["statement"] = sout.str();
         (*out)["id"] = stmt.getID();
         (*out)["format"] = "v1";
+        (*out)["dataset"] = stmt.getDataset();
+        (*out)["upload"] = stmt.getUpload();
 
         switch (stmt.getApprovalState()) {
             case UNAPPROVED: (*out)["state"] = "unapproved"; break;
