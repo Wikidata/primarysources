@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/google/primarysources.svg?branch=master)](https://travis-ci.org/google/primarysources)
+
 # REST API
 
 ## Get Entity by QID
