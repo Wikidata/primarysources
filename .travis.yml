@@ -16,7 +16,7 @@ addons:
     packages:
     - gcc-4.9
     - g++-4.9
-    - libboost-all-dev
+    - libboost1.55-all-dev
 
 cache:
   apt: true
