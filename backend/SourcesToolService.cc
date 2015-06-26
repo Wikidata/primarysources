@@ -305,7 +305,8 @@ void SourcesToolService::importStatements() {
             return;
         }
 
-        if (request().get("dataset") == "") {
+        std::string dataset = request().get("dataset");
+        if (dataset == "") {
             response().status(400, "Missing argument: dataset");
             return;
         }
@@ -327,13 +328,14 @@ void SourcesToolService::importStatements() {
 
         // import statements
         int64_t count = backend.importStatements(
-                cache(), in, request().get("dataset"), gzip, dedup);
+                cache(), in, dataset, gzip, dedup);
 
         clock_t end = std::clock();
 
         cppcms::json::value result;
         result["count"] = count;
         result["time"] = 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC);
+        result["dataset"] = dataset;
 
         response().content_type("application/json");
         result.save(response().out(), cppcms::json::readable);
