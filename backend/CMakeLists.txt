@@ -20,7 +20,7 @@ ADD_DEFINITIONS(
 find_package (Threads)
 find_package (CPPCMS REQUIRED)
 find_package (CPPDB REQUIRED)
-find_package (Boost 1.54.0 REQUIRED COMPONENTS iostreams regex)
+find_package (Boost 1.46.0 REQUIRED COMPONENTS iostreams regex)
 find_package (Tcmalloc)
 
 if(DATABASE STREQUAL sqlite3 AND CPPDB_SQLITE_BACKEND)
