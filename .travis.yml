@@ -2,7 +2,7 @@ sudo: required
 language: cpp
 
 before_install:
-  - sudo apt-get install libboost-all-dev libboost-iostreams1.55-dev libboost-thread1.55-dev
+  - sudo apt-get install libboost-all-dev
   - wget http://downloads.sourceforge.net/project/cppcms/cppcms/1.0.5/cppcms-1.0.5.tar.bz2
   - tar xjf cppcms-1.0.5.tar.bz2
   - mkdir -p cppcms-1.0.5/build && cd cppcms-1.0.5/build
