@@ -8,6 +8,15 @@ notifications:
   - vrandecic@google.com
   - thomaspt@google.com
 
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-4.8
+    - g++-4.8
+    - libboost-all-dev
+
 cache:
   apt: true
   directories:
@@ -15,20 +24,22 @@ cache:
   - cppdb-0.3.1
 
 before_install:
-  - sudo apt-get install libboost-all-dev
   - mkdir download && cd download
   - wget http://downloads.sourceforge.net/project/cppcms/cppcms/1.0.5/cppcms-1.0.5.tar.bz2
   - wget http://downloads.sourceforge.net/project/cppcms/cppdb/1.3.1/cppdb-0.3.1.tar.bz2
   - cd ..
   - tar xjf download/cppdb-0.3.1.tar.bz2
   - tar xjf download/cppcms-1.0.5.tar.bz2
+  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
 
 install:
+  - export CXX="g++-4.8" CC="gcc-4.8"
   - mkdir -p cppcms-1.0.5/build && cd cppcms-1.0.5/build
   - cmake .. && make && sudo make install
   - cd ../..
   - mkdir -p cppdb-0.3.1/build && cd cppdb-0.3.1/build
   - cmake .. && make && sudo make install
   - cd ../..
+
 
 script: sh -c 'cd backend && mkdir build && cd build && cmake .. && make && make test'
