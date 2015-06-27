@@ -62,6 +62,8 @@ $(document).ready(function() {
     var FREEBASE_STATEMENT_APPROVAL_URL =
         'https://tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
         '?state={{state}}&user={{user}}';
+    var FREEBASE_DATASETS =
+      'https://tools.wmflabs.org/wikidata-primary-sources/datasets/all';
     var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
         '?action=parse&format=json&prop=text' +
         '&page=Wikidata:Primary_sources_tool/URL_blacklist';
@@ -270,22 +272,26 @@ $(document).ready(function() {
       return qid;
     }
 
+    var dataset = mw.cookie.get('ps-dataset', null, '');
+
     (function init() {
 
-      // Add random Freebase item button
+      // Add random Primary Source item button
       (function createRandomFreebaseItemLink() {
-        var helpLink = document.getElementById('n-help');
-        var li = document.createElement('li');
-        li.id = 'n-random-freebase';
-        var a = document.createElement('a');
-        li.appendChild(a);
-        a.href = '#';
-        a.title = 'Load a new random Freebase item';
-        a.textContent = 'Random Freebase item';
-        a.addEventListener('click', function(e) {
+        var datasetLabel = (dataset === '') ? 'Primary Source' : dataset;
+        var portletLink = $(mw.util.addPortletLink(
+          'p-navigation',
+          '#',
+          'Random ' + datasetLabel + ' item',
+          'n-random-ps',
+          'Load a new random ' + datasetLabel + ' item',
+          '',
+          '#n-help'
+        ));
+        portletLink.children().click(function(e) {
           e.preventDefault();
           $.ajax({
-            url: FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any')
+            url: FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') + '?dataset=' + dataset
           }).done(function(data) {
             var newQid = data[0].statement.split(/\t/)[0];
             document.location.href = 'https://www.wikidata.org/wiki/' + newQid;
@@ -293,9 +299,17 @@ $(document).ready(function() {
             return reportError('Could not obtain random Freebase item');
           });
         });
-        var container = document.getElementById('p-navigation')
-            .querySelector('ul');
-        container.insertBefore(li, helpLink);
+
+        mw.loader.using(['jquery.tipsy', 'oojs-ui'], function() {
+          var configButton = $('<span>')
+            .attr({
+              id: 'ps-config-button',
+              title: 'Primary Sources options'
+            })
+            .tipsy()
+            .appendTo(portletLink);
+          configDialog(configButton);
+        });
       })();
 
       // Handle clicks on approve/edit/reject buttons
@@ -479,6 +493,102 @@ $(document).ready(function() {
           ' <button onclick="javascript:this.parentNode.remove();">Dismiss' +
            '</button>';
       document.body.appendChild(errorMessage);
+    }
+
+    function configDialog(button) {
+      function ConfigDialog(config) {
+        ConfigDialog.super.call(this, config);
+      }
+      OO.inheritClass(ConfigDialog, OO.ui.ProcessDialog);
+      ConfigDialog.static.title = 'Primary Sources configuration';
+      ConfigDialog.static.actions = [
+        {action: 'save', label: 'Save', flags: ['primary', 'constructive']},
+        {label: 'Cancel', flags: 'safe'}
+      ];
+
+      ConfigDialog.prototype.initialize = function() {
+        ConfigDialog.super.prototype.initialize.apply(this, arguments);
+
+        this.dataset = new OO.ui.ButtonSelectWidget({
+          items: [new OO.ui.ButtonOptionWidget({
+            data: '',
+            label: 'All sources'
+          })]
+        });
+
+        var dialog = this;
+        getPossibleDatasets(function(datasets) {
+          for (var datasetId in datasets) {
+            dialog.dataset.addItems([new OO.ui.ButtonOptionWidget({
+              data: datasetId,
+              label: datasetId,
+            })]);
+          }
+        });
+
+        this.dataset.selectItemByData(dataset);
+
+        var fieldset = new OO.ui.FieldsetLayout({
+          label: 'Dataset to use'
+        });
+        fieldset.addItems([this.dataset]);
+
+        this.panel = new OO.ui.PanelLayout({
+          padded: true,
+          expanded: false
+        });
+        this.panel.$element.append(fieldset.$element);
+        this.$body.append(this.panel.$element);
+      };
+
+      ConfigDialog.prototype.getActionProcess = function(action) {
+        if (action === 'save') {
+          mw.cookie.set('ps-dataset', this.dataset.getSelectedItem().getData());
+          return new OO.ui.Process(function() {
+            location.reload();
+          });
+        }
+
+        return ConfigDialog.super.prototype.getActionProcess.call(this, action);
+      };
+
+      ConfigDialog.prototype.getBodyHeight = function() {
+        return this.panel.$element.outerHeight(true);
+      };
+
+      var windowManager = new OO.ui.WindowManager();
+      $('body').append(windowManager.$element);
+
+      var configDialog = new ConfigDialog();
+      windowManager.addWindows([configDialog]);
+
+      button.click(function() {
+        windowManager.openWindow(configDialog);
+      });
+    }
+
+    function getPossibleDatasets(callback) {
+      var now = Date.now();
+      if (localStorage.getItem('f2w_dataset')) {
+        var blacklist = JSON.parse(localStorage.getItem('f2w_dataset'));
+        if (!blacklist.timestamp) {
+          blacklist.timestamp = 0;
+        }
+        if (now - blacklist.timestamp < CACHE_EXPIRY) {
+          return callback(blacklist.data);
+        }
+      }
+      $.ajax({
+        url: FREEBASE_DATASETS
+      }).done(function(data) {
+        localStorage.setItem('f2w_dataset', JSON.stringify({
+          timestamp: now,
+          data: data
+        }));
+        return callback(data);
+      }).fail(function() {
+        debug.log('Could not obtain datasets');
+      });
     }
 
     function parseFreebaseClaims(freebaseEntityData, blacklistedSourceUrls) {
@@ -1237,7 +1347,7 @@ $(document).ready(function() {
       $.ajax({
         url: FAKE_OR_RANDOM_DATA ?
             FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') :
-            FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid)
+            FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '?dataset=' + dataset
       }).done(function(data) {
         return callback(null, data);
       });
