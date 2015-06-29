@@ -91,8 +91,8 @@ SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config) {
 
 
 std::vector<Statement> SourcesToolBackend::getStatementsByQID(
-        cache_t& cache,
-        std::string &qid, bool unapprovedOnly, std::string dataset){
+        cache_t& cache, const std::string& qid,
+        bool unapprovedOnly, const std::string& dataset){
     std::vector<Statement> statements;
     std::string cacheKey = qid + "-" + dataset;
 
@@ -128,7 +128,7 @@ Statement SourcesToolBackend::getStatementByID(cache_t& cache, int64_t id) {
 }
 
 void SourcesToolBackend::updateStatement(
-        cache_t& cache, int64_t id, ApprovalState state, std::string user) {
+        cache_t& cache, int64_t id, ApprovalState state, const std::string& user) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql, true);
@@ -156,7 +156,7 @@ void SourcesToolBackend::updateStatement(
 }
 
 std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
-        cache_t& cache, bool unapprovedOnly, std::string dataset) {
+        cache_t& cache, bool unapprovedOnly, const std::string& dataset) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
