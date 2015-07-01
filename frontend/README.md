@@ -32,3 +32,4 @@ Requires admin rights on Wikidata.
 * Copy the content of `freebase2wikidata.js` into https://www.wikidata.org/wiki/MediaWiki:Gadget-PrimarySources.js
 
 To update the gadget description edit https://www.wikidata.org/wiki/MediaWiki:Gadget-PrimarySources
+The configuration of the gadget is editable in https://www.wikidata.org/wiki/MediaWiki:Gadgets-definition
