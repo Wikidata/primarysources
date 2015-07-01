@@ -43,13 +43,15 @@ public:
     * is set, return only statements with state "unapproved". If dataset
     * is set return only statements in this dataset
     */
-    std::vector<Statement> getStatementsByQID(cache_t& cache, std::string &qid, bool unapprovedOnly, std::string dataset = "");
+    std::vector<Statement> getStatementsByQID(cache_t& cache, const std::string& qid,
+                                              bool unapprovedOnly, const std::string& dataset = "");
 
     /**
     * Return a list of statements for a randomly selected entity ID. If unapprovedOnly
     * is set, return only statements with state "unapproved".
     */
-    std::vector<Statement> getStatementsByRandomQID(cache_t& cache,bool unapprovedOnly, std::string dataset = "");
+    std::vector<Statement> getStatementsByRandomQID(cache_t& cache,bool unapprovedOnly,
+                                                    const std::string& dataset = "");
 
     /**
     * Return a list of count random statements.
@@ -59,7 +61,7 @@ public:
     /**
     * Update the approval state of the statement with the given ID.
     */
-    void updateStatement(cache_t& cache, int64_t id, ApprovalState state, std::string user);
+    void updateStatement(cache_t& cache, int64_t id, ApprovalState state, const std::string& user);
 
     /**
     * Import a (possibly large) list of statements in Wikidata TSV format

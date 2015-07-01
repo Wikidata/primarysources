@@ -71,7 +71,8 @@ class Persistence {
     * Return a list of all statements with the given QID as subject.
     */
     std::vector<Statement> getStatementsByQID(
-            const std::string& qid, bool unapprovedOnly, std::string dataset = "");
+            const std::string& qid, bool unapprovedOnly,
+            const std::string& dataset = "");
 
     /**
     * Return a list of count random statements. Selection is up to the backend.
@@ -97,7 +98,8 @@ class Persistence {
     * Throws PersistenceException in case there are no entities (or no
     * unapproved entities).
     */
-    std::string getRandomQID(bool unapprovedOnly, std::string dataset = "");
+    std::string getRandomQID(bool unapprovedOnly,
+                             const std::string& dataset = "");
 
 
     /**

@@ -282,7 +282,8 @@ Statement Persistence::getStatement(int64_t id) {
 }
 
 std::vector<Statement> Persistence::getStatementsByQID(
-        const std::string &qid, bool unapprovedOnly, std::string dataset) {
+        const std::string &qid, bool unapprovedOnly,
+        const std::string& dataset) {
     if (!managedTransactions)
         sql.begin();
 
@@ -337,7 +338,7 @@ std::vector<Statement> Persistence::getRandomStatements(
     return result;
 }
 
-std::string Persistence::getRandomQID(bool unapprovedOnly, std::string dataset) {
+std::string Persistence::getRandomQID(bool unapprovedOnly, const std::string& dataset) {
     if (!managedTransactions)
         sql.begin();
 
