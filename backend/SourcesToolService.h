@@ -110,7 +110,7 @@ public:
    * Data may optionally be gzipped for better memory usage.
    *
    * Request:
-   *     POST /import?token=<token>&gzip=<true|false>
+   *     POST /import?token=<token>&gzip=<true|false>&dataset=<dataset>
    *
    * The token is a kind of password configurable in config.json that
    * is used as a very simple authentication mechanism. It is recommended
