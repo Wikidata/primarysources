@@ -5,7 +5,7 @@ Wikidata userscript for the migration of Freebase to Wikidata.
 ### For users
 On Wikidata you just have to activate the gadget "Primary Sources" in [your user preferences](https://www.wikidata.org/wiki/Special:Preferences#mw-prefsection-gadgets).
 
-### For developpers
+### For developers
 In order to be able to test the script without affecting the other users the best option is to:
 * Add the content of `freebase2wikidata.css` into [your common.css](https://www.wikidata.org/wiki/Special:MyPage/common.css)
 * Add the content of `freebase2wikidata.js` surrounded by these lines into [your common.js](https://www.wikidata.org/wiki/Special:MyPage/common.js):
