@@ -369,13 +369,17 @@ std::string Persistence::getRandomQID(bool unapprovedOnly, const std::string& da
 }
 
 
-int64_t Persistence::countStatements() {
+int64_t Persistence::countStatements(const std::string& dataset) {
     int64_t result = 0;
 
     if (!managedTransactions)
         sql.begin();
 
-    cppdb::result res = sql << "SELECT count(*) FROM statement" << cppdb::row;
+    cppdb::result res = (
+            sql << "SELECT count(*) FROM statement "
+                   "WHERE dataset = ? OR ?"
+                << dataset << (dataset == "")
+                << cppdb::row);
 
     if (!res.empty()) {
         result = res.get<int64_t>(0);
@@ -387,15 +391,17 @@ int64_t Persistence::countStatements() {
     return result;
 }
 
-int64_t Persistence::countStatements(ApprovalState state) {
+int64_t Persistence::countStatements(ApprovalState state, const std::string& dataset) {
     int64_t result = 0;
 
     if (!managedTransactions)
         sql.begin();
 
     cppdb::result res = (
-            sql << "SELECT count(*) FROM statement WHERE state = ?"
-                << getSQLState(state) << cppdb::row);
+            sql << "SELECT count(*) FROM statement "
+                   "WHERE state = ? AND (dataset = ? OR ?)"
+                << getSQLState(state) << dataset << (dataset == "")
+                << cppdb::row);
 
     if (!res.empty()) {
         result = res.get<int64_t>(0);

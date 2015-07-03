@@ -217,3 +217,32 @@ TEST_F(PersistenceTest, DeleteStatements) {
     ASSERT_EQ(unapprovedCount, 0);
     ASSERT_EQ(approvedCount, 5);
 }
+
+TEST_F(PersistenceTest, Datasets) {
+    Persistence p(sql, true);
+    sql.begin();
+    for (int i = 0; i < 10; i++) {
+        Statement stmt(-1, "Q1231", PropertyValue("P456", Value("Q789-" + i)),
+                       Statement::extensions_t(), Statement::extensions_t(),
+                       "dataset-" + std::to_string(i), i, UNAPPROVED);
+
+        p.addStatement(stmt);
+    }
+    sql.commit();
+
+    sql.begin();
+    std::vector<std::string> datasets = p.getDatasets();
+    sql.commit();
+
+    ASSERT_EQ(datasets.size(), 10);
+
+    sql.begin();
+    int64_t count_exist = p.countStatements("dataset-0");
+    int64_t count_noexist = p.countStatements("dataset-nonexistant");
+    int64_t count_all = p.countStatements();
+    sql.commit();
+
+    ASSERT_EQ(count_exist, 1);
+    ASSERT_EQ(count_noexist, 0);
+    ASSERT_EQ(count_all, 10);
+}
