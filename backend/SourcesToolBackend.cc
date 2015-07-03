@@ -43,7 +43,7 @@ std::string build_connection(
 // be used.
 std::string createCacheKey(const std::string& qid, const std::string& dataset) {
     if (dataset == "") {
-        return qid + "-all";
+        return "ALL-" + qid;
     } else {
         return qid + "-" + dataset;
     }
