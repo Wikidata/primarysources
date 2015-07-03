@@ -37,6 +37,18 @@ std::string build_connection(
     return out.str();
 }
 
+// Create cache key for an entity and dataset; the cache key is used to cache
+// all statements of the given dataset having the entity as subject. If dataset
+// is "", the cache key refers to all statements and the dataset name "all" will
+// be used.
+std::string createCacheKey(const std::string& qid, const std::string& dataset) {
+    if (dataset == "") {
+        return qid + "-all";
+    } else {
+        return qid + "-" + dataset;
+    }
+}
+
 namespace cppcms {
     template<>
     struct serialization_traits<std::vector<Statement>> {
@@ -94,7 +106,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
         cache_t& cache, const std::string& qid,
         bool unapprovedOnly, const std::string& dataset){
     std::vector<Statement> statements;
-    std::string cacheKey = qid + "-" + dataset;
+    std::string cacheKey = createCacheKey(qid,dataset);
 
     // look up in cache and only hit backend in case of a cache miss
     if(!cache.fetch_data(cacheKey, statements)) {
@@ -144,7 +156,7 @@ void SourcesToolBackend::updateStatement(
         sql.commit();
 
         // update cache
-        cache.rise(st.getQID());
+        cache.rise(createCacheKey(st.getQID(),st.getDataset()));
         cache.rise("STATUS");
         cache.rise("ACTIVITIES");
     } catch (PersistenceException const &e) {
