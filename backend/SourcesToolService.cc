@@ -118,7 +118,12 @@ void SourcesToolService::handleGetPostStatement(std::string stid) {
 void SourcesToolService::getEntityByQID(std::string qid) {
     clock_t begin = std::clock();
 
-    std::vector<Statement> statements = backend.getStatementsByQID(cache(), qid, true, request().get("dataset"));
+    bool unapprovedOnly = true;
+    if (request().get("state") == "any") {
+        unapprovedOnly = false;
+    }
+
+    std::vector<Statement> statements = backend.getStatementsByQID(cache(), qid, unapprovedOnly, request().get("dataset"));
 
     addCORSHeaders();
     addVersionHeaders();
