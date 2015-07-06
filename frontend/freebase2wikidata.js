@@ -104,7 +104,7 @@ $(document).ready(function() {
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '[' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}" data-qualifiers="{{data-qualifiers}}">approve</a>' +
+                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}">approve</a>' +
                 '</span>' +
                 ']' +
               '</span>' +
@@ -119,7 +119,7 @@ $(document).ready(function() {
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '[' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source-property="{{data-source-property}}" data-source-object="{{data-source-object}}" data-qualifiers="{{data-qualifiers}}">reject</a>' +
+                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}">reject</a>' +
                 '</span>' +
                 '] source' +
               '</span>' +
@@ -128,25 +128,27 @@ $(document).ready(function() {
           '<div class="wikibase-referenceview-listview">' +
             '<div class="wikibase-snaklistview listview-item">' +
               '<div class="wikibase-snaklistview-listview">' +
-                '<div class="wikibase-snakview listview-item">' +
-                  '<div class="wikibase-snakview-property-container">' +
-                    '<div class="wikibase-snakview-property" dir="auto">' +
-                      '<a href="/wiki/Property:{{source-property}}" title="Property:{{source-property}}">{{source-property-label}}</a>' +
-                    '</div>' +
-                  '</div>' +
-                  '<div class="wikibase-snakview-value-container" dir="auto">' +
-                    '<div class="wikibase-snakview-typeselector"></div>' +
-                    '<div class="wikibase-snakview-value wikibase-snakview-variation-valuesnak" style="height: auto;">' +
-                      '<div class="valueview valueview-instaticmode" aria-disabled="false">' +
-                        '{{source-object}}' +
-                      '</div>' +
-                    '</div>' +
-                  '</div>' +
-                '</div>' +
+                '{{source-html}}' +
                 '<!-- wikibase-listview -->' +
               '</div>' +
             '</div>' +
             '<!-- [0,*] wikibase-snaklistview -->' +
+          '</div>' +
+        '</div>',
+    sourceItemHtml:
+        '<div class="wikibase-snakview listview-item">' +
+          '<div class="wikibase-snakview-property-container">' +
+            '<div class="wikibase-snakview-property" dir="auto">' +
+              '<a href="/wiki/Property:{{source-property}}" title="Property:{{source-property}}">{{source-property-label}}</a>' +
+            '</div>' +
+          '</div>' +
+          '<div class="wikibase-snakview-value-container" dir="auto">' +
+            '<div class="wikibase-snakview-typeselector"></div>' +
+            '<div class="wikibase-snakview-value wikibase-snakview-variation-valuesnak" style="height: auto;">' +
+              '<div class="valueview valueview-instaticmode" aria-disabled="false">' +
+                '{{source-object}}' +
+              '</div>' +
+            '</div>' +
           '</div>' +
         '</div>',
     statementViewHtml:
@@ -360,8 +362,7 @@ $(document).ready(function() {
             // Approve source
             var predicate = statement.property;
             var object = statement.object;
-            var sourceProperty = statement.sourceProperty;
-            var sourceObject = statement.sourceObject;
+            var source = JSON.parse(statement.source);
             var qualifiers = JSON.parse(statement.qualifiers);
             getClaims(predicate, function(err, claims) {
               var objectExists = false;
@@ -376,8 +377,8 @@ $(document).ready(function() {
                 }
               }
               if (objectExists) {
-                createReference(predicate, object, sourceProperty,
-                    sourceObject, function(error, data) {
+                createReference(predicate, object, source,
+                    function(error, data) {
                   if (error) {
                     return reportError(error);
                   }
@@ -392,9 +393,8 @@ $(document).ready(function() {
                   });
                 });
               } else {
-                var qualifiers = JSON.parse(statement.qualifiers);
                 createClaimWithReference(predicate, object, qualifiers,
-                  sourceProperty, sourceObject)
+                  source)
                   .fail(function(error) {
                     return reportError(error);
                   })
@@ -710,7 +710,6 @@ $(document).ready(function() {
             qualifiers.push({
               qualifierProperty: qualifiersString[i],
               qualifierObject: qualifiersString[i + 1],
-              qualifierId: id,
               key: qualifiersString[i] + '\t' + qualifiersString[i + 1]
             });
           }
@@ -730,7 +729,6 @@ $(document).ready(function() {
               sourceProperty: sourcesString[i].replace(/^S/, 'P'),
               sourceObject: sourcesString[i + 1],
               sourceType: (tsvValueToJson(sourcesString[i + 1])).type,
-              sourceId: id,
               key: sourcesString[i] + '\t' + sourcesString[i + 1]
             });
           }
@@ -748,7 +746,7 @@ $(document).ready(function() {
                         currentId + ' with blacklisted source url ' +
                         currentUrl);
                   });
-                })(source.sourceId, url);
+                })(id, url);
               }
               // Return the opposite, i.e., the whitelisted URLs
               return !blacklisted;
@@ -770,10 +768,9 @@ $(document).ready(function() {
         arrayOfObjectWithKeyUnique(
           freebaseClaims[predicate][object].qualifiers.concat(qualifiers)
         );
-      freebaseClaims[predicate][object].sources =
-        arrayOfObjectWithKeyUnique(
-          freebaseClaims[predicate][object].sources.concat(sources)
-        );
+      if (sources.length > 0) {
+        freebaseClaims[predicate][object].sources.push(sources); //TODO: find duplicates
+      }
     });
     return freebaseClaims;
   }
@@ -1009,8 +1006,10 @@ $(document).ready(function() {
     getQualifiersAndSourcesLabels(object.qualifiers, object.sources,
         function(err, results) {
       object.sources.forEach(function(source) {
-        source.sourcePropertyLabel = results
-            .sourcesLabels[source.sourceProperty].labels[language].value;
+        source.forEach(function(snak) {
+          snak.sourcePropertyLabel = results
+          .sourcesLabels[source.sourceProperty].labels[language].value;
+        });
       });
       object.qualifiers.forEach(function(qualifier) {
         var qualifierProperty = qualifier.qualifierProperty;
@@ -1050,14 +1049,18 @@ $(document).ready(function() {
     }
     //Filter already present sources
     object.sources = object.sources.filter(function(source) {
-      return !existingSources[source.sourceProperty] ||
-             !existingSources[source.sourceProperty][source.sourceObject];
+      return source.filter(function(snak) {
+        return !existingSources[snak.sourceProperty] ||
+        !existingSources[snak.sourceProperty][snak.sourceObject];
+      }).length > 0;
     });
 
-    getSourcesLabels(object.sources, function(err, labels) {
+    getSourcesLabels(object.sources, function(err, results) {
       object.sources.forEach(function(source) {
-        source.sourcePropertyLabel = labels
-            .sourcesLabels[source.sourceProperty].labels[language].value;
+        source.forEach(function(snak) {
+          snak.sourcePropertyLabel = results
+              .sourcesLabels[snak.sourceProperty].labels[language].value;
+        });
       });
       return createNewSources(
           object.sources,
@@ -1135,8 +1138,10 @@ $(document).ready(function() {
               return;
             }
             object.sources.forEach(function(source) {
-              source.sourcePropertyLabel = results
-                  .sourcesLabels[source.sourceProperty].labels[lang].value;
+              source.forEach(function(snak) {
+                snak.sourcePropertyLabel = results
+                    .sourcesLabels[snak.sourceProperty].labels[lang].value;
+              });
             });
             object.qualifiers.forEach(function(qualifier) {
               var qualifierProperty = qualifier.qualifierProperty;
@@ -1157,8 +1162,13 @@ $(document).ready(function() {
     var qualifiersProperties = qualifiers.map(function(qualifier) {
       return qualifier.qualifierProperty;
     });
-    var sourcesProperties = sources.map(function(source) {
-      return source.sourceProperty;
+    var sourcesProperties = [];
+    sources.forEach(function(source) {
+      sourcesProperties = sourcesProperties.concat(
+        source.map(function(snak) {
+          return snak.sourceProperty;
+        })
+      );
     });
     async.parallel({
       qualifiersLabels: function(callback) {
@@ -1191,8 +1201,13 @@ $(document).ready(function() {
   */
 
   function getSourcesLabels(sources, callback) {
-    var sourcesProperties = sources.map(function(source) {
-      return source.sourceProperty;
+    var sourcesProperties = [];
+    sources.forEach(function(source) {
+      sourcesProperties = sourcesProperties.concat(
+        source.map(function(snak) {
+          return snak.sourceProperty;
+        })
+      );
     });
     async.parallel({
       sourcesLabels: function(callback) {
@@ -1262,17 +1277,24 @@ $(document).ready(function() {
 
   function getSourcesHtml(sources, property, object) {
     var sourcePromises = sources.map(function(source) {
-      return getValueHtml(source.sourceObject).then(function(formattedValue) {
+      var sourceItemsPromises = source.map(function(snak) {
+        return getValueHtml(snak.sourceObject).then(function(formattedValue) {
+          return HTML_TEMPLATES.sourceItemHtml
+            .replace(/\{\{source-property\}\}/g, snak.sourceProperty)
+            .replace(/\{\{source-property-label\}\}/g,
+                snak.sourcePropertyLabel)
+            .replace(/\{\{source-object\}\}/g, formattedValue);
+        });
+      });
+
+      return $.when.apply($, sourceItemsPromises).then(function() {
         return HTML_TEMPLATES.sourceHtml
-          .replace(/\{\{source-property\}\}/g, source.sourceProperty)
-          .replace(/\{\{data-source-property\}\}/g, source.sourceProperty)
+          .replace(/\{\{data-source\}\}/g,  escapeHtml(JSON.stringify(source)))
           .replace(/\{\{data-property\}\}/g, property)
           .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
-          .replace(/\{\{source-property-label\}\}/g,
-              source.sourcePropertyLabel)
-          .replace(/\{\{statement-id\}\}/g, source.sourceId)
-          .replace(/\{\{source-object\}\}/g, formattedValue)
-          .replace(/\{\{data-source-object\}\}/g, escapeHtml(source.sourceObject))
+          .replace(/\{\{statement-id\}\}/g, object.id)
+          .replace(/\{\{source-html\}\}/g,
+              Array.prototype.slice.call(arguments).join(''))
           .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(object.qualifiers)));
       });
     });
@@ -1405,25 +1427,15 @@ $(document).ready(function() {
   }
 
   // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
-  function createClaimWithReference(predicate, object, qualifiers,
-    sourceProperty, sourceObject) {
+  function createClaimWithReference(predicate, object,
+      qualifiers, sourceSnaks) {
     var value = (tsvValueToJson(object)).value;
     var api = new mw.Api();
     return createClaim(predicate, object, qualifiers).then(function(data) {
-      var dataValue = tsvValueToJson(sourceObject);
       return api.post({
         action: 'wbsetreference',
         statement: data.claim.id,
-        snaks: JSON.stringify({
-          predicate: [{
-            snaktype: 'value',
-            property: sourceProperty,
-            datavalue: {
-              type: getValueTypeFromDataValueType(dataValue.type),
-              value: dataValue.value
-            }
-          }]
-        }),
+        snaks: JSON.stringify(formatSourceForSave(sourceSnaks)),
         token: mw.user.tokens.get('editToken'),
         summary: WIKIDATA_API_COMMENT
       });
@@ -1445,8 +1457,7 @@ $(document).ready(function() {
   }
 
   // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
-  function createReference(predicate, object, sourceProperty,
-      sourceObject, callback) {
+  function createReference(predicate, object, sourceSnaks, callback) {
     var api = new mw.Api();
     api.get({
       action: 'wbgetclaims',
@@ -1464,21 +1475,10 @@ $(document).ready(function() {
           break;
         }
       }
-      var dataValue = tsvValueToJson(sourceObject);
-      var type = getValueTypeFromDataValueType(dataValue.type);
       return api.post({
         action: 'wbsetreference',
         statement: data.claims[predicate][index].id,
-        snaks: JSON.stringify({
-          predicate: [{
-            snaktype: 'value',
-            property: sourceProperty,
-            datavalue: {
-              type: type,
-              value: dataValue.value
-            }
-          }]
-        }),
+        snaks: JSON.stringify(formatSourceForSave(sourceSnaks)),
         token: mw.user.tokens.get('editToken'),
         summary: WIKIDATA_API_COMMENT
       });
@@ -1487,6 +1487,29 @@ $(document).ready(function() {
     }).fail(function(error) {
       return callback(error);
     });
+  }
+
+  function formatSourceForSave(sourceSnaks) {
+    var result = {};
+    sourceSnaks.forEach(function(snak) {
+      result[snak.sourceProperty] = [];
+    });
+
+    sourceSnaks.forEach(function(snak) {
+      var dataValue = tsvValueToJson(snak.sourceObject);
+      var type = getValueTypeFromDataValueType(dataValue.type);
+
+      result[snak.sourceProperty].push({
+        snaktype: 'value',
+        property: snak.sourceProperty,
+        datavalue: {
+          type: type,
+          value: dataValue.value
+        }
+      });
+    });
+
+    return result;
   }
 
   function getValueTypeFromDataValueType(dataValueType) {
