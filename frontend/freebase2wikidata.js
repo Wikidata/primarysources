@@ -734,6 +734,7 @@ $(document).ready(function() {
               sourceProperty: sourcesString[i].replace(/^S/, 'P'),
               sourceObject: sourcesString[i + 1],
               sourceType: (tsvValueToJson(sourcesString[i + 1])).type,
+              sourceId: id,
               key: sourcesString[i] + '\t' + sourcesString[i + 1]
             });
           }
@@ -1297,7 +1298,7 @@ $(document).ready(function() {
           .replace(/\{\{data-source\}\}/g,  escapeHtml(JSON.stringify(source)))
           .replace(/\{\{data-property\}\}/g, property)
           .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
-          .replace(/\{\{statement-id\}\}/g, object.id)
+          .replace(/\{\{statement-id\}\}/g, source[0].sourceId)
           .replace(/\{\{source-html\}\}/g,
               Array.prototype.slice.call(arguments).join(''))
           .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(object.qualifiers)));
