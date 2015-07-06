@@ -180,23 +180,8 @@ $(document).ready(function() {
               '<!-- wikibase-listview -->' +
             '</div>' +
           '</div>' +
+          '{{toolbar-html}}' +
           '<!-- wikibase-toolbar -->' +
-          '<span class="wikibase-toolbar-container wikibase-edittoolbar-container">' +
-            '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
-              '[' +
-              '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}">approve</a>' +
-              '</span>' +
-              ']' +
-            '</span>' +
-            '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
-              '[' +
-              '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}">reject</a>' +
-              '</span>' +
-              '] property' +
-            '</span>' +
-          '</span>' +
           '<div class="wikibase-statementview-references-container">' +
             '<div class="wikibase-statementview-references-heading">' +
               '<a class="ui-toggler ui-toggler-toggle ui-state-default">' + // Removed ui-toggler-toggle-collapsed
@@ -219,6 +204,23 @@ $(document).ready(function() {
             '</div>' +
           '</div>' +
         '</div>',
+    statementToolbarHtml:
+      '<span class="wikibase-toolbar-container wikibase-edittoolbar-container">' +
+      '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
+        '[' +
+        '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
+          '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}">approve</a>' +
+        '</span>' +
+        ']' +
+      '</span>' +
+      '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
+        '[' +
+        '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
+          '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}">reject</a>' +
+        '</span>' +
+        '] property' +
+      '</span>' +
+    '</span>',
     mainHtml:
         '<div class="wikibase-statementgroupview listview-item" id="{{property}}">' +
           '<div class="wikibase-statementgroupview-property new-property">' +
@@ -1008,7 +1010,7 @@ $(document).ready(function() {
       object.sources.forEach(function(source) {
         source.forEach(function(snak) {
           snak.sourcePropertyLabel = results
-          .sourcesLabels[source.sourceProperty].labels[language].value;
+          .sourcesLabels[snak.sourceProperty].labels[language].value;
         });
       });
       object.qualifiers.forEach(function(qualifier) {
@@ -1331,18 +1333,23 @@ $(document).ready(function() {
         getSourcesHtml(object.sources, property, object),
         getValueHtml(object.object)
     ).then(function(qualifiersHtml, sourcesHtml, formattedValue) {
+      var toolbarHtml = '';
+      if (object.sources.length === 0) {
+        HTML_TEMPLATES.statementToolbarHtml
+          .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
+          .replace(/\{\{data-property\}\}/g, property)
+          .replace(/\{\{statement-id\}\}/g, object.id)
+          .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(object.qualifiers)));
+      }
       return HTML_TEMPLATES.statementViewHtml
         .replace(/\{\{object\}\}/g, formattedValue)
-        .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
-        .replace(/\{\{data-property\}\}/g, property)
+        .replace(/\{\{toolbar-html\}\}/g, toolbarHtml)
         .replace(/\{\{references\}\}/g,
           object.sources.length === 1 ?
               object.sources.length + ' reference' :
               object.sources.length + ' references')
         .replace(/\{\{sources\}\}/g, sourcesHtml)
-        .replace(/\{\{qualifiers\}\}/g, qualifiersHtml)
-        .replace(/\{\{statement-id\}\}/g, object.id)
-        .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(object.qualifiers)));
+        .replace(/\{\{qualifiers\}\}/g, qualifiersHtml);
     });
   }
 
