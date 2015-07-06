@@ -104,7 +104,7 @@ $(document).ready(function() {
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '[' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}">approve</a>' +
+                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}">approve reference</a>' +
                 '</span>' +
                 ']' +
               '</span>' +
@@ -119,9 +119,9 @@ $(document).ready(function() {
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '[' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}">reject</a>' +
+                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}">reject reference</a>' +
                 '</span>' +
-                '] source' +
+                ']' +
               '</span>' +
             '</div>' +
           '</div>' +
@@ -185,16 +185,16 @@ $(document).ready(function() {
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
               '[' +
               '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}">approve</a>' +
+                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}">approve claim</a>' +
               '</span>' +
               ']' +
             '</span>' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
               '[' +
               '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}">reject</a>' +
+                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}">reject claim</a>' +
               '</span>' +
-              '] property' +
+              ']' +
             '</span>' +
           '</span>' +
           '<div class="wikibase-statementview-references-container">' +
