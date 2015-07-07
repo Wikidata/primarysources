@@ -657,6 +657,12 @@ $(document).ready(function() {
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
+        statement: qid + '\tP646\t"/m/05zhl_"',
+        state: STATEMENT_STATES.unapproved,
+        id: 0,
+        format: STATEMENT_FORMAT
+      });
+      freebaseEntityData.push({
         statement: qid + '\tP569\t+00000001840-01-01T00:00:00Z/11\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
@@ -1259,7 +1265,7 @@ $(document).ready(function() {
         .replace(/\"/g, '&quot;');
   }
 
-  function getValueHtml(value) {
+  function getValueHtml(value, property) {
     var parsed = tsvValueToJson(value);
     var dataValue = {
         type: getValueTypeFromDataValueType(parsed.type),
@@ -1270,21 +1276,44 @@ $(document).ready(function() {
       };
 
     var api = new mw.Api();
-    return api.get({
-      action:'wbformatvalue',
-      generate:'text/html',
-      datavalue:JSON.stringify(dataValue),
-      datatype:parsed.type,
-      options:JSON.stringify(options)
-    }).then(function(result) {
-      return result.result;
-    });
+
+    if (parsed.type === 'string') { //Link to external database
+      return api.get({
+        action:'wbgetentities',
+        ids:property,
+        props:'claims'
+      }).then(function(result) {
+        var urlFormatter = '';
+        $.each(result.entities, function(_, entity) {
+          if (entity.claims && 'P1630' in entity.claims) {
+            urlFormatter = entity.claims['P1630'][0].mainsnak.datavalue.value;
+          }
+        });
+
+        if(urlFormatter === '') {
+          return parsed.value;
+        } else {
+          var url = urlFormatter.replace('$1', parsed.value);
+          return '<a rel="nofollow" class="external free" href="' + url + '">' +  parsed.value + '</a>';
+        }
+      });
+    } else {
+      return api.get({
+        action:'wbformatvalue',
+        generate:'text/html',
+        datavalue:JSON.stringify(dataValue),
+        datatype:parsed.type,
+        options:JSON.stringify(options)
+      }).then(function(result) {
+        return result.result;
+      });
+    }
   }
 
   function getSourcesHtml(sources, property, object) {
     var sourcePromises = sources.map(function(source) {
       var sourceItemsPromises = source.map(function(snak) {
-        return getValueHtml(snak.sourceObject).then(function(formattedValue) {
+        return getValueHtml(snak.sourceObject, snak.sourceProperty).then(function(formattedValue) {
           return HTML_TEMPLATES.sourceItemHtml
             .replace(/\{\{source-property\}\}/g, snak.sourceProperty)
             .replace(/\{\{source-property-label\}\}/g,
@@ -1312,7 +1341,7 @@ $(document).ready(function() {
 
   function getQualifiersHtml(qualifiers) {
     var qualifierPromises = qualifiers.map(function(qualifier) {
-      return getValueHtml(qualifier.qualifierObject).then(
+      return getValueHtml(qualifier.qualifierObject, qualifier.qualifierProperty).then(
         function(formattedValue) {
         return HTML_TEMPLATES.qualifierHtml
           .replace(/\{\{qualifier-property\}\}/g,
@@ -1335,7 +1364,7 @@ $(document).ready(function() {
     return $.when(
         getQualifiersHtml(object.qualifiers),
         getSourcesHtml(object.sources, property, object),
-        getValueHtml(object.object)
+        getValueHtml(object.object, property)
     ).then(function(qualifiersHtml, sourcesHtml, formattedValue) {
       return HTML_TEMPLATES.statementViewHtml
         .replace(/\{\{object\}\}/g, formattedValue)
