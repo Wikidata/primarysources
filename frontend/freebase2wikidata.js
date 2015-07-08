@@ -696,6 +696,7 @@ $(document).ready(function() {
       var object = line[2];
       var qualifiers = [];
       var sources = [];
+      var key = object;
       // If there are qualifiers and/or sources
       var lineLength = line.length;
       if (lineLength > 3) {
@@ -717,13 +718,19 @@ $(document).ready(function() {
                 qualifiersString);
           }
           var qualifiersStringLen = qualifiersString.length;
+          var qualifierKeyParts = [];
           for (var i = 0; i < qualifiersStringLen; i = i + 2) {
+            var qualifierKey =
+                qualifiersString[i] + '\t' + qualifiersString[i + 1];
             qualifiers.push({
               qualifierProperty: qualifiersString[i],
               qualifierObject: qualifiersString[i + 1],
-              key: qualifiersString[i] + '\t' + qualifiersString[i + 1]
+              key: qualifierKey
             });
+            qualifierKeyParts.push(qualifierKey);
           }
+          qualifierKeyParts.sort();
+          key += '\t' + qualifierKeyParts.join('\t');
         }
         if (hasSources) {
           sourcesString = hasQualifiers ?
@@ -768,36 +775,20 @@ $(document).ready(function() {
         }
       }
       freebaseClaims[predicate] = freebaseClaims[predicate] || {};
-      if (!freebaseClaims[predicate][object]) {
-        freebaseClaims[predicate][object] = {
+      if (!freebaseClaims[predicate][key]) {
+        freebaseClaims[predicate][key] = {
           id: id,
-          qualifiers: [],
+          object: object,
+          qualifiers: qualifiers,
           sources: []
         };
       }
 
-      freebaseClaims[predicate][object].qualifiers =
-        arrayOfObjectWithKeyUnique(
-          freebaseClaims[predicate][object].qualifiers.concat(qualifiers)
-        );
       if (sources.length > 0) {
-        freebaseClaims[predicate][object].sources.push(sources); //TODO: find duplicates
+        freebaseClaims[predicate][key].sources.push(sources); //TODO: find duplicates
       }
     });
     return freebaseClaims;
-  }
-
-  function arrayOfObjectWithKeyUnique(array) {
-    var table = {};
-    for (var i in array) {
-      table[array[i].key] = array[i];
-    }
-
-    var array = [];
-    for (var i in table) {
-      array.push(table[i]);
-    }
-    return array;
   }
 
   function computeCoordinatesPrecision(latitude, longitude) {
@@ -935,26 +926,23 @@ $(document).ready(function() {
           propertyLink.parentNode.parentNode.classList
               .add('existing-property');
         });
-        for (var freebaseValue in freebaseClaims[property]) {
-          var freebaseObject = freebaseClaims[property][freebaseValue];
-          freebaseObject.object = freebaseValue;
+        for (var freebaseKey in freebaseClaims[property]) {
+          var freebaseObject = freebaseClaims[property][freebaseKey];
           var existingWikidataObjects = {};
           var lenI = wikidataClaims[property].length;
           for (var i = 0; i < lenI; i++) {
             var wikidataObject = wikidataClaims[property][i];
-            if (wikidataObject.mainsnak.snaktype === 'value') {
-              existingWikidataObjects
-                 [jsonToTsvValue(wikidataObject.mainsnak.datavalue)] =
-                 wikidataObject;
-            }
+            existingWikidataObjects
+                [buildValueKeyFromWikidataStatement(wikidataObject)] =
+                wikidataObject;
           }
-          if (existingWikidataObjects[freebaseValue]) {
+          if (existingWikidataObjects[freebaseKey]) {
             // Existing object, maybe new sources?
             prepareNewSources(
                 property,
                 freebaseObject,
                 language,
-                existingWikidataObjects[freebaseValue]
+                existingWikidataObjects[freebaseKey]
             );
           } else {
             // New object
@@ -979,6 +967,29 @@ $(document).ready(function() {
         createNewClaim(property, propertyLabel, claims, language);
       }
     });
+  }
+
+  function buildValueKeyFromWikidataStatement(statement) {
+    if (statement.mainsnak.snaktype !== 'value') {
+      return statement.mainsnak.snaktype;
+    }
+
+    var key = jsonToTsvValue(statement.mainsnak.datavalue);
+
+    if (statement.qualifiers) {
+      var qualifierKeyParts = [];
+      $.each(statement.qualifiers, function(_, qualifiers) {
+        qualifiers.forEach(function(qualifier) {
+          qualifierKeyParts.push(
+              qualifier.property + '\t' + jsonToTsvValue(qualifier.datavalue)
+          );
+        });
+      });
+      qualifierKeyParts.sort();
+      key += '\t' + qualifierKeyParts.join('\t');
+    }
+
+    return key;
   }
 
   function jsonToTsvValue(dataValue) {
@@ -1123,21 +1134,23 @@ $(document).ready(function() {
     };
     var objectsLength = Object.keys(claims).length;
     var i = 0;
-    for (var object in claims) {
-      var id = claims[object].id;
-      var sources = claims[object].sources;
-      var qualifiers = claims[object].qualifiers;
+    for (var key in claims) {
+      var object = claims[key].object;
+      var id = claims[key].id;
+      var sources = claims[key].sources;
+      var qualifiers = claims[key].qualifiers;
       newClaim.objects.push({
         object: object,
         id: id,
         qualifiers: qualifiers,
-        sources: sources
+        sources: sources,
+        key: key
       });
-      (function(currentNewClaim, currentObject) {
+      (function(currentNewClaim, currentKey) {
         getQualifiersAndSourcesLabels(qualifiers, sources,
             function(err, results) {
           currentNewClaim.objects.forEach(function(object) {
-            if (object.object !== currentObject) {
+            if (object.key !== currentKey) {
               return;
             }
             object.sources.forEach(function(source) {
@@ -1157,7 +1170,7 @@ $(document).ready(function() {
             return createNewClaimList(currentNewClaim);
           }
         });
-      })(newClaim, object);
+      })(newClaim, key);
     }
   }
 
@@ -1281,11 +1294,12 @@ $(document).ready(function() {
           }
         });
 
-        if(urlFormatter === '') {
+        if (urlFormatter === '') {
           return parsed.value;
         } else {
           var url = urlFormatter.replace('$1', parsed.value);
-          return '<a rel="nofollow" class="external free" href="' + url + '">' +  parsed.value + '</a>';
+          return '<a rel="nofollow" class="external free" href="' + url + '">' +
+                 parsed.value + '</a>';
         }
       });
     } else {
@@ -1304,7 +1318,8 @@ $(document).ready(function() {
   function getSourcesHtml(sources, property, object) {
     var sourcePromises = sources.map(function(source) {
       var sourceItemsPromises = source.map(function(snak) {
-        return getValueHtml(snak.sourceObject, snak.sourceProperty).then(function(formattedValue) {
+        return getValueHtml(snak.sourceObject, snak.sourceProperty)
+          .then(function(formattedValue) {
           return HTML_TEMPLATES.sourceItemHtml
             .replace(/\{\{source-property\}\}/g, snak.sourceProperty)
             .replace(/\{\{source-property-label\}\}/g,
@@ -1332,7 +1347,8 @@ $(document).ready(function() {
 
   function getQualifiersHtml(qualifiers) {
     var qualifierPromises = qualifiers.map(function(qualifier) {
-      return getValueHtml(qualifier.qualifierObject, qualifier.qualifierProperty).then(
+      return getValueHtml(qualifier.qualifierObject,
+          qualifier.qualifierProperty).then(
         function(formattedValue) {
         return HTML_TEMPLATES.qualifierHtml
           .replace(/\{\{qualifier-property\}\}/g,
