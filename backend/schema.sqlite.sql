@@ -40,8 +40,8 @@ CREATE TABLE userlog (
     changed  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_stmt_qid ON statement(subject);
-CREATE INDEX idx_stmt_state ON statement(state);
+CREATE INDEX idx_stmt_subject_state_dataset ON statement(subject, state, dataset);
+CREATE INDEX idx_stmt_state_dataset_subject ON statement(state, dataset, subject);
 CREATE INDEX idx_stmst_dataset ON statement(dataset);
 CREATE INDEX idx_qualifier_stmt ON qualifier(stmt);
 CREATE INDEX idx_source_stmt ON source(stmt);
