@@ -134,7 +134,7 @@ GET requests to the backend webservices currently support 3 different serializat
 can be selected by setting appropriate `Accept:` headers:
  
   * [Wikidata Tab Separated](http://tools.wmflabs.org/wikidata-todo/quick_statements.php) using header
-    `text/vnd.wikidata+tsv`
+    `text/vnd.wikidata+tsv`. For time values we do not use the old Wikibase format with years on 11 digits but the new one with years on 4 or more digits. Example: +0900-11-11T00:00:00Z/11. The time precision should also not contain trailing zeros (e.g. use /9 and not /09).
   * [Wikidata JSON](https://www.mediawiki.org/wiki/Wikibase/Notes/JSON) using header
     `application/vnd.wikidata+json`
   * Envelope JSON, wrapping Wikidata TSV in a JSON envelope containing the database ID and version

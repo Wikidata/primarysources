@@ -16,8 +16,8 @@ PropertyValue parsePropertyValue(std::string property, std::string value) {
     // QID of entities, properties, sources
     static boost::regex re_entity("\\s*([QPS]\\d+)\\s*");
 
-    // time format (e.g. +00000001967-01-17T00:00:00Z/11)
-    static boost::regex re_time("\\s*\\+(\\d{11})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})Z/(\\d{1,2})\\s*");
+    // time format (e.g. +1967-01-17T00:00:00Z/11)
+    static boost::regex re_time("\\s*\\+(\\d+)-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})Z/(\\d{1,2})\\s*");
 
     // numbers (+/-1234.4567)
     static boost::regex re_num("\\s*(\\+|-)\\d+(\\.\\d+)?\\s*");

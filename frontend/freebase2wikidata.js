@@ -615,7 +615,7 @@ $(document).ready(function() {
     }
     if (FAKE_OR_RANDOM_DATA) {
       freebaseEntityData.push({
-        statement: qid + '\tP31\tQ1\tP580\t+00000001840-01-01T00:00:00Z/09\tS143\tQ48183',
+        statement: qid + '\tP31\tQ1\tP580\t+1840-01-01T00:00:00Z/9\tS143\tQ48183',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
@@ -627,19 +627,19 @@ $(document).ready(function() {
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+00000002015-02-14T00:00:00Z/11',
+        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+2015-02-14T00:00:00Z/11',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP1451\ten:"foo bar"\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
+        statement: qid + '\tP1451\ten:"foo bar"\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP108\tQ8288\tP582\t+00000002013-09-30T00:00:00Z/10\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
+        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
@@ -663,7 +663,7 @@ $(document).ready(function() {
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP569\t+00000001840-01-01T00:00:00Z/11\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
+        statement: qid + '\tP569\t+1840-01-01T00:00:00Z/11\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
@@ -832,9 +832,9 @@ $(document).ready(function() {
     // fr:"Les Misérables"
     var languageStringRegEx = /^(\w+):"([^"\\]*(?:\\.[^"\\]*)*)"$/;
 
-    // +00000002013-01-01T00:00:00Z/10
+    // +2013-01-01T00:00:00Z/10
     /* jshint maxlen: false */
-    var timeRegEx = /^[+-]\d{11}-[01]\d-[0-3]\dT[0-2]\d(?::[0-5]\d){2}(?:[.,]\d+)?([+-][0-2]\d:[0-5]\d|Z)(?:\/\d[0-4])?$/;
+    var timeRegEx = /^[+-]\d+-\d\d-\d\dT\d\d:\d\d:\d\dZ\/\d+$/;
     /* jshint maxlen: 80 */
 
     // +/-1234.4567
@@ -981,21 +981,12 @@ $(document).ready(function() {
     });
   }
 
-  //Normalize year size to 16 digits
-  function normalizeTime(time) {
-    var matches = /^([-+])(\d+)\-(.*)$/.exec(time);
-    return matches[1] +
-           ('00000000000' + matches[2]).slice(-11) +
-           '-' + matches[3];
-  }
-
   function jsonToTsvValue(dataValue) {
     switch (dataValue.type) {
     case 'quantity':
       return dataValue.value.amount;
     case 'time':
-      return normalizeTime(dataValue.value.time) +
-             '/' + dataValue.value.precision;
+      return dataValue.value.time + '/' + dataValue.value.precision;
     case 'globecoordinate':
       return '@' + dataValue.value.latitude + '/' + dataValue.value.longitude;
     case 'monolingualtext':
