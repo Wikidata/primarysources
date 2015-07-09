@@ -484,13 +484,10 @@ $(document).ready(function() {
   })();
 
   function reportError(error) {
-    var errorMessage = document.createElement('div');
-    errorMessage.classList.add('alert-box');
-    errorMessage.classList.add('error');
-    errorMessage.innerHTML = '<span>error: </span> ' + error +
-        ' <button onclick="javascript:this.parentNode.remove();">Dismiss' +
-         '</button>';
-    document.body.appendChild(errorMessage);
+    mw.notify(
+      error,
+      {autoHide: false, tag: 'ps-error'}
+    );
   }
 
   function configDialog(button) {
