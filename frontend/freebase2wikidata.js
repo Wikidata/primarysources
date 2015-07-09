@@ -283,6 +283,8 @@ $(document).ready(function() {
       ));
       portletLink.children().click(function(e) {
         e.preventDefault();
+        e.target.innerHTML = '<img src="https://upload.wikimedia.org/' +
+            'wikipedia/commons/f/f8/Ajax-loader%282%29.gif" class="ajax"/>';
         $.ajax({
           url: FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') + '?dataset=' + dataset
         }).done(function(data) {
