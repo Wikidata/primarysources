@@ -1440,14 +1440,17 @@ $(document).ready(function() {
 
   function setStatementState(id, state, callback) {
     if (!STATEMENT_STATES[state]) {
-      return callback('Invalid statement state');
+      reportError('Invalid statement state');
     }
     var user = mw.user.getName();
     var url = FREEBASE_STATEMENT_APPROVAL_URL
         .replace(/\{\{user\}\}/, user)
         .replace(/\{\{state\}\}/, state)
         .replace(/\{\{id\}\}/, id);
-    $.post(url, callback);
+
+    $.post(url, callback).fail(function() {
+      reportError('Set statement state to ' + state + ' failed.');
+    });
   }
 
   // https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
