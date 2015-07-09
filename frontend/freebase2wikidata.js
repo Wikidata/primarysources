@@ -1310,6 +1310,16 @@ $(document).ready(function() {
         datatype:parsed.type,
         options:JSON.stringify(options)
       }).then(function(result) {
+        //Create links for geocoordinates
+        if (parsed.type === 'globe-coordinate') {
+          var url = 'https://tools.wmflabs.org/geohack/geohack.php' +
+              '?language=' + mw.config.get('wgUserLanguage') + '&params=' +
+              dataValue.value.latitude + '_N_' +
+              dataValue.value.longitude + '_E_globe:earth';
+          return '<a rel="nofollow" class="external free" href="' + url + '">' +
+              result.result + '</a>';
+        }
+
         return result.result;
       });
     }
