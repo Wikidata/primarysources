@@ -33,7 +33,7 @@ namespace Serializer {
                 break;
             case TIME:
                 *out << std::setfill('0')
-                        << "+" << std::setw(11) << v.getTime().tm_year
+                        << "+" << std::setw(4) << v.getTime().tm_year
                         << "-" << std::setw(2) << v.getTime().tm_mon
                         << "-" << std::setw(2) << v.getTime().tm_mday
                         << "T" << std::setw(2) << v.getTime().tm_hour
