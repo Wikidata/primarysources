@@ -16,12 +16,6 @@
 #include <cppcms/json.h>
 #include <cppdb/frontend.h>
 
-std::string build_connection(
-        const std::string& db_driver, const std::string& db_name,
-        const std::string& db_host, const std::string& db_port,
-        const std::string& db_user, const std::string& db_pass
-);
-
 /**
 * Database backend for accessing statements and entities. Manages the
 * SQL connection details and wraps the Persistence implementation.

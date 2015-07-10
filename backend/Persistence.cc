@@ -5,6 +5,48 @@
 #include "Persistence.h"
 #include "Statement.h"
 
+std::string build_mysql_connection(
+        const std::string& db_name,
+        const std::string& db_host, const std::string& db_port,
+        const std::string& db_user, const std::string& db_pass
+) {
+    std::ostringstream out;
+    out << "mysql:database=" << db_name;
+    if (db_host != "") {
+        out << ";host=" << db_host;
+    }
+    if (db_port != "") {
+        out << ";port=" << db_port;
+    }
+    if (db_user != "") {
+        out << ";user=" << db_user;
+    }
+    if (db_pass != "") {
+        out << ";password=" << db_pass;
+    }
+    return out.str();
+}
+
+std::string build_sqlite_connection(const std::string& db_name) {
+    std::ostringstream out;
+    out << "sqlite3:db=" << db_name;
+    return out.str();
+}
+
+std::string build_connection(const cppcms::json::value& config) {
+    std::string driver = config["driver"].str();
+
+    if (driver == "mysql" ) {
+        return build_mysql_connection(config["name"].str(),
+               config["host"].str(), config["port"].str(),
+               config["user"].str(), config["password"].str());
+    } else if (driver == "sqlite3") {
+        return build_sqlite_connection(config["name"].str());
+    } else {
+        throw PersistenceException("Unknown driver:" + driver);
+    }
+}
+
 inline ApprovalState getApprovalState(int16_t state) {
     switch (state) {
         case 0: return UNAPPROVED;
@@ -51,7 +93,7 @@ int64_t Persistence::addSnak(const PropertyValue &pv) {
                         << static_cast<long double>(pv.getValue().getQuantity())
                         << cppdb::exec).last_insert_id();
         case TIME:
-            return (sql << "INSERT INTO snak(property,tvalue,precision,vtype) "
+            return (sql << "INSERT INTO snak(property,tvalue,`precision`,vtype) "
                            "VALUES (?,?,?,'time')"
                         << pv.getProperty() << pv.getValue().getTime()
                         << pv.getValue().getPrecision() << cppdb::exec)
@@ -92,7 +134,7 @@ int64_t Persistence::getSnakID(const PropertyValue &pv) {
             break;
         case TIME:
             r = (sql << "SELECT id FROM snak "
-                        "WHERE property=? AND tvalue=? AND precision=? "
+                        "WHERE property=? AND tvalue=? AND `precision`=? "
                         "AND vtype='time'"
                     << pv.getProperty() << pv.getValue().getTime()
                     << pv.getValue().getPrecision() << cppdb::row);
@@ -116,7 +158,7 @@ int64_t Persistence::getSnakID(const PropertyValue &pv) {
 PropertyValue Persistence::getSnak(int64_t snakid) {
     cppdb::result res =(
             sql << "SELECT property, svalue, dvalue, tvalue, "
-                   "       lat, lng, precision, lang, vtype "
+                   "       lat, lng, `precision`, lang, vtype "
                    "FROM snak WHERE id = ?"
                 << snakid << cppdb::row);
 
@@ -317,12 +359,18 @@ std::vector<Statement> Persistence::getRandomStatements(
 
     std::vector<Statement> result;
 
-    cppdb::result res =(
-            sql << "SELECT id, subject, mainsnak, state, dataset, upload "
-                    "FROM statement WHERE (state = 0 OR ?) "
-                    "AND id >= abs(random()) % (SELECT max(id) FROM statement) "
-                    "ORDER BY id LIMIT ?"
-                    << !unapprovedOnly << count);
+    std::string query = "SELECT id, subject, mainsnak, state, dataset, upload "
+            "FROM statement WHERE (state = 0 OR ?) "
+            "AND id >= abs(RANDOM()) % (SELECT max(id) FROM statement) "
+            "ORDER BY id LIMIT ?";
+    if(sql.engine() == "mysql") {
+        query ="SELECT id, subject, mainsnak, state, dataset, upload "
+                "FROM statement WHERE (state = 0 OR ?) "
+                "AND id >= RAND() * (SELECT max(id) FROM statement) "
+                "ORDER BY id LIMIT ?";
+    }
+
+    cppdb::result res =(sql << query << !unapprovedOnly << count);
 
 
     while (res.next()) {
@@ -342,15 +390,25 @@ std::string Persistence::getRandomQID(bool unapprovedOnly, const std::string& da
     if (!managedTransactions)
         sql.begin();
 
+    std::string query = "SELECT subject "
+            "FROM statement WHERE (state = 0 OR ?) AND (dataset = ? OR ?) "
+            "AND id >= abs(RANDOM()) % (SELECT max(id) FROM statement "
+            "WHERE (state = 0 OR ?) AND (dataset = ? OR ?)) "
+            "ORDER BY id "
+            "LIMIT 1";
+    if(sql.engine() == "mysql") {
+        query = "SELECT subject "
+                "FROM statement WHERE (state = 0 OR ?) AND (dataset = ? OR ?) "
+                "AND id >= RAND() * (SELECT max(id) FROM statement "
+                "WHERE (state = 0 OR ?) AND (dataset = ? OR ?)) "
+                "ORDER BY id "
+                "LIMIT 1";
+    }
+
     cppdb::result res =(
-            sql << "SELECT subject "
-                    "FROM statement WHERE (state = 0 OR ?) AND (dataset = ? OR ?) "
-                    "AND id >= abs(random()) % (SELECT max(id) FROM statement "
-                    "WHERE (state = 0 OR ?) AND (dataset = ? OR ?)) "
-                    "ORDER BY id "
-                    "LIMIT 1"
-                    << !unapprovedOnly << dataset << (dataset == "")
-                    << !unapprovedOnly  << dataset << (dataset == "") << cppdb::row);
+            sql << query
+                << !unapprovedOnly << dataset << (dataset == "")
+                << !unapprovedOnly  << dataset << (dataset == "") << cppdb::row);
 
 
     if (!res.empty()) {

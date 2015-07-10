@@ -9,6 +9,7 @@
 
 #include "Statement.h"
 
+std::string build_connection(const cppcms::json::value& config);
 
 class PersistenceException : public std::exception {
  public:

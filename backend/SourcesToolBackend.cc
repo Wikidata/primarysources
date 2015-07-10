@@ -15,28 +15,6 @@
 int64_t SourcesToolBackend::cacheHits = 0;
 int64_t SourcesToolBackend::cacheMisses = 0;
 
-std::string build_connection(
-        const std::string& db_driver, const std::string& db_name,
-        const std::string& db_host, const std::string& db_port,
-        const std::string& db_user, const std::string& db_pass
-) {
-    std::ostringstream out;
-    out << db_driver << ":db=" << db_name;
-    if (db_host != "") {
-        out << ";host=" << db_host;
-    }
-    if (db_port != "") {
-        out << ";port=" << db_port;
-    }
-    if (db_user != "") {
-        out << ";user=" << db_user;
-    }
-    if (db_pass != "") {
-        out << ";pass=" << db_pass;
-    }
-    return out.str();
-}
-
 // Create cache key for an entity and dataset; the cache key is used to cache
 // all statements of the given dataset having the entity as subject. If dataset
 // is "", the cache key refers to all statements and the dataset name "all" will
@@ -96,9 +74,7 @@ namespace cppcms {
 } /* cppcms */
 
 SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config) {
-    connstr = build_connection(
-            config["driver"].str(), config["name"].str(), config["host"].str(),
-            config["port"].str(), config["user"].str(), config["password"].str());
+    connstr = build_connection(config);
 }
 
 

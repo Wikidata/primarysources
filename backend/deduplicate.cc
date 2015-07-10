@@ -15,24 +15,6 @@
 #include "Parser.h"
 #include "Persistence.h"
 
-std::string build_connection(const cppcms::json::value& config) {
-    std::ostringstream out;
-    out << config["driver"].str() << ":db=" << config["name"].str();
-    if (config["host"].str() != "") {
-        out << ";host=" << config["host"].str();
-    }
-    if (config["port"].str() != "") {
-        out << ";port=" << config["port"].str();
-    }
-    if (config["user"].str() != "") {
-        out << ";user=" << config["user"].str();
-    }
-    if (config["password"].str() != "") {
-        out << ";pass=" << config["password"].str();
-    }
-    return out.str();
-}
-
 
 void usage(char *cmd) {
     std::cout << "Usage: " << cmd << " -c config.json [-s start_id]" << std::endl;
