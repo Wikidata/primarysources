@@ -931,9 +931,10 @@ $(document).ready(function() {
           var lenI = wikidataClaims[property].length;
           for (var i = 0; i < lenI; i++) {
             var wikidataObject = wikidataClaims[property][i];
-            existingWikidataObjects
-                [buildValueKeyFromWikidataStatement(wikidataObject)] =
-                wikidataObject;
+            buildValueKeysFromWikidataStatement(wikidataObject)
+              .forEach(function(key) {
+                existingWikidataObjects[key] = wikidataObject;
+              });
           }
           if (existingWikidataObjects[freebaseKey]) {
             // Existing object, maybe new sources?
@@ -968,12 +969,12 @@ $(document).ready(function() {
     });
   }
 
-  function buildValueKeyFromWikidataStatement(statement) {
+  function buildValueKeysFromWikidataStatement(statement) {
     if (statement.mainsnak.snaktype !== 'value') {
-      return statement.mainsnak.snaktype;
+      return [statement.mainsnak.snaktype];
     }
 
-    var key = jsonToTsvValue(statement.mainsnak.datavalue);
+    var keys = [jsonToTsvValue(statement.mainsnak.datavalue)];
 
     if (statement.qualifiers) {
       var qualifierKeyParts = [];
@@ -985,10 +986,10 @@ $(document).ready(function() {
         });
       });
       qualifierKeyParts.sort();
-      key += '\t' + qualifierKeyParts.join('\t');
+      keys.push(keys[0] + '\t' + qualifierKeyParts.join('\t'));
     }
 
-    return key;
+    return keys;
   }
 
   function jsonToTsvValue(dataValue) {
