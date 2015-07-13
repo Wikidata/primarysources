@@ -62,8 +62,8 @@ TEST(ParserTest, ParseTime) {
     ASSERT_EQ(result.size(), 1);
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue().getTime().tm_year, 1967);
-    ASSERT_EQ(result[0].getValue().getTime().tm_mon, 1);
+    ASSERT_EQ(result[0].getValue().getTime().tm_year, 67);
+    ASSERT_EQ(result[0].getValue().getTime().tm_mon, 0);
     ASSERT_EQ(result[0].getValue().getTime().tm_mday, 17);
     ASSERT_EQ(result[0].getValue().getTime().tm_hour, 0);
     ASSERT_EQ(result[0].getValue().getTime().tm_min, 0);

@@ -44,7 +44,7 @@ PropertyValue parsePropertyValue(std::string property, std::string value) {
                 // sec, min, hour
                 std::stoi(sm[6]), std::stoi(sm[5]), std::stoi(sm[4]),
                 // day, mon, year
-                std::stoi(sm[3]), std::stoi(sm[2]), std::stoi(sm[1]),
+                std::stoi(sm[3]), std::stoi(sm[2]) - 1, std::stoi(sm[1]) - 1900,
                 0, 0, 0
             };
         return PropertyValue(property, Value(time, std::stoi(sm.str(7))));

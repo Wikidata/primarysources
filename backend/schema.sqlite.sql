@@ -5,7 +5,7 @@ CREATE TABLE snak (
     dvalue    DECIMAL,
     lat       DOUBLE,
     lng       DOUBLE,
-    tvalue    TIMESTAMP,
+    tvalue    DATETIME,
     precision INT,
     lang      VARCHAR(2),
     vtype     INT
