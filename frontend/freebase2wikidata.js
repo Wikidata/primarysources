@@ -344,7 +344,7 @@ $(document).ready(function() {
               .fail(function(error) {
                 return reportError(error);
               }).done(function(data) {
-                if (sources.length >= 0) { //Sources, don't validate the statement
+                if (sources.length > 0) { //Sources, don't validate the statement
                   return document.location.reload();
                 }
 
