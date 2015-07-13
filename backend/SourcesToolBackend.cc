@@ -133,6 +133,7 @@ void SourcesToolBackend::updateStatement(
 
         // update cache
         cache.rise(createCacheKey(st.getQID(),st.getDataset()));
+        cache.rise(createCacheKey(st.getQID(),""));
         cache.rise("STATUS");
         cache.rise("ACTIVITIES");
     } catch (PersistenceException const &e) {
