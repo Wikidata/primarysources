@@ -39,7 +39,7 @@ $(document).ready(function() {
   var FAKE_OR_RANDOM_DATA =
       JSON.parse(localStorage.getItem('f2w_fakeOrRandomData')) || false;
 
-  var CACHE_EXPIRY = 24 * 60 * 60 * 1000;
+  var CACHE_EXPIRY = 60 * 60 * 1000;
 
   var LIST_OF_PROPERTIES_URL =
       'https://www.wikidata.org/wiki/Wikidata:List_of_properties/all';
