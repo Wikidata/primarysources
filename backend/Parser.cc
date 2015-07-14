@@ -40,13 +40,8 @@ PropertyValue parsePropertyValue(std::string property, std::string value) {
     } else if (boost::regex_match(value, sm, re_text)) {
         return PropertyValue(property, Value(sm.str(2), sm.str(1)));
     } else if (boost::regex_match(value, sm, re_time)) {
-        std::tm time = {
-                // sec, min, hour
-                std::stoi(sm[6]), std::stoi(sm[5]), std::stoi(sm[4]),
-                // day, mon, year
-                std::stoi(sm[3]), std::stoi(sm[2]) - 1, std::stoi(sm[1]) - 1900,
-                0, 0, 0
-            };
+        Time time(std::stoi(sm.str(1)), std::stoi(sm.str(2)), std::stoi(sm.str(3)),
+                  std::stoi(sm.str(4)), std::stoi(sm.str(5)), std::stoi(sm.str(6)));
         return PropertyValue(property, Value(time, std::stoi(sm.str(7))));
     } else {
         return PropertyValue(property, Value(value));

@@ -30,19 +30,15 @@ TEST(ValueTest, Equality) {
     ASSERT_NE(l1, l3);
 
     // time values
-    time_t rawtime;
-    std::tm *ptm;
-    std::time (&rawtime);
-    ptm = std::gmtime(&rawtime);
+    Time tv1(1923, 1, 1);
+    Value t1(tv1, 11), t2(tv1, 11);
 
-    Value t1(*ptm, 9), t2(*ptm, 9);
-
-    rawtime++;
-    ptm = std::gmtime(&rawtime);
-    Value t3(*ptm, 9);
+    Time tv2(1923, 1, 2);
+    Value t3(tv2, 11), t4(tv1, 9);
 
     ASSERT_EQ(t1, t2);
     ASSERT_NE(t1, t3);
+    ASSERT_NE(t1, t4);
 }
 
 TEST(ValueTest, Serialize) {

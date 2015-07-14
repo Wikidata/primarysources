@@ -3,6 +3,15 @@
 
 #include "Statement.h"
 
+bool operator==(const Time& lhs, const Time& rhs) {
+    return lhs.year == rhs.year &&
+           lhs.month == rhs.month &&
+           lhs.day == rhs.day &&
+           lhs.hour == rhs.hour &&
+           lhs.minute == rhs.minute &&
+           lhs.second == rhs.second;
+}
+
 ApprovalState stateFromString(const std::string &state) {
     if (state == "approved") {
         return APPROVED;
@@ -49,13 +58,7 @@ bool operator==(const Value& lhs, const Value& rhs) {
         case STRING:
             return lhs.str == rhs.str && lhs.lang == rhs.lang;
         case TIME:
-            return lhs.time.tm_sec == rhs.time.tm_sec
-                   && lhs.time.tm_min == rhs.time.tm_min
-                   && lhs.time.tm_hour == rhs.time.tm_hour
-                   && lhs.time.tm_mday == rhs.time.tm_mday
-                   && lhs.time.tm_mon == rhs.time.tm_mon
-                   && lhs.time.tm_year == rhs.time.tm_year
-                   && lhs.time.tm_isdst == rhs.time.tm_isdst
+            return lhs.time == rhs.time
                    && lhs.precision == rhs.precision;
         case QUANTITY:
             return lhs.quantity == rhs.quantity;

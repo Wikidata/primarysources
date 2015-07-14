@@ -27,6 +27,27 @@ typedef boost::multiprecision::cpp_dec_float_50 decimal_t;
 // define locations as pairs of doubles
 typedef std::pair<double, double> location_t;
 
+// Time structure more lenient than Time
+struct Time {
+    int year;
+    int month;
+    int day;
+    int hour;
+    int minute;
+    int second;
+
+    explicit Time(int year = 0, int month = 0, int day = 0, int hour = 0, int minute = 0, int second = 0)
+             : year(year), month(month), day(day), hour(hour), minute(minute), second(second) { }
+
+    friend bool operator==(const Time& lhs, const Time& rhs);
+};
+
+bool operator==(const Time& lhs, const Time& rhs);
+
+inline bool operator!=(const Time& lhs, const Time& rhs) {
+    return !(lhs == rhs);
+}
+
 /**
 * Representation of a Wikidata value. Wikidata values can be of several
 * different types (see ValueType). This class serves as a container for
@@ -56,7 +77,7 @@ class Value : public cppcms::serializable {
     * Initialise a value of type TIME using the time structure and precision
     * given as argument.
     */
-    explicit Value(std::tm t, int precision)
+    explicit Value(Time t, int precision)
             : time(t), precision(precision), type(TIME) { }
 
     /**
@@ -88,7 +109,7 @@ class Value : public cppcms::serializable {
     * Return the time value contained in this object. Only applicable to
     * values of type TIME.
     */
-    const std::tm &getTime() const {
+    const Time &getTime() const {
         return time;
     }
 
@@ -137,7 +158,7 @@ class Value : public cppcms::serializable {
     Value() {}
 
     std::string str, lang;
-    std::tm     time;
+    Time        time;
     location_t  loc;
     decimal_t   quantity;
     int         precision;

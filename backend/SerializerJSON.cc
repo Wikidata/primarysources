@@ -56,13 +56,14 @@ static cppcms::json::value createWikidataSnak(const PropertyValue& pv) {
             break;
         case TIME: {
             std::ostringstream fmt;
+            Time time = v.getTime();
             fmt << std::setfill('0')
-                    << "+" << std::setw(4) << v.getTime().tm_year + 1900
-                    << "-" << std::setw(2) << v.getTime().tm_mon + 1
-                    << "-" << std::setw(2) << v.getTime().tm_mday
-                    << "T" << std::setw(2) << v.getTime().tm_hour
-                    << ":" << std::setw(2) << v.getTime().tm_min
-                    << ":" << std::setw(2) << v.getTime().tm_sec
+                    << "+" << std::setw(4) << time.year
+                    << "-" << std::setw(2) << time.month
+                    << "-" << std::setw(2) << time.day
+                    << "T" << std::setw(2) << time.hour
+                    << ":" << std::setw(2) << time.minute
+                    << ":" << std::setw(2) << time.second
                     << "Z";
             snak["datavalue"]["type"] = "time";
             snak["datavalue"]["value"]["time"] = fmt.str();

@@ -72,6 +72,24 @@ inline int16_t getSQLState(ApprovalState state) {
     }
 }
 
+Time timeFromSql(const std::string& str) {
+    Time time;
+
+    if (sscanf(str.c_str(), "%d-%d-%d %d:%d:%d",
+               &time.year, &time.month, &time.day,
+               &time.hour, &time.minute, &time.second) != 6) {
+        throw PersistenceException("Invalid time: " + str);
+    }
+
+    return time;
+}
+
+std::string timeToSql(const Time& time) {
+    std::ostringstream stream;
+    stream << time.year << '-' << time.month << '-' << time.day << ' '
+           << time.hour << ':' << time.minute << ':' << time.second;
+    return stream.str();
+}
 
 int64_t Persistence::addSnak(const PropertyValue &pv) {
     switch (pv.getValue().getType()) {
@@ -93,11 +111,16 @@ int64_t Persistence::addSnak(const PropertyValue &pv) {
                         << static_cast<long double>(pv.getValue().getQuantity())
                         << cppdb::exec).last_insert_id();
         case TIME:
+            if(pv.getValue().getPrecision() < 9) {
+                throw PersistenceException("Time values with precision lower than 9 are not supported");
+            }
+
+
             return (sql << "INSERT INTO snak(property,tvalue,`precision`,vtype) "
-                           "VALUES (?,?,?,'time')"
-                        << pv.getProperty() << pv.getValue().getTime()
+                        "VALUES (?,?,?,'time')"
+                        << pv.getProperty() << timeToSql(pv.getValue().getTime())
                         << pv.getValue().getPrecision() << cppdb::exec)
-                    .last_insert_id();
+                        .last_insert_id();
         case LOCATION:
             return (sql << "INSERT INTO snak(property,lat,lng,vtype) "
                            "VALUES (?,?,?,'location')"
@@ -136,7 +159,7 @@ int64_t Persistence::getSnakID(const PropertyValue &pv) {
             r = (sql << "SELECT id FROM snak "
                         "WHERE property=? AND tvalue=? AND `precision`=? "
                         "AND vtype='time'"
-                    << pv.getProperty() << pv.getValue().getTime()
+                    << pv.getProperty() << timeToSql(pv.getValue().getTime())
                     << pv.getValue().getPrecision() << cppdb::row);
             break;
         case LOCATION:
@@ -173,7 +196,7 @@ PropertyValue Persistence::getSnak(int64_t snakid) {
             std::string lang = res.get<std::string>("lang");
             return PropertyValue(prop, Value(svalue, lang));
         } else if (vtype == "time") {
-            std::tm tvalue = res.get<std::tm>("tvalue");
+            Time tvalue = timeFromSql(res.get<std::string>("tvalue"));
             int precision = res.get<int>("precision");
             return PropertyValue(prop, Value(tvalue, precision));
         } else if (vtype == "location") {

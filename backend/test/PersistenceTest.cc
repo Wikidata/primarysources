@@ -58,14 +58,11 @@ TEST_F(PersistenceTest, SchemaExists) {
 }
 
 TEST_F(PersistenceTest, AddGetSnak) {
-    time_t rawtime = std::time(NULL);
-    std::tm *t = std::gmtime(&rawtime);
-
     PropertyValue pvs[] = {
             PropertyValue("P123", Value("Hello, World!", "en")),
             PropertyValue("P124", Value("Q321")),
             PropertyValue("P125", Value(42.11, 11.32)),
-            PropertyValue("P126", Value(*t, 9)),
+            PropertyValue("P126", Value(Time(1901, 1), 10)),
     };
 
     Persistence p(sql, true);
@@ -78,6 +75,7 @@ TEST_F(PersistenceTest, AddGetSnak) {
 
         ASSERT_EQ(id1, id2);
         ASSERT_EQ(pv.getProperty(), pvt.getProperty());
+        ASSERT_EQ(pv.getValue(), pvt.getValue());
     }
 }
 

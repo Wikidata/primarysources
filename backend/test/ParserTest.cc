@@ -62,12 +62,18 @@ TEST(ParserTest, ParseTime) {
     ASSERT_EQ(result.size(), 1);
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue().getTime().tm_year, 67);
-    ASSERT_EQ(result[0].getValue().getTime().tm_mon, 0);
-    ASSERT_EQ(result[0].getValue().getTime().tm_mday, 17);
-    ASSERT_EQ(result[0].getValue().getTime().tm_hour, 0);
-    ASSERT_EQ(result[0].getValue().getTime().tm_min, 0);
+    ASSERT_EQ(result[0].getValue().getTime(), Time(1967, 1, 17));
     ASSERT_EQ(result[0].getValue().getPrecision(), 11);
+}
+
+TEST(ParserTest, ParseTimeYear) {
+    std::vector<Statement> result = parseString("Q123\tP123\t+00000001967-00-00T00:00:00Z/9\n");
+
+    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result[0].getQID(), "Q123");
+    ASSERT_EQ(result[0].getProperty(), "P123");
+    ASSERT_EQ(result[0].getValue().getTime(), Time(1967));
+    ASSERT_EQ(result[0].getValue().getPrecision(), 9);
 }
 
 
