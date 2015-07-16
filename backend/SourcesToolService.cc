@@ -242,7 +242,7 @@ void SourcesToolService::getAllStatements() {
 
     int limit = 10;
     if (request().get("limit") != "") {
-        limit = std::min(std::stoi(request().get("limit")), 100);
+        limit = std::min(std::stoi(request().get("limit")), 1000);
     }
 
     bool unapprovedOnly = true;

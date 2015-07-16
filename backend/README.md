@@ -64,7 +64,7 @@ The following HTTP request retrieves the list of all statements.
 Parameters (all optional):
 
 * `offset`: id of the first row to return. Default: `0`.
-* `limit`: number of rows to return. Default: `10`. Maximum value: `100`.
+* `limit`: number of rows to return. Default: `10`. Maximum value: `1000`.
 * `state`: allows to filter by state. Default: `unapproved`.
 * `dataset`: allows to filter by dataset. Default: all datasets.
 * `property`: allows to filter by property of the main snak encoded like `P31`. Default: all properties.
