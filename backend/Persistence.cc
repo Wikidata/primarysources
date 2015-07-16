@@ -111,11 +111,9 @@ int64_t Persistence::addSnak(const PropertyValue &pv) {
                         << static_cast<long double>(pv.getValue().getQuantity())
                         << cppdb::exec).last_insert_id();
         case TIME:
-            if(pv.getValue().getPrecision() < 9) {
-                throw PersistenceException("Time values with precision lower than 9 are not supported");
+            if(pv.getValue().getTime().year < 1000) {
+                throw PersistenceException("Time values before year 1000 are not supported");
             }
-
-
             return (sql << "INSERT INTO snak(property,tvalue,`precision`,vtype) "
                         "VALUES (?,?,?,'time')"
                         << pv.getProperty() << timeToSql(pv.getValue().getTime())
