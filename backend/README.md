@@ -55,6 +55,21 @@ selection procedure is left to the backend.
 The statement can be returned in any of the content negotiation formats (see below).
 
 
+## Get All Statements
+
+The following HTTP request retrieves the list of all statements.
+
+    GET /statements/all?limit=<limit>&offset=<offset>&state=<state>&dataset=<dataset>&property=<property>
+
+Parameters (all optional):
+
+* `offset`: id of the first row to return. Default: `0`.
+* `limit`: number of rows to return. Default: `10`. Maximum value: `100`.
+* `state`: allows to filter by state. Default: `unapproved`.
+* `dataset`: allows to filter by dataset. Default: all datasets.
+* `property`: allows to filter by property of the main snak encoded like `P31`. Default: all properties.
+
+
 ## Mark Statement as Approved (Wrong, Othersource)
 
 The following HTTP request marks a statement identified by a Wikidata QID as approved:

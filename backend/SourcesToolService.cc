@@ -85,6 +85,10 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
             &SourcesToolService::getRandomStatements, this);
     mapper().assign("stmt_by_random", "/statements/any");
 
+    dispatcher().assign("/statements/all",
+                &SourcesToolService::getAllStatements, this);
+    mapper().assign("stmt_all", "/statements/all");
+
     dispatcher().assign("/import",
             &SourcesToolService::importStatements, this);
     mapper().assign("import", "/import");
@@ -225,6 +229,42 @@ void SourcesToolService::getRandomStatements() {
 
     clock_t end = std::clock();
     TIMING("GET /statements/any", begin, end);
+}
+
+void SourcesToolService::getAllStatements() {
+    clock_t begin = std::clock();
+
+    int offset = 0;
+    if (request().get("offset") != "") {
+        offset = std::stoi(request().get("offset"));
+    }
+
+    int limit = 10;
+    if (request().get("limit") != "") {
+        limit = std::min(std::stoi(request().get("limit")), 100);
+    }
+
+    bool unapprovedOnly = true;
+    if (request().get("state") == "any") {
+        unapprovedOnly = false;
+    }
+
+    addCORSHeaders();
+    addVersionHeaders();
+
+    std::vector<Statement> statements =
+            backend.getAllStatements(cache(), offset, limit,
+                                     unapprovedOnly,
+                                     request().get("dataset"),
+                                     request().get("property"));
+    if (statements.size() > 0) {
+        serializeStatements(statements);
+    } else {
+        response().status(404, "no statements found");
+    }
+
+    clock_t end = std::clock();
+    TIMING("GET /statements/all", begin, end);
 }
 
 

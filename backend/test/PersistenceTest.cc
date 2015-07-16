@@ -176,6 +176,36 @@ TEST_F(PersistenceTest, RandomQID) {
 }
 
 
+TEST_F(PersistenceTest, AllSatements) {
+    Statement stmt1(-1, "Q123", PropertyValue("P234", Value("Q789")),
+                   Statement::extensions_t(), Statement::extensions_t(),
+                   "foo", 0, UNAPPROVED);
+    Statement stmt2(-1, "Q124", PropertyValue("P234", Value("Q789")),
+                    Statement::extensions_t(), Statement::extensions_t(),
+                    "foo", 0, UNAPPROVED);
+    Statement stmt3(-1, "Q125", PropertyValue("P457", Value("Q789")),
+                    Statement::extensions_t(), Statement::extensions_t(),
+                    "foo", 0, UNAPPROVED);
+    Statement stmt4(-1, "Q127", PropertyValue("P234", Value("Q789")),
+                    Statement::extensions_t(), Statement::extensions_t(),
+                    "bar", 0, UNAPPROVED);
+
+    Persistence p(sql, true);
+    sql.begin();
+    p.addStatement(stmt1);
+    p.addStatement(stmt2);
+    p.addStatement(stmt3);
+    p.addStatement(stmt4);
+    sql.commit();
+
+    sql.begin();
+    std::vector<Statement> statements = p.getAllStatements(0, 10, true, "foo", "P234");
+    sql.commit();
+
+    ASSERT_EQ(statements.size(), 2);
+}
+
+
 TEST_F(PersistenceTest, DeleteStatements) {
     Persistence p(sql, true);
     sql.begin();

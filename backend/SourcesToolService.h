@@ -105,6 +105,27 @@ public:
    void getRandomStatements();
 
    /**
+   * Return all statements from the database and serialize them according
+   * to content negotiation (either text/tsv, application/vnd.wikidata+json
+   * or application/json).
+   *
+   * Request:
+   *     GET /statements/all
+   *
+   *  Parameters (all optional):
+   *     offset: id of the first row to return. Default: 0.
+   *     limit: number of rows to return. Default: 10. Maximum value: 100.
+   *     state: allows to filter by state. Default: unapproved.
+   *     dataset: allows to filter by dataset. Default: all datasets.
+   *     property: allows to filter by property of the main snak encoded like "P31". Default: all properties.
+   *
+   * Status Codes:
+   *     200: request successful and statements returned
+   *     500: server error
+   */
+   void getAllStatements();
+
+   /**
    * Import a sequence of statements in Wikidata TSV format into the
    * database. The service reads the data from the raw request POST body.
    * Data may optionally be gzipped for better memory usage.

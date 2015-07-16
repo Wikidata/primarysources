@@ -375,6 +375,39 @@ std::vector<Statement> Persistence::getStatementsByQID(
 }
 
 
+std::vector<Statement> Persistence::getAllStatements(
+        int offset, int limit,
+        bool unapprovedOnly,
+        const std::string& dataset,
+        const std::string& property) {
+    if (!managedTransactions)
+        sql.begin();
+
+    std::vector<Statement> result;
+
+    cppdb::result res = (
+            sql << "SELECT statement.id AS sid, subject, mainsnak, state, dataset, upload "
+                   "FROM statement INNER JOIN snak ON statement.mainsnak = snak.id "
+                   "WHERE (statement.state = 0 OR ?) AND (statement.dataset = ? OR ?) "
+                   "AND (snak.property = ? OR ?) "
+                   "ORDER BY statement.id LIMIT ? OFFSET ?"
+                   << !unapprovedOnly << dataset << (dataset == "")
+                   << property << (property == "") << limit << offset);
+
+    while (res.next()) {
+        result.push_back(buildStatement(
+                res.get<int64_t>("sid"), res.get<std::string>("subject"),
+                res.get<int64_t>("mainsnak"), res.get<std::string>("dataset"),
+                res.get<int64_t>("upload"), res.get<int16_t>("state")));
+    }
+
+    if (!managedTransactions)
+        sql.commit();
+
+    return result;
+}
+
+
 std::vector<Statement> Persistence::getRandomStatements(
         int count, bool unapprovedOnly) {
     if (!managedTransactions)

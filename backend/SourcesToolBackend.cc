@@ -108,6 +108,17 @@ std::vector<Statement> SourcesToolBackend::getRandomStatements(
     return p.getRandomStatements(count, unapprovedOnly);
 }
 
+std::vector<Statement> SourcesToolBackend::getAllStatements(
+        cache_t& cache, int offset, int limit,
+        bool unapprovedOnly,
+        const std::string& dataset,
+        const std::string& property) {
+    cppdb::session sql(connstr); // released when sql is destroyed
+
+    Persistence p(sql);
+    return p.getAllStatements(offset, limit, unapprovedOnly, dataset, property);
+}
+
 Statement SourcesToolBackend::getStatementByID(cache_t& cache, int64_t id) {
     cppdb::session sql(connstr); // released when sql is destroyed
 

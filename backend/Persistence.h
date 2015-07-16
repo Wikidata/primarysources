@@ -82,6 +82,14 @@ class Persistence {
             int count, bool unapprovedOnly);
 
     /**
+    * Return all statements.
+    */
+    std::vector<Statement> getAllStatements(int offset = 0, int limit = 10,
+                                            bool unapprovedOnly = true,
+                                            const std::string& dataset = "",
+                                            const std::string& property = "");
+
+    /**
     * Return a list of count random statements concerned with the topic given
     * as string.
     */

@@ -53,6 +53,14 @@ public:
     std::vector<Statement> getRandomStatements(cache_t& cache, int count, bool unapprovedOnly);
 
     /**
+    * Return all statements.
+    */
+    std::vector<Statement> getAllStatements(cache_t& cache, int offset = 0, int limit = 10,
+                                            bool unapprovedOnly = true,
+                                            const std::string& dataset = "",
+                                            const std::string& property = "");
+
+    /**
     * Update the approval state of the statement with the given ID.
     */
     void updateStatement(cache_t& cache, int64_t id, ApprovalState state, const std::string& user);
