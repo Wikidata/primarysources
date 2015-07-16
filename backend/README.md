@@ -59,7 +59,7 @@ The statement can be returned in any of the content negotiation formats (see bel
 
 The following HTTP request retrieves the list of all statements.
 
-    GET /statements/all?limit=<limit>&offset=<offset>&state=<state>&dataset=<dataset>&property=<property>
+    GET /statements/all?limit=<limit>&offset=<offset>&state=<state>&dataset=<dataset>&property=<property>&value=<value>
 
 Parameters (all optional):
 
@@ -68,7 +68,7 @@ Parameters (all optional):
 * `state`: allows to filter by state. Default: `unapproved`.
 * `dataset`: allows to filter by dataset. Default: all datasets.
 * `property`: allows to filter by property of the main snak encoded like `P31`. Default: all properties.
-
+* `value`: allows to filter by value of the main snak encoded in the TSV format like `Q31` or `"foo"`. Default: all values.
 
 ## Mark Statement as Approved (Wrong, Othersource)
 

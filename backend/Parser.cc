@@ -10,7 +10,7 @@
 #include <boost/tokenizer.hpp>
 #include <boost/regex.hpp>
 
-PropertyValue parsePropertyValue(std::string property, std::string value) {
+Value Parser::parseValue(const std::string& value) {
     // regular expressions for the different value formats
 
     // QID of entities, properties, sources
@@ -30,22 +30,24 @@ PropertyValue parsePropertyValue(std::string property, std::string value) {
 
     boost::smatch sm;
     if (boost::regex_match(value, sm, re_entity)) {
-        return PropertyValue(property, Value(sm[1]));
+        return Value(sm[1]);
     } else if (boost::regex_match(value, re_num)) {
-        return PropertyValue(property, Value(decimal_t(value)));
+        return Value(decimal_t(value));
     } else if (boost::regex_match(value, sm, re_loc)) {
-        return PropertyValue(
-                property,
-                Value(std::stod(sm.str(1)), std::stod(sm.str(2))));
+        return Value(std::stod(sm.str(1)), std::stod(sm.str(2)));
     } else if (boost::regex_match(value, sm, re_text)) {
-        return PropertyValue(property, Value(sm.str(2), sm.str(1)));
+        return Value(sm.str(2), sm.str(1));
     } else if (boost::regex_match(value, sm, re_time)) {
         Time time(std::stoi(sm.str(1)), std::stoi(sm.str(2)), std::stoi(sm.str(3)),
                   std::stoi(sm.str(4)), std::stoi(sm.str(5)), std::stoi(sm.str(6)));
-        return PropertyValue(property, Value(time, std::stoi(sm.str(7))));
+        return Value(time, std::stoi(sm.str(7)));
     } else {
-        return PropertyValue(property, Value(value));
+        return Value(value);
     }
+}
+
+PropertyValue parsePropertyValue(const std::string& property, const std::string& value) {
+    return PropertyValue(property, Parser::parseValue(value));
 }
 
 void Parser::parseTSV(const std::string& dataset, int64_t upload,

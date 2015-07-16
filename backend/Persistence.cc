@@ -379,20 +379,66 @@ std::vector<Statement> Persistence::getAllStatements(
         int offset, int limit,
         bool unapprovedOnly,
         const std::string& dataset,
-        const std::string& property) {
+        const std::string& property,
+        const std::shared_ptr<Value> value) {
     if (!managedTransactions)
         sql.begin();
 
     std::vector<Statement> result;
 
-    cppdb::result res = (
+    std::string valueSelector = "";
+    if(value != nullptr) {
+        switch (value->getType()) {
+            case ITEM:
+                valueSelector = "AND snak.svalue = ?";
+                break;
+            case STRING:
+                valueSelector = "AND snak.svalue = ? AND snak.lang = ?";
+                break;
+            case QUANTITY:
+                valueSelector = "AND snak.dvalue = ?";
+                break;
+            case TIME:
+                valueSelector = "AND snak.tvalue = ?";
+                break;
+            case LOCATION:
+                valueSelector = "AND snak.lat = ? AND snak.lng = ?";
+                break;
+            default:
+                throw PersistenceException("Value search for this type is not supported");
+        }
+    }
+
+    cppdb::statement statement = (
             sql << "SELECT statement.id AS sid, subject, mainsnak, state, dataset, upload "
                    "FROM statement INNER JOIN snak ON statement.mainsnak = snak.id "
                    "WHERE (statement.state = 0 OR ?) AND (statement.dataset = ? OR ?) "
-                   "AND (snak.property = ? OR ?) "
+                   "AND (snak.property = ? OR ?) " + valueSelector + " "
                    "ORDER BY statement.id LIMIT ? OFFSET ?"
                    << !unapprovedOnly << dataset << (dataset == "")
-                   << property << (property == "") << limit << offset);
+                   << property << (property == ""));
+
+    if(value != nullptr) {
+        switch (value->getType()) {
+            case ITEM:
+                statement = (statement << value->getString());
+                break;
+            case STRING:
+                statement = (statement << value->getString() << value->getLanguage());
+                break;
+            case QUANTITY:
+                statement = (statement << static_cast<long double>(value->getQuantity()));
+                break;
+            case TIME:
+                statement = (statement << timeToSql(value->getTime()));
+                break;
+            case LOCATION:
+                statement = (statement << value->getLocation().first << value->getLocation().second);
+                break;
+            }
+        }
+
+    cppdb::result res = (statement << limit << offset);
 
     while (res.next()) {
         result.push_back(buildStatement(

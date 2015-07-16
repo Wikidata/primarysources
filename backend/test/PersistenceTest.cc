@@ -189,6 +189,9 @@ TEST_F(PersistenceTest, AllSatements) {
     Statement stmt4(-1, "Q127", PropertyValue("P234", Value("Q789")),
                     Statement::extensions_t(), Statement::extensions_t(),
                     "bar", 0, UNAPPROVED);
+    Statement stmt5(-1, "Q124", PropertyValue("P234", Value("Q790")),
+                    Statement::extensions_t(), Statement::extensions_t(),
+                    "foo", 0, UNAPPROVED);
 
     Persistence p(sql, true);
     sql.begin();
@@ -196,10 +199,11 @@ TEST_F(PersistenceTest, AllSatements) {
     p.addStatement(stmt2);
     p.addStatement(stmt3);
     p.addStatement(stmt4);
+    p.addStatement(stmt5);
     sql.commit();
 
     sql.begin();
-    std::vector<Statement> statements = p.getAllStatements(0, 10, true, "foo", "P234");
+    std::vector<Statement> statements = p.getAllStatements(0, 10, true, "foo", "P234", std::make_shared<Value>(Value("Q789")));
     sql.commit();
 
     ASSERT_EQ(statements.size(), 2);

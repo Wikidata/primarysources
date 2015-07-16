@@ -118,6 +118,7 @@ public:
    *     state: allows to filter by state. Default: unapproved.
    *     dataset: allows to filter by dataset. Default: all datasets.
    *     property: allows to filter by property of the main snak encoded like "P31". Default: all properties.
+   *     value: allows to filter by value of the main snak encoded in the TSV format like "@13.4/12.3. Default: all values.
    *
    * Status Codes:
    *     200: request successful and statements returned

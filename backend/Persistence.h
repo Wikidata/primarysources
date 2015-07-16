@@ -87,7 +87,8 @@ class Persistence {
     std::vector<Statement> getAllStatements(int offset = 0, int limit = 10,
                                             bool unapprovedOnly = true,
                                             const std::string& dataset = "",
-                                            const std::string& property = "");
+                                            const std::string& property = "",
+                                            const std::shared_ptr<Value> value = nullptr);
 
     /**
     * Return a list of count random statements concerned with the topic given

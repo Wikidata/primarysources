@@ -21,6 +21,11 @@ namespace Parser {
     void parseTSV(const std::string& dataset, int64_t upload,
                   std::istream &in, std::function<void(Statement)> handler);
 
+    /**
+    * A value formatted in TSV.
+    */
+    Value parseValue(const std::string& value);
+
 }  // namespace Parser
 
 #endif  // HAVE_PARSER_H_

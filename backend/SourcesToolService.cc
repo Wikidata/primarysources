@@ -16,6 +16,7 @@
 #include "Persistence.h"
 #include "Membuf.h"
 #include "Version.h"
+#include "Parser.h"
 
 #define TIMING(message, begin, end) \
     BOOSTER_NOTICE("sourcestool") \
@@ -249,6 +250,11 @@ void SourcesToolService::getAllStatements() {
         unapprovedOnly = false;
     }
 
+    std::shared_ptr<Value> value;
+    if (request().get("value") != "") {
+        value = std::make_shared<Value>(Parser::parseValue(request().get("value")));
+    }
+
     addCORSHeaders();
     addVersionHeaders();
 
@@ -256,7 +262,8 @@ void SourcesToolService::getAllStatements() {
             backend.getAllStatements(cache(), offset, limit,
                                      unapprovedOnly,
                                      request().get("dataset"),
-                                     request().get("property"));
+                                     request().get("property"),
+                                     value);
     if (statements.size() > 0) {
         serializeStatements(statements);
     } else {

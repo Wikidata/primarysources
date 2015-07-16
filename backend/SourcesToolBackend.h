@@ -58,7 +58,8 @@ public:
     std::vector<Statement> getAllStatements(cache_t& cache, int offset = 0, int limit = 10,
                                             bool unapprovedOnly = true,
                                             const std::string& dataset = "",
-                                            const std::string& property = "");
+                                            const std::string& property = "",
+                                            const std::shared_ptr<Value> value = nullptr);
 
     /**
     * Update the approval state of the statement with the given ID.

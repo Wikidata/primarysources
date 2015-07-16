@@ -112,11 +112,12 @@ std::vector<Statement> SourcesToolBackend::getAllStatements(
         cache_t& cache, int offset, int limit,
         bool unapprovedOnly,
         const std::string& dataset,
-        const std::string& property) {
+        const std::string& property,
+        const std::shared_ptr<Value> value) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
-    return p.getAllStatements(offset, limit, unapprovedOnly, dataset, property);
+    return p.getAllStatements(offset, limit, unapprovedOnly, dataset, property, value);
 }
 
 Statement SourcesToolBackend::getStatementByID(cache_t& cache, int64_t id) {
