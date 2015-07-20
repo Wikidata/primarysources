@@ -53,6 +53,8 @@ $(document).ready(function() {
   var FREEBASE_STATEMENT_APPROVAL_URL =
       'https://tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
       '?state={{state}}&user={{user}}';
+  var FREEBASE_STATEMENT_SEARCH_URL =
+    'https://tools.wmflabs.org/wikidata-primary-sources/statements/all';
   var FREEBASE_DATASETS =
     'https://tools.wmflabs.org/wikidata-primary-sources/datasets/all';
   var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
@@ -266,6 +268,7 @@ $(document).ready(function() {
   }
 
   var dataset = mw.cookie.get('ps-dataset', null, '');
+  var windowManager;
 
   (function init() {
 
@@ -295,7 +298,11 @@ $(document).ready(function() {
         });
       });
 
-      mw.loader.using(['jquery.tipsy', 'oojs-ui'], function() {
+      mw.loader.using(
+          ['jquery.tipsy', 'oojs-ui', 'wikibase.dataTypeStore'], function() {
+        windowManager = new OO.ui.WindowManager();
+        $('body').append(windowManager.$element);
+
         var configButton = $('<span>')
           .attr({
             id: 'ps-config-button',
@@ -304,6 +311,15 @@ $(document).ready(function() {
           .tipsy()
           .appendTo(portletLink);
         configDialog(configButton);
+
+        var listButton = $(mw.util.addPortletLink(
+            'p-tb',
+            '#',
+            'Primary Sources list',
+            'n-ps-list',
+            'List statements from Primary Sources'
+          ));
+        listDialog(listButton);
       });
     })();
 
@@ -495,6 +511,7 @@ $(document).ready(function() {
       ConfigDialog.super.call(this, config);
     }
     OO.inheritClass(ConfigDialog, OO.ui.ProcessDialog);
+    ConfigDialog.static.name = 'ps-config';
     ConfigDialog.static.title = 'Primary Sources configuration';
     ConfigDialog.static.actions = [
       {action: 'save', label: 'Save', flags: ['primary', 'constructive']},
@@ -551,14 +568,10 @@ $(document).ready(function() {
       return this.panel.$element.outerHeight(true);
     };
 
-    var windowManager = new OO.ui.WindowManager();
-    $('body').append(windowManager.$element);
-
-    var configDialog = new ConfigDialog();
-    windowManager.addWindows([configDialog]);
+    windowManager.addWindows([new ConfigDialog()]);
 
     button.click(function() {
-      windowManager.openWindow(configDialog);
+      windowManager.openWindow('ps-config');
     });
   }
 
@@ -584,6 +597,103 @@ $(document).ready(function() {
     }).fail(function() {
       debug.log('Could not obtain datasets');
     });
+  }
+
+  function parsePrimarySourcesStatement(statement) {
+    var id = statement.id;
+    var line = statement.statement.split(/\t/);
+    var subject = line[0];
+    var predicate = line[1];
+    var object = line[2];
+    var qualifiers = [];
+    var source = [];
+    var key = object;
+    // If there are qualifiers and/or sources
+    var lineLength = line.length;
+    if (lineLength > 3) {
+      var qualifiersAndOrSources = line.slice(3).join('\t');
+      // Qualifier regular expression
+      var hasQualifiers = /P\d+/.exec(qualifiersAndOrSources);
+      // Source regular expression
+      var hasSources = /S\d+/.exec(qualifiersAndOrSources);
+      var qualifiersString = '';
+      var sourcesString = '';
+      if (hasQualifiers) {
+        qualifiersString = hasSources ?
+            qualifiersAndOrSources.substring(0, hasSources.index) :
+            qualifiersAndOrSources;
+        qualifiersString = qualifiersString.replace(/^\t/, '')
+            .replace(/\t$/, '').split(/\t/);
+        if ((qualifiersString.length % 2) !== 0) {
+          return debug.log('Error: invalid qualifiers: ' +
+              qualifiersString);
+        }
+        var qualifiersStringLen = qualifiersString.length;
+        var qualifierKeyParts = [];
+        for (var i = 0; i < qualifiersStringLen; i = i + 2) {
+          var qualifierKey =
+              qualifiersString[i] + '\t' + qualifiersString[i + 1];
+          qualifiers.push({
+            qualifierProperty: qualifiersString[i],
+            qualifierObject: qualifiersString[i + 1],
+            key: qualifierKey
+          });
+          qualifierKeyParts.push(qualifierKey);
+        }
+        qualifierKeyParts.sort();
+        key += '\t' + qualifierKeyParts.join('\t');
+      }
+      if (hasSources) {
+        sourcesString = hasQualifiers ?
+            qualifiersAndOrSources.substring(hasSources.index) :
+            qualifiersAndOrSources;
+        sourcesString = sourcesString.replace(/^\t/, '')
+            .replace(/\t$/, '').split(/\t/);
+        if ((sourcesString.length % 2) !== 0) {
+          return debug.log('Error: invalid sources: ' + sourcesString);
+        }
+        var sourcesStringLen = sourcesString.length;
+        for (var i = 0; i < sourcesStringLen; i = i + 2) {
+          source.push({
+            sourceProperty: sourcesString[i].replace(/^S/, 'P'),
+            sourceObject: sourcesString[i + 1],
+            sourceType: (tsvValueToJson(sourcesString[i + 1])).type,
+            sourceId: id,
+            key: sourcesString[i] + '\t' + sourcesString[i + 1]
+          });
+        }
+        // Filter out blacklisted source URLs
+        source = source.filter(function(source) {
+          if (source.sourceType === 'url') {
+            var url = source.sourceObject.replace(/^"/, '').replace(/"$/, '');
+            var blacklisted = isBlacklisted(url);
+            if (blacklisted) {
+              debug.log('Encountered blacklisted source url ' + url);
+              (function(currentId, currentUrl) {
+                setStatementState(currentId, STATEMENT_STATES.blacklisted,
+                    function() {
+                  debug.log('Automatically blacklisted statement ' +
+                      currentId + ' with blacklisted source url ' +
+                      currentUrl);
+                });
+              })(id, url);
+            }
+            // Return the opposite, i.e., the whitelisted URLs
+            return !blacklisted;
+          }
+          return true;
+        });
+      }
+    }
+    return {
+      id: id,
+      subject: subject,
+      predicate: predicate,
+      object: object,
+      qualifiers: qualifiers,
+      source: source,
+      key: key
+    };
   }
 
   function parseFreebaseClaims(freebaseEntityData, blacklistedSourceUrls) {
@@ -688,103 +798,22 @@ $(document).ready(function() {
           freebaseEntity.state === STATEMENT_STATES.unapproved;
     })
     .forEach(function(freebaseEntity) {
-      var statement = freebaseEntity.statement;
-      var id = freebaseEntity.id;
-      var line = statement.split(/\t/);
-      var predicate = line[1];
-      var object = line[2];
-      var qualifiers = [];
-      var sources = [];
-      var key = object;
-      // If there are qualifiers and/or sources
-      var lineLength = line.length;
-      if (lineLength > 3) {
-        var qualifiersAndOrSources = line.slice(3).join('\t');
-        // Qualifier regular expression
-        var hasQualifiers = /P\d+/.exec(qualifiersAndOrSources);
-        // Source regular expression
-        var hasSources = /S\d+/.exec(qualifiersAndOrSources);
-        var qualifiersString = '';
-        var sourcesString = '';
-        if (hasQualifiers) {
-          qualifiersString = hasSources ?
-              qualifiersAndOrSources.substring(0, hasSources.index) :
-              qualifiersAndOrSources;
-          qualifiersString = qualifiersString.replace(/^\t/, '')
-              .replace(/\t$/, '').split(/\t/);
-          if ((qualifiersString.length % 2) !== 0) {
-            return debug.log('Error: invalid qualifiers: ' +
-                qualifiersString);
-          }
-          var qualifiersStringLen = qualifiersString.length;
-          var qualifierKeyParts = [];
-          for (var i = 0; i < qualifiersStringLen; i = i + 2) {
-            var qualifierKey =
-                qualifiersString[i] + '\t' + qualifiersString[i + 1];
-            qualifiers.push({
-              qualifierProperty: qualifiersString[i],
-              qualifierObject: qualifiersString[i + 1],
-              key: qualifierKey
-            });
-            qualifierKeyParts.push(qualifierKey);
-          }
-          qualifierKeyParts.sort();
-          key += '\t' + qualifierKeyParts.join('\t');
-        }
-        if (hasSources) {
-          sourcesString = hasQualifiers ?
-              qualifiersAndOrSources.substring(hasSources.index) :
-              qualifiersAndOrSources;
-          sourcesString = sourcesString.replace(/^\t/, '')
-              .replace(/\t$/, '').split(/\t/);
-          if ((sourcesString.length % 2) !== 0) {
-            return debug.log('Error: invalid sources: ' + sourcesString);
-          }
-          var sourcesStringLen = sourcesString.length;
-          for (var i = 0; i < sourcesStringLen; i = i + 2) {
-            sources.push({
-              sourceProperty: sourcesString[i].replace(/^S/, 'P'),
-              sourceObject: sourcesString[i + 1],
-              sourceType: (tsvValueToJson(sourcesString[i + 1])).type,
-              sourceId: id,
-              key: sourcesString[i] + '\t' + sourcesString[i + 1]
-            });
-          }
-          // Filter out blacklisted source URLs
-          sources = sources.filter(function(source) {
-            if (source.sourceType === 'url') {
-              var url = source.sourceObject.replace(/^"/, '').replace(/"$/, '');
-              var blacklisted = isBlacklisted(url);
-              if (blacklisted) {
-                debug.log('Encountered blacklisted source url ' + url);
-                (function(currentId, currentUrl) {
-                  setStatementState(currentId, STATEMENT_STATES.blacklisted,
-                      function() {
-                    debug.log('Automatically blacklisted statement ' +
-                        currentId + ' with blacklisted source url ' +
-                        currentUrl);
-                  });
-                })(id, url);
-              }
-              // Return the opposite, i.e., the whitelisted URLs
-              return !blacklisted;
-            }
-            return true;
-          });
-        }
-      }
+      var statement = parsePrimarySourcesStatement(freebaseEntity);
+      var predicate = statement.predicate;
+      var key = statement.key;
+
       freebaseClaims[predicate] = freebaseClaims[predicate] || {};
       if (!freebaseClaims[predicate][key]) {
         freebaseClaims[predicate][key] = {
-          id: id,
-          object: object,
-          qualifiers: qualifiers,
+          id: statement.id,
+          object: statement.object,
+          qualifiers: statement.qualifiers,
           sources: []
         };
       }
 
-      if (sources.length > 0) {
-        freebaseClaims[predicate][key].sources.push(sources); //TODO: find duplicates
+      if (statement.source.length > 0) {
+        freebaseClaims[predicate][key].sources.push(statement.source); //TODO: find duplicates
       }
     });
     return freebaseClaims;
@@ -1269,7 +1298,12 @@ $(document).ready(function() {
         .replace(/\"/g, '&quot;');
   }
 
+  var valueHtmlCache = {};
   function getValueHtml(value, property) {
+    var cacheKey = property + '\t' + value;
+    if (cacheKey in valueHtmlCache) {
+      return valueHtmlCache[cacheKey];
+    }
     var parsed = tsvValueToJson(value);
     var dataValue = {
         type: getValueTypeFromDataValueType(parsed.type),
@@ -1279,21 +1313,9 @@ $(document).ready(function() {
         'lang': mw.language.getFallbackLanguageChain()[0] || 'en'
       };
 
-    var api = new mw.Api();
-
     if (parsed.type === 'string') { //Link to external database
-      return api.get({
-        action:'wbgetentities',
-        ids:property,
-        props:'claims'
-      }).then(function(result) {
-        var urlFormatter = '';
-        $.each(result.entities, function(_, entity) {
-          if (entity.claims && 'P1630' in entity.claims) {
-            urlFormatter = entity.claims['P1630'][0].mainsnak.datavalue.value;
-          }
-        });
-
+      valueHtmlCache[cacheKey] = getUrlFormatter(property)
+      .then(function(urlFormatter) {
         if (urlFormatter === '') {
           return parsed.value;
         } else {
@@ -1303,7 +1325,8 @@ $(document).ready(function() {
         }
       });
     } else {
-      return api.get({
+      var api = new mw.Api();
+      valueHtmlCache[cacheKey] = api.get({
         action:'wbformatvalue',
         generate:'text/html',
         datavalue:JSON.stringify(dataValue),
@@ -1323,6 +1346,31 @@ $(document).ready(function() {
         return result.result;
       });
     }
+
+    return valueHtmlCache[cacheKey];
+  }
+
+  var urlFormatterCache = {};
+  function getUrlFormatter(property) {
+    if (property in urlFormatterCache) {
+      return urlFormatterCache[property];
+    }
+
+    var api = new mw.Api();
+    urlFormatterCache[property] = api.get({
+      action:'wbgetentities',
+      ids:property,
+      props:'claims'
+    }).then(function(result) {
+      var urlFormatter = '';
+      $.each(result.entities, function(_, entity) {
+        if (entity.claims && 'P1630' in entity.claims) {
+          urlFormatter = entity.claims['P1630'][0].mainsnak.datavalue.value;
+        }
+      });
+      return urlFormatter;
+    });
+    return urlFormatterCache[property];
   }
 
   function getSourcesHtml(sources, property, object) {
@@ -1669,6 +1717,212 @@ $(document).ready(function() {
       // Fail silently
       debug.log('Could not obtain blacklisted source URLs');
       return callback(null);
+    });
+  }
+
+  function searchStatements(parameters) {
+    return $.ajax({
+      url: FREEBASE_STATEMENT_SEARCH_URL,
+      data: parameters
+    }).then(function(data) {
+      return data.map(parsePrimarySourcesStatement);
+    });
+  }
+
+  function listDialog(button) {
+
+    /**
+     * A row displaying a statement
+     *
+     * @class
+     * @extends OO.ui.Widget
+     * @cfg {Object} [statement] the statement to display
+     */
+    function StatementRow(config) {
+      StatementRow.super.call(this, config);
+
+      this.statement = config.statement;
+      var widget = this;
+
+      $.when(
+          getValueHtml(this.statement.subject),
+          getValueHtml(this.statement.predicate),
+          getValueHtml(this.statement.object, this.statement.predicate)
+      ).then(function(subjectHtml, propertyHtml, objectHtml) {
+        var approveButton = new OO.ui.ButtonWidget({
+          label: 'Approve',
+          flags: 'constructive'
+        });
+        approveButton.connect(widget, {click: 'approve'});
+
+        var rejectButton = new OO.ui.ButtonWidget({
+          label: 'Reject',
+          flags: 'destructive'
+        });
+        rejectButton.connect(widget, {click: 'reject'});
+
+        var buttonGroup = new OO.ui.ButtonGroupWidget({
+          items: [approveButton, rejectButton]
+        });
+        widget.$element
+          .attr('data-id', widget.statement.id)
+          .append(
+            $('<td>').html(subjectHtml),
+            $('<td>').html(propertyHtml),
+            $('<td>').html(objectHtml),
+            $('<td>').append(buttonGroup.$element)
+          );
+      });
+    }
+    OO.inheritClass(StatementRow, OO.ui.Widget);
+    StatementRow.static.tagName = 'tr';
+
+    StatementRow.prototype.approve = function() {
+      alert('approve');
+    };
+
+    StatementRow.prototype.reject = function() {
+      alert('reject');
+    };
+
+    /**
+     * The main dialog
+     *
+     * @class
+     * @extends OO.ui.Widget
+     */
+    function ListDialog(config) {
+      ListDialog.super.call(this, config);
+    }
+    OO.inheritClass(ListDialog, OO.ui.ProcessDialog);
+    ListDialog.static.name = 'ps-list';
+    ListDialog.static.title = 'Primary Sources statement list (in development)';
+    ListDialog.static.size = 'larger';
+    ListDialog.static.actions = [
+      {label: 'Close', flags: 'safe'}
+    ];
+
+    ListDialog.prototype.initialize = function() {
+      ListDialog.super.prototype.initialize.apply(this, arguments);
+
+      var widget = this;
+
+      //Selection form
+      this.datasetInput = new OO.ui.DropdownInputWidget();
+      getPossibleDatasets(function(datasets) {
+        var options = [{data: '', label: 'All sources'}];
+        for (var datasetId in datasets) {
+          options.push({data: datasetId, label: datasetId});
+        }
+        widget.datasetInput.setOptions(options)
+                    .setValue(dataset);
+      });
+
+      this.propertyInput = new OO.ui.TextInputWidget({
+        placeholder: 'PXX',
+        validate: /^[pP]\d+$/
+      });
+
+      this.valueInput = new OO.ui.TextInputWidget({
+        placeholder: 'Filter by value like item id'
+      });
+
+      var loadButton = new OO.ui.ButtonInputWidget({
+        label: 'Load',
+        flags:'progressive',
+        type: 'submit'
+      });
+      loadButton.connect(this, {click: 'onOptionSubmit'});
+
+      var fieldset = new OO.ui.FieldsetLayout({
+        label: 'Query options',
+        classes: ['container']
+      });
+      fieldset.addItems([
+        new OO.ui.FieldLayout(this.datasetInput, {label: 'Dataset'}),
+        new OO.ui.FieldLayout(this.propertyInput, {label: 'Property'}),
+        new OO.ui.FieldLayout(this.valueInput, {label: 'Value'}),
+        new OO.ui.FieldLayout(loadButton)
+      ]);
+      var formPanel = new OO.ui.PanelLayout({
+        padded: true,
+        framed: true
+      });
+      formPanel.$element.append(fieldset.$element);
+
+      //Main panel
+      var alertIcon = new OO.ui.IconWidget({
+        icon: 'alert'
+      });
+      var description = new OO.ui.LabelWidget({
+        label: 'This feature is currently in active development. ' +
+               'It allows to list statements contained in Primary Sources ' +
+               'and do action on them. Only the first 1000 statements are ' +
+               'displayed and statements with qualifiers or sources are hidden.'
+      });
+      this.mainPanel = new OO.ui.PanelLayout({
+        padded: true,
+        scrollable: true
+      });
+      this.mainPanel.$element.append(alertIcon.$element, description.$element);
+
+      // Final layout
+      this.stackLayout = new OO.ui.StackLayout({
+        continuous: true
+      });
+      this.stackLayout.addItems([formPanel, this.mainPanel]);
+      this.$body.append(this.stackLayout.$element);
+    };
+
+    ListDialog.prototype.onOptionSubmit = function() {
+      this.executeQuery({
+        dataset: this.datasetInput.getValue(),
+        property: this.propertyInput.getValue(),
+        value: this.valueInput.getValue(),
+        limit: 100
+      });
+    };
+
+    ListDialog.prototype.executeQuery = function(parameters) {
+      var widget = this;
+
+      searchStatements(parameters).then(function(statements) {
+        var table = $('<table>')
+          .addClass('wikitable')
+          .css('width', '100%')
+          .append(
+            $('<tr>')
+              .append(
+                $('<th>').text('Subject'),
+                $('<th>').text('Property'),
+                $('<th>').text('Object'),
+                $('<th>').text('Action')
+              )
+          );
+        widget.mainPanel.$element.empty()
+                               .html(table);
+
+        statements.map(function(statement) {
+          if (statement.qualifiers.length > 0 || statement.source.length > 0) {
+            return; //TODO support qualifiers and sources
+          }
+
+          var row = new StatementRow({
+            statement: statement
+          });
+          table.append(row.$element);
+        });
+      });
+    };
+
+    ListDialog.prototype.getBodyHeight = function() {
+      return window.innerHeight - 200;
+    };
+
+    windowManager.addWindows([new ListDialog()]);
+
+    button.click(function() {
+      windowManager.openWindow('ps-list');
     });
   }
 });
