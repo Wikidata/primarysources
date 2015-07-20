@@ -261,10 +261,9 @@ $(document).ready(function() {
 
   var qid = null;
   function getQid() {
-    var qidRegEx = /^\/wiki\/(Q\d+)$/;
-    var path = document.location.pathname;
-    qid = qidRegEx.test(path) ? path.replace(qidRegEx, '$1') : false;
-    return qid;
+    var qidRegEx = /^Q\d+$/;
+    var title = mw.config.get('wgTitle');
+    return qidRegEx.test(title) ? title : false;
   }
 
   var dataset = mw.cookie.get('ps-dataset', null, '');
@@ -356,7 +355,7 @@ $(document).ready(function() {
             var object = statement.object;
             var qualifiers = JSON.parse(statement.qualifiers);
             var sources = JSON.parse(statement.sources);
-            createClaim(predicate, object, qualifiers)
+            createClaim(qid, predicate, object, qualifiers)
               .fail(function(error) {
                 return reportError(error);
               }).done(function(data) {
@@ -387,7 +386,7 @@ $(document).ready(function() {
             var object = statement.object;
             var source = JSON.parse(statement.source);
             var qualifiers = JSON.parse(statement.qualifiers);
-            getClaims(predicate, function(err, claims) {
+            getClaims(qid, predicate, function(err, claims) {
               var objectExists = false;
               for (var i = 0, lenI = claims.length; i < lenI; i++) {
                 var claim = claims[i];
@@ -400,7 +399,7 @@ $(document).ready(function() {
                 }
               }
               if (objectExists) {
-                createReference(predicate, object, source,
+                createReference(qid, predicate, object, source,
                     function(error, data) {
                   if (error) {
                     return reportError(error);
@@ -416,7 +415,7 @@ $(document).ready(function() {
                   });
                 });
               } else {
-                createClaimWithReference(predicate, object, qualifiers,
+                createClaimWithReference(qid, predicate, object, qualifiers,
                   source)
                   .fail(function(error) {
                     return reportError(error);
@@ -697,7 +696,6 @@ $(document).ready(function() {
   }
 
   function parseFreebaseClaims(freebaseEntityData, blacklistedSourceUrls) {
-
     var blacklistedSourceUrlsLen = blacklistedSourceUrls.length;
     var isBlacklisted = function(url) {
       url = url.toString();
@@ -1500,12 +1498,12 @@ $(document).ready(function() {
   }
 
   // https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
-  function createClaim(predicate, object, qualifiers) {
+  function createClaim(subject, predicate, object, qualifiers) {
     var value = (tsvValueToJson(object)).value;
     var api = new mw.Api();
     return api.post({
       action: 'wbcreateclaim',
-      entity: qid,
+      entity: subject,
       property: predicate,
       snaktype: 'value',
       token: mw.user.tokens.get('editToken'),
@@ -1531,11 +1529,11 @@ $(document).ready(function() {
   }
 
   // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
-  function createClaimWithReference(predicate, object,
+  function createClaimWithReference(subject, predicate, object,
       qualifiers, sourceSnaks) {
     var value = (tsvValueToJson(object)).value;
     var api = new mw.Api();
-    return createClaim(predicate, object, qualifiers).then(function(data) {
+    return createClaim(subject, predicate, object, qualifiers).then(function(data) {
       return api.post({
         action: 'wbsetreference',
         statement: data.claim.id,
@@ -1547,11 +1545,11 @@ $(document).ready(function() {
   }
 
   // https://www.wikidata.org/w/api.php?action=help&modules=wbgetclaims
-  function getClaims(predicate, callback) {
+  function getClaims(subject, predicate, callback) {
     var api = new mw.Api();
     api.get({
       action: 'wbgetclaims',
-      entity: qid,
+      entity: subject,
       property: predicate
     }).done(function(data) {
       return callback(null, data.claims[predicate] || []);
@@ -1561,11 +1559,11 @@ $(document).ready(function() {
   }
 
   // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
-  function createReference(predicate, object, sourceSnaks, callback) {
+  function createReference(subject, predicate, object, sourceSnaks, callback) {
     var api = new mw.Api();
     api.get({
       action: 'wbgetclaims',
-      entity: qid,
+      entity: subject,
       property: predicate
     }).then(function(data) {
       var index = -1;
