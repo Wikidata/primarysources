@@ -1533,7 +1533,8 @@ $(document).ready(function() {
       qualifiers, sourceSnaks) {
     var value = (tsvValueToJson(object)).value;
     var api = new mw.Api();
-    return createClaim(subject, predicate, object, qualifiers).then(function(data) {
+    return createClaim(subject, predicate, object, qualifiers)
+    .then(function(data) {
       return api.post({
         action: 'wbsetreference',
         statement: data.claim.id,
@@ -1776,11 +1777,30 @@ $(document).ready(function() {
     StatementRow.static.tagName = 'tr';
 
     StatementRow.prototype.approve = function() {
-      alert('approve');
+      var widget = this;
+
+      createClaim(
+        this.statement.subject,
+        this.statement.predicate,
+        this.statement.object,
+        this.statement.qualifiers
+      ).fail(function(error) {
+        return reportError(error);
+      }).done(function(data) {
+        setStatementState(this.statement.id, STATEMENT_STATES.approved,
+        function() {
+          widget.toggle(false).setDisabled(true);
+        });
+      });
     };
 
     StatementRow.prototype.reject = function() {
-      alert('reject');
+      var widget = this;
+
+      setStatementState(widget.statement.id, STATEMENT_STATES.wrong,
+      function() {
+        widget.toggle(false).setDisabled(true);
+      });
     };
 
     /**
