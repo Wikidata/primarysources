@@ -1779,6 +1779,7 @@ $(document).ready(function() {
     StatementRow.prototype.approve = function() {
       var widget = this;
 
+      this.showProgressBar();
       createClaim(
         this.statement.subject,
         this.statement.predicate,
@@ -1787,7 +1788,7 @@ $(document).ready(function() {
       ).fail(function(error) {
         return reportError(error);
       }).done(function(data) {
-        setStatementState(this.statement.id, STATEMENT_STATES.approved,
+        setStatementState(widget.statement.id, STATEMENT_STATES.approved,
         function() {
           widget.toggle(false).setDisabled(true);
         });
@@ -1797,11 +1798,23 @@ $(document).ready(function() {
     StatementRow.prototype.reject = function() {
       var widget = this;
 
+      this.showProgressBar();
       setStatementState(widget.statement.id, STATEMENT_STATES.wrong,
       function() {
         widget.toggle(false).setDisabled(true);
       });
     };
+
+    StatementRow.prototype.showProgressBar = function() {
+      var progressBar = new OO.ui.ProgressBarWidget();
+      progressBar.$element.css('max-width', '100%');
+      this.$element.empty()
+        .append(
+          $('<td>')
+            .attr('colspan', 4)
+            .append(progressBar.$element)
+        );
+    }
 
     /**
      * The main dialog
@@ -1904,7 +1917,20 @@ $(document).ready(function() {
     ListDialog.prototype.executeQuery = function(parameters) {
       var widget = this;
 
-      searchStatements(parameters).then(function(statements) {
+      var progressBar = new OO.ui.ProgressBarWidget();
+      progressBar.$element.css('max-width', '100%');
+      widget.mainPanel.$element.empty()
+                               .append(progressBar.$element);
+
+      searchStatements(parameters)
+      .fail(function() {
+        var description = new OO.ui.LabelWidget({
+          label: 'No statements found.'
+        });
+        widget.mainPanel.$element.empty()
+                                 .html(description.$element);
+      })
+      .done(function(statements) {
         var table = $('<table>')
           .addClass('wikitable')
           .css('width', '100%')
@@ -1918,7 +1944,7 @@ $(document).ready(function() {
               )
           );
         widget.mainPanel.$element.empty()
-                               .html(table);
+                                 .html(table);
 
         statements.map(function(statement) {
           if (statement.qualifiers.length > 0 || statement.source.length > 0) {
