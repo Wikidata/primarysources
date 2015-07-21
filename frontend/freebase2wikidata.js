@@ -1791,6 +1791,26 @@ $(document).ready(function() {
             $('<td>').html(objectHtml),
             $('<td>').append(buttonGroup.$element)
           );
+
+        //Check that the statement don't already exist
+        getClaims(widget.statement.subject, widget.statement.predicate,
+          function(err, statements) {
+            var currentStatementKey = widget.statement.object; //TODO: support qualifiers
+
+            for (var i in statements) {
+              if ($.inArray(
+                  currentStatementKey,
+                  buildValueKeysFromWikidataStatement(statements[i])
+              ) !== -1) {
+                widget.toggle(false).setDisabled(true);
+                setStatementState(widget.statement.id,
+                  STATEMENT_STATES.duplicate, function() {
+                    debug.log(widget.statement.id + ' tagged as duplicate');
+                  });
+                return;
+              }
+            }
+          });
       });
     }
     OO.inheritClass(StatementRow, OO.ui.Widget);
@@ -1807,7 +1827,7 @@ $(document).ready(function() {
         this.statement.qualifiers
       ).fail(function(error) {
         return reportError(error);
-      }).done(function(data) {
+      }).done(function() {
         setStatementState(widget.statement.id, STATEMENT_STATES.approved,
         function() {
           widget.toggle(false).setDisabled(true);
@@ -1908,8 +1928,8 @@ $(document).ready(function() {
       var description = new OO.ui.LabelWidget({
         label: 'This feature is currently in active development. ' +
                'It allows to list statements contained in Primary Sources ' +
-               'and do action on them. Only the first 1000 statements are ' +
-               'displayed and statements with qualifiers or sources are hidden.'
+               'and do action on them. Statements with qualifiers or sources ' +
+               'are hidden.'
       });
       this.mainPanel = new OO.ui.PanelLayout({
         padded: true,
