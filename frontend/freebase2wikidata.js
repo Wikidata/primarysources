@@ -41,8 +41,6 @@ $(document).ready(function() {
 
   var CACHE_EXPIRY = 60 * 60 * 1000;
 
-  var LIST_OF_PROPERTIES_URL =
-      'https://www.wikidata.org/wiki/Wikidata:List_of_properties/all';
   var WIKIDATA_ENTITY_DATA_URL =
       'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
   var WIKIDATA_ENTITY_LABELS_URL = 'https://www.wikidata.org/w/api.php' +
@@ -462,7 +460,6 @@ $(document).ready(function() {
     debug.log('On item page ' + qid);
 
     async.parallel({
-      propertyNames: getPropertyNames,
       blacklistedSourceUrls: getBlacklistedSourceUrls,
       wikidataEntityData: getWikidataEntityData.bind(null, qid),
       freebaseEntityData: getFreebaseEntityData.bind(null, qid),
@@ -1586,49 +1583,6 @@ $(document).ready(function() {
   function getValueTypeFromDataValueType(dataValueType) {
     return wikibase.dataTypeStore.getDataType(dataValueType)
         .getDataValueType();
-  }
-
-  function getPropertyNames(callback) {
-    var now = Date.now();
-    if (localStorage.getItem('f2w_properties')) {
-      var properties = JSON.parse(localStorage.getItem('f2w_properties'));
-      if (!properties.timestamp) {
-        properties.timestamp = 0;
-      }
-      if (now - properties.timestamp < CACHE_EXPIRY) {
-        debug.log('Using cached properties list');
-        return callback(null, properties.data);
-      }
-    }
-    var iframe = document.createElement('iframe');
-    document.body.appendChild(iframe);
-
-    iframe.addEventListener('load', function() {
-
-      var scraperFunction = function scraperFunction() {
-        var properties = {};
-        var anchors = document.querySelectorAll('a[href^="/wiki/Property:"]');
-        [].forEach.call(anchors, function(a) {
-          properties[a.title.replace('Property:', '')] =
-          a.parentNode.parentNode.querySelector('td').textContent;
-        });
-        return properties;
-      };
-
-      var script = iframe.contentWindow.document.createElement('script');
-      script.textContent = scraperFunction.toString();
-      iframe.contentWindow.document.body.appendChild(script);
-
-      var properties = iframe.contentWindow.scraperFunction();
-      debug.log('Caching properties list');
-      localStorage.setItem('f2w_properties', JSON.stringify({
-        timestamp: now,
-        data: properties
-      }));
-      return callback(null, properties);
-    }, false);
-
-    iframe.src = LIST_OF_PROPERTIES_URL;
   }
 
   function getBlacklistedSourceUrls(callback) {
