@@ -1948,11 +1948,11 @@ $(document).ready(function() {
 
       searchStatements(this.parameters)
       .fail(function() {
+        progressBar.$element.remove();
         var description = new OO.ui.LabelWidget({
           label: 'No statements found.'
         });
-        widget.mainPanel.$element.empty()
-                                 .append(description.$element);
+        widget.mainPanel.$element.append(description.$element);
       })
       .done(function(statements) {
         progressBar.$element.remove();
@@ -1960,7 +1960,7 @@ $(document).ready(function() {
         widget.parameters.offset += widget.parameters.limit;
         widget.displayStatements(statements);
 
-        if (statements.length === widget.parameters.limit) { //Some statements remains
+        if (statements.length > 0) { //We may assume that more statements remains
           widget.nextStatementsButton = new OO.ui.ButtonWidget({
             label: 'Load more statements',
           });
