@@ -937,13 +937,23 @@ $(document).ready(function() {
               });
           }
           if (existingWikidataObjects[freebaseKey]) {
-            // Existing object, maybe new sources?
-            prepareNewSources(
-                property,
-                freebaseObject,
-                language,
-                existingWikidataObjects[freebaseKey]
-            );
+            // Existing object
+            if (freebaseObject.sources.length === 0) {
+              //No source, duplicate statement
+              setStatementState(freebaseObject.id, STATEMENT_STATES.duplicate,
+                  function() {
+                debug.log('Automatically duplicate statement ' +
+                    freebaseObject.id);
+              });
+            } else {
+              // maybe new sources
+              prepareNewSources(
+                  property,
+                  freebaseObject,
+                  language,
+                  existingWikidataObjects[freebaseKey]
+              );
+            }
           } else {
             // New object
             prepareNewWikidataStatement(property, freebaseObject, language);
