@@ -43,9 +43,6 @@ $(document).ready(function() {
 
   var WIKIDATA_ENTITY_DATA_URL =
       'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
-  var WIKIDATA_ENTITY_LABELS_URL = 'https://www.wikidata.org/w/api.php' +
-      '?action=wbgetentities&languages={{languages}}&format=json' +
-      '&props=labels&ids={{entities}}';
   var FREEBASE_ENTITY_DATA_URL =
       'https://tools.wmflabs.org/wikidata-primary-sources/entities/{{qid}}';
   var FREEBASE_STATEMENT_APPROVAL_URL =
@@ -962,16 +959,11 @@ $(document).ready(function() {
     }
     var allProperties =
         Object.keys(newClaims).concat(Object.keys(existingClaims));
-    getEntityLabels(allProperties, function(err, labels) {
-      for (var property in existingClaims) {
-        debug.log('Existing claim ' +
-            labels[property].labels[language].value);
-      }
+    getEntityLabels(allProperties).done(function(labels) {
       for (var property in newClaims) {
         var claims = newClaims[property];
-        var propertyLabel = labels[property].labels[language].value;
-        debug.log('New claim ' + propertyLabel);
-        createNewClaim(property, propertyLabel, claims, language);
+        debug.log('New claim ' + labels[property]);
+        createNewClaim(property, labels[property], claims, language);
       }
     });
   }
@@ -1024,18 +1016,16 @@ $(document).ready(function() {
   }
 
   function prepareNewWikidataStatement(property, object, language) {
-    getQualifiersAndSourcesLabels(object.qualifiers, object.sources,
-        function(err, results) {
+    getQualifiersAndSourcesLabels(object.qualifiers, object.sources)
+    .done(function(labels) {
       object.sources.forEach(function(source) {
         source.forEach(function(snak) {
-          snak.sourcePropertyLabel = results
-          .sourcesLabels[snak.sourceProperty].labels[language].value;
+          snak.sourcePropertyLabel = labels[snak.sourceProperty];
         });
       });
       object.qualifiers.forEach(function(qualifier) {
         var qualifierProperty = qualifier.qualifierProperty;
-        qualifier.qualifierPropertyLabel = results
-            .qualifiersLabels[qualifierProperty].labels[language].value;
+        qualifier.qualifierPropertyLabel = labels[qualifierProperty];
       });
 
       var freebaseObject = {
@@ -1076,11 +1066,10 @@ $(document).ready(function() {
       }).length > 0;
     });
 
-    getSourcesLabels(object.sources, function(err, results) {
+    getQualifiersAndSourcesLabels([], object.sources).done(function(labels) {
       object.sources.forEach(function(source) {
         source.forEach(function(snak) {
-          snak.sourcePropertyLabel = results
-              .sourcesLabels[snak.sourceProperty].labels[language].value;
+          snak.sourcePropertyLabel = labels[snak.sourceProperty];
         });
       });
       return createNewSources(
@@ -1154,22 +1143,20 @@ $(document).ready(function() {
         key: key
       });
       (function(currentNewClaim, currentKey) {
-        getQualifiersAndSourcesLabels(qualifiers, sources,
-            function(err, results) {
+        getQualifiersAndSourcesLabels(qualifiers, sources)
+        .done(function(labels) {
           currentNewClaim.objects.forEach(function(object) {
             if (object.key !== currentKey) {
               return;
             }
             object.sources.forEach(function(source) {
               source.forEach(function(snak) {
-                snak.sourcePropertyLabel = results
-                    .sourcesLabels[snak.sourceProperty].labels[lang].value;
+                snak.sourcePropertyLabel = labels[snak.sourceProperty];
               });
             });
             object.qualifiers.forEach(function(qualifier) {
               var qualifierProperty = qualifier.qualifierProperty;
-              qualifier.qualifierPropertyLabel = results
-                  .qualifiersLabels[qualifierProperty].labels[lang].value;
+              qualifier.qualifierPropertyLabel = labels[qualifierProperty];
             });
           });
           i++;
@@ -1181,67 +1168,18 @@ $(document).ready(function() {
     }
   }
 
-  function getQualifiersAndSourcesLabels(qualifiers, sources, callback) {
-    var qualifiersProperties = qualifiers.map(function(qualifier) {
+  function getQualifiersAndSourcesLabels(qualifiers, sources) {
+    var propertyIds = qualifiers.map(function(qualifier) {
       return qualifier.qualifierProperty;
     });
-    var sourcesProperties = [];
     sources.forEach(function(source) {
-      sourcesProperties = sourcesProperties.concat(
+      propertyIds = propertyIds.concat(
         source.map(function(snak) {
           return snak.sourceProperty;
         })
       );
     });
-    async.parallel({
-      qualifiersLabels: function(callback) {
-        getEntityLabels(qualifiersProperties,
-            function(err, qualifiersLabels) {
-          return callback(null, qualifiersLabels);
-        });
-      },
-      sourcesLabels: function(callback) {
-        getEntityLabels(sourcesProperties, function(err, sourcesLabels) {
-          return callback(null, sourcesLabels);
-        });
-      }
-    }, function(err, results) {
-      return callback(null, results);
-    });
-  }
-
-  /*
-  function getQualifiersLabels(qualifiers, callback) {
-    var qualifiersProperties = qualifiers.map(function(qualifier) {
-      return qualifier.qualifierProperty;
-    });
-    getEntityLabels(qualifiersProperties, function(err, qualifiersLabels) {
-      return callback(null, {
-        qualifiersLabels: qualifiersLabels
-      });
-    });
-  }
-  */
-
-  function getSourcesLabels(sources, callback) {
-    var sourcesProperties = [];
-    sources.forEach(function(source) {
-      sourcesProperties = sourcesProperties.concat(
-        source.map(function(snak) {
-          return snak.sourceProperty;
-        })
-      );
-    });
-    async.parallel({
-      sourcesLabels: function(callback) {
-        getEntityLabels(sourcesProperties,
-            function(err, sourcesLabels) {
-          return callback(null, sourcesLabels);
-        });
-      }
-    }, function(err, results) {
-      return callback(null, results);
-    });
+    return getEntityLabels(propertyIds);
   }
 
   function createNewClaimList(newClaim) {
@@ -1426,20 +1364,31 @@ $(document).ready(function() {
     });
   }
 
-  function getEntityLabels(entities, callback) {
-    if (!entities.length) {
-      return callback(null, {});
+  function getEntityLabels(entityIds) {
+    if (entityIds.length === 0) {
+      return $.Deferred().then(function() {
+        return {};
+      });
     }
-    entities = entities.join('|');
-    var languages = mw.language.getFallbackLanguageChain().join('|');
-    $.ajax({
-      url: WIKIDATA_ENTITY_LABELS_URL
-          .replace(/\{\{languages\}\}/, languages)
-          .replace(/\{\{entities\}\}/, entities)
-    }).done(function(data) {
-      return callback(null, data.entities);
-    }).fail(function() {
-      return callback('Could not get entity labels');
+    var api = new mw.Api();
+    var language = mw.config.get('wgUserLanguage');
+    return api.get({
+      action: 'wbgetentities',
+      ids: entityIds.join('|'),
+      props: 'labels',
+      languages: mw.config.get('wgUserLanguage'),
+      languagefallback: true
+    }).then(function(data) {
+      var labels = {};
+      for (var id in data.entities) {
+        var entity = data.entities[id];
+        if (entity.labels && entity.labels[language]) {
+          labels[id] = entity.labels[language].value;
+        } else {
+          labels[id] = entity.id;
+        }
+      }
+      return labels;
     });
   }
 
@@ -1488,7 +1437,7 @@ $(document).ready(function() {
           value: JSON.stringify(value),
           summary: WIKIDATA_API_COMMENT
         }).then(saveQualifiers);
-      }
+      };
 
       return saveQualifiers();
     });
