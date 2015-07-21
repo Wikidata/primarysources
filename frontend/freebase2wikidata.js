@@ -478,7 +478,7 @@ $(document).ready(function() {
 
     async.parallel({
       propertyNames: getPropertyNames,
-      blacklistedSourceUrls: getBlacklistedSourceUrls,
+      blacklistedSourceUrls: getBlacklistedSourceUrlsWithCallback,
       wikidataEntityData: getWikidataEntityData.bind(null, qid),
       freebaseEntityData: getFreebaseEntityData.bind(null, qid),
     }, function(err, results) {
@@ -598,7 +598,24 @@ $(document).ready(function() {
     });
   }
 
-  function parsePrimarySourcesStatement(statement) {
+  function isBlackListedBuilder(blacklistedSourceUrls) {
+    return function(url) {
+      try {
+        var url = new URL(url);
+      } catch (e) {
+        return false;
+      }
+
+      for (var i in blacklistedSourceUrls) {
+        if (url.host.indexOf(blacklistedSourceUrls[i]) !== -1) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  function parsePrimarySourcesStatement(statement, isBlacklisted) {
     var id = statement.id;
     var line = statement.statement.split(/\t/);
     var subject = line[0];
@@ -696,20 +713,7 @@ $(document).ready(function() {
   }
 
   function parseFreebaseClaims(freebaseEntityData, blacklistedSourceUrls) {
-    var blacklistedSourceUrlsLen = blacklistedSourceUrls.length;
-    var isBlacklisted = function(url) {
-      url = url.toString();
-      for (var i = 0; i < blacklistedSourceUrlsLen; i++) {
-        try {
-          if ((new URL(url)).host.indexOf(blacklistedSourceUrls[i]) !== -1) {
-            return true;
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-      return false;
-    };
+    var isBlacklisted = isBlackListedBuilder(blacklistedSourceUrls);
 
     var freebaseClaims = {};
     /* jshint ignore:start */
@@ -796,7 +800,8 @@ $(document).ready(function() {
           freebaseEntity.state === STATEMENT_STATES.unapproved;
     })
     .forEach(function(freebaseEntity) {
-      var statement = parsePrimarySourcesStatement(freebaseEntity);
+      var statement =
+        parsePrimarySourcesStatement(freebaseEntity, isBlacklisted);
       var predicate = statement.predicate;
       var key = statement.key;
 
@@ -1663,7 +1668,7 @@ $(document).ready(function() {
     iframe.src = LIST_OF_PROPERTIES_URL;
   }
 
-  function getBlacklistedSourceUrls(callback) {
+  function getBlacklistedSourceUrls() {
     var now = Date.now();
     if (localStorage.getItem('f2w_blacklist')) {
       var blacklist = JSON.parse(localStorage.getItem('f2w_blacklist'));
@@ -1672,12 +1677,14 @@ $(document).ready(function() {
       }
       if (now - blacklist.timestamp < CACHE_EXPIRY) {
         debug.log('Using cached source URL blacklist');
-        return callback(null, blacklist.data);
+        var deferred = $.Deferred();
+        deferred.resolve(blacklist.data);
+        return deferred.promise();
       }
     }
-    $.ajax({
+    return $.ajax({
       url: FREEBASE_SOURCE_URL_BLACKLIST
-    }).done(function(data) {
+    }).then(function(data) {
       if (data && data.parse && data.parse.text && data.parse.text['*']) {
         var blacklist = data.parse.text['*']
             .replace(/\n/g, '')
@@ -1706,25 +1713,38 @@ $(document).ready(function() {
           timestamp: now,
           data: blacklist
         }));
-        return callback(null, blacklist);
+        return blacklist;
       } else {
         // Fail silently
         debug.log('Could not obtain blacklisted source URLs');
-        return callback(null);
+        return [];
       }
-    }).fail(function() {
-      // Fail silently
+    });
+  }
+
+  function getBlacklistedSourceUrlsWithCallback(callback) {
+    getBlacklistedSourceUrls()
+    .done(function(blacklist) {
+      callback(null, blacklist);
+    })
+    .fail(function() {
       debug.log('Could not obtain blacklisted source URLs');
-      return callback(null);
+      callback(null);
     });
   }
 
   function searchStatements(parameters) {
-    return $.ajax({
-      url: FREEBASE_STATEMENT_SEARCH_URL,
-      data: parameters
-    }).then(function(data) {
-      return data.map(parsePrimarySourcesStatement);
+    return $.when(
+      $.ajax({
+        url: FREEBASE_STATEMENT_SEARCH_URL,
+        data: parameters
+      }).then(function(data) { return data; }),
+      getBlacklistedSourceUrls()
+   ).then(function(data, blacklistedSourceUrls) {
+      var isBlacklisted = isBlackListedBuilder(blacklistedSourceUrls);
+      return data.map(function(statement) {
+        return parsePrimarySourcesStatement(statement, isBlacklisted);
+      });
     });
   }
 
