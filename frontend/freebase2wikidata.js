@@ -1474,7 +1474,13 @@ $(document).ready(function() {
       value: JSON.stringify(value),
       summary: WIKIDATA_API_COMMENT
     }).then(function(data) {
-      var qualifierPromises = qualifiers.map(function(qualifier) {
+      //We save the qualifiers sequentially in order to avoid edit conflict
+      var saveQualifiers = function() {
+        var qualifier = qualifiers.pop();
+        if (qualifier === undefined) {
+          return data;
+        }
+
         var value = (tsvValueToJson(qualifier.qualifierObject)).value;
         return api.post({
           action: 'wbsetqualifier',
@@ -1484,11 +1490,10 @@ $(document).ready(function() {
           token: mw.user.tokens.get('editToken'),
           value: JSON.stringify(value),
           summary: WIKIDATA_API_COMMENT
-        })
-      });
-      return $.when.apply($, qualifierPromises).then(function() {
-        return data;
-      });
+        }).then(saveQualifiers);
+      }
+
+      return saveQualifiers();
     });
   }
 
