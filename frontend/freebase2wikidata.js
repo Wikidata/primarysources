@@ -1906,61 +1906,97 @@ $(document).ready(function() {
     };
 
     ListDialog.prototype.onOptionSubmit = function() {
-      this.executeQuery({
-        dataset: this.datasetInput.getValue(),
-        property: this.propertyInput.getValue(),
-        value: this.valueInput.getValue(),
-        limit: 100
-      });
+      this.mainPanel.$element.empty();
+      this.table = null;
+      this.parameters = {
+          dataset: this.datasetInput.getValue(),
+          property: this.propertyInput.getValue(),
+          value: this.valueInput.getValue(),
+          offset: 0,
+          limit: 100
+        };
+
+      this.executeQuery();
     };
 
-    ListDialog.prototype.executeQuery = function(parameters) {
+    ListDialog.prototype.executeQuery = function() {
       var widget = this;
 
       var progressBar = new OO.ui.ProgressBarWidget();
       progressBar.$element.css('max-width', '100%');
-      widget.mainPanel.$element.empty()
-                               .append(progressBar.$element);
+      widget.mainPanel.$element.append(progressBar.$element);
 
-      searchStatements(parameters)
+      searchStatements(this.parameters)
       .fail(function() {
         var description = new OO.ui.LabelWidget({
           label: 'No statements found.'
         });
         widget.mainPanel.$element.empty()
-                                 .html(description.$element);
+                                 .append(description.$element);
       })
       .done(function(statements) {
-        var table = $('<table>')
-          .addClass('wikitable')
-          .css('width', '100%')
-          .append(
-            $('<tr>')
-              .append(
-                $('<th>').text('Subject'),
-                $('<th>').text('Property'),
-                $('<th>').text('Object'),
-                $('<th>').text('Action')
-              )
-          );
-        widget.mainPanel.$element.empty()
-                                 .html(table);
+        progressBar.$element.remove();
 
-        statements.map(function(statement) {
-          if (statement.qualifiers.length > 0 || statement.source.length > 0) {
-            return; //TODO support qualifiers and sources
-          }
+        widget.parameters.offset += widget.parameters.limit;
+        widget.displayStatements(statements);
 
-          var row = new StatementRow({
-            statement: statement
+        if (statements.length === widget.parameters.limit) { //Some statements remains
+          widget.nextStatementsButton = new OO.ui.ButtonWidget({
+            label: 'Load more statements',
           });
-          table.append(row.$element);
-        });
+          widget.nextStatementsButton.connect(
+            widget,
+            {click: 'onNextButtonSubmit'}
+          );
+          widget.mainPanel.$element.append(
+            widget.nextStatementsButton.$element
+          );
+        }
       });
     };
 
+    ListDialog.prototype.onNextButtonSubmit = function() {
+      this.nextStatementsButton.$element.remove();
+      this.executeQuery();
+    };
+
+    ListDialog.prototype.displayStatements = function(statements) {
+      var widget = this;
+
+      if (this.table === null) { //Initialize the table
+        this.initTable();
+      }
+
+      statements.map(function(statement) {
+        if (statement.qualifiers.length > 0 || statement.source.length > 0) {
+          return; //TODO support qualifiers and sources
+        }
+
+        var row = new StatementRow({
+          statement: statement
+        });
+        widget.table.append(row.$element);
+      });
+    };
+
+    ListDialog.prototype.initTable = function() {
+      this.table = $('<table>')
+        .addClass('wikitable')
+        .css('width', '100%')
+        .append(
+          $('<tr>')
+            .append(
+              $('<th>').text('Subject'),
+              $('<th>').text('Property'),
+              $('<th>').text('Object'),
+              $('<th>').text('Action')
+            )
+        );
+      this.mainPanel.$element.append(this.table);
+    };
+
     ListDialog.prototype.getBodyHeight = function() {
-      return window.innerHeight - 200;
+      return window.innerHeight - 100;
     };
 
     windowManager.addWindows([new ListDialog()]);
