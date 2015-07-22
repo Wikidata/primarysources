@@ -247,7 +247,7 @@
                         "format": "string",
                         "default": "",
                         "required": false
-                    },
+                    }
                 ],
                 "responses": {
                     "200": {
