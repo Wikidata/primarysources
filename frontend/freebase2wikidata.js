@@ -506,6 +506,7 @@ $(document).ready(function() {
     OO.inheritClass(ConfigDialog, OO.ui.ProcessDialog);
     ConfigDialog.static.name = 'ps-config';
     ConfigDialog.static.title = 'Primary Sources configuration';
+    ConfigDialog.static.size = 'large';
     ConfigDialog.static.actions = [
       {action: 'save', label: 'Save', flags: ['primary', 'constructive']},
       {label: 'Cancel', flags: 'safe'}
