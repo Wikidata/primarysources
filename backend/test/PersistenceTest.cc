@@ -63,6 +63,7 @@ TEST_F(PersistenceTest, AddGetSnak) {
             PropertyValue("P124", Value("Q321")),
             PropertyValue("P125", Value(42.11, 11.32)),
             PropertyValue("P126", Value(Time(1901, 1), 10)),
+            PropertyValue("P127", Value(decimal_t("-1234.42"))),
     };
 
     Persistence p(sql, true);
@@ -176,7 +177,7 @@ TEST_F(PersistenceTest, RandomQID) {
 }
 
 
-TEST_F(PersistenceTest, AllSatements) {
+TEST_F(PersistenceTest, AllStatements) {
     Statement stmt1(-1, "Q123", PropertyValue("P234", Value("Q789")),
                    Statement::extensions_t(), Statement::extensions_t(),
                    "foo", 0, UNAPPROVED);

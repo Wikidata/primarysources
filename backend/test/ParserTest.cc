@@ -76,6 +76,15 @@ TEST(ParserTest, ParseTimeYear) {
     ASSERT_EQ(result[0].getValue().getPrecision(), 9);
 }
 
+TEST(ParserTest, ParseQuantity) {
+    std::vector<Statement> result = parseString("Q123\tP123\t+123.21\n");
+
+    ASSERT_EQ(result.size(), 1);
+    ASSERT_EQ(result[0].getQID(), "Q123");
+    ASSERT_EQ(result[0].getProperty(), "P123");
+    ASSERT_EQ(result[0].getValue(), Value(decimal_t("123.21")));
+}
+
 
 TEST(ParserTest, ParseMulti) {
     std::vector<Statement> result = parseString(
