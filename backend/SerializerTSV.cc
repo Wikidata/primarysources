@@ -3,10 +3,26 @@
 
 #include "SerializerTSV.h"
 
+
+std::string decimalToString(decimal_t decimal) {
+    std::ostringstream stream;
+    stream.precision(100);
+    stream << std::showpos << std::fixed << decimal;
+    std::string string = stream.str();
+
+    //Removes trailing zeros
+    string.erase(string.find_last_not_of('0') + 1, std::string::npos);
+
+    //Removes the '.' if needed
+    if(string.back() == '.') {
+        string.pop_back();
+    }
+    return string;
+}
+
 namespace Serializer {
 
     static void writeValueTSV(const Value& v, std::ostream* out) {
-        std::string serialization;
         switch (v.getType()) {
             case ITEM:
                 *out << v.getString();
@@ -16,12 +32,7 @@ namespace Serializer {
                      << "/" << v.getLocation().second;
                 break;
             case QUANTITY:
-                serialization = boost::str(boost::format("%+f") % v.getQuantity());
-                if(v.getQuantity() != (long) v.getQuantity()) {
-                    //We removes extra zeros added by the serialization
-                    serialization.erase(serialization.find_last_not_of('0') + 1, std::string::npos);
-                }
-                *out << serialization;
+                *out << decimalToString(v.getQuantity());
                 break;
             case STRING:
                 if (v.getLanguage() != "") {
