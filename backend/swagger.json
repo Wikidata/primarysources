@@ -28,6 +28,14 @@
                         "required": true,
                         "type": "string",
                         "format": "string"
+                    },
+                    {
+                        "name": "dataset",
+                        "in": "query",
+                        "description": "retrieve statements only from this dataset",
+                        "type": "string",
+                        "format": "string",
+                        "default": ""
                     }
                 ],
                 "responses": {
@@ -47,6 +55,16 @@
             "get": {
                 "summary": "Get Random Entity",
                 "description": "The entities endpoint returns all statements referring to a randomly\nselected entity that have not yet been approved. The\nentity is returned in Wikidata JSON format, plain JSON format,\nor TSV format, depending on the value of the Accept header.\n",
+                "parameters": [
+                    {
+                        "name": "dataset",
+                        "in": "query",
+                        "description": "retrieve statements only from this dataset",
+                        "type": "string",
+                        "format": "string",
+                        "default": ""
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "entity found, returned as a list of statements according \nto Accept header\n"
@@ -146,15 +164,94 @@
                     {
                         "name": "count",
                         "in": "query",
-                        "description": "maximum number of random statements to return (default: 10)",
+                        "description": "maximum number of random statements to return",
                         "required": false,
                         "type": "integer",
-                        "format": "int32"
+                        "format": "int32",
+                        "default": 10
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "statment with ID found and updated, returned according to Accept header\n"
+                    },
+                    "404": {
+                        "description": "no statement found"
+                    },
+                    "500": {
+                        "description": "server error"
+                    }
+                }
+            }
+        },
+        "/statements/any": {
+            "get": {
+                "summary": "Get All Statement",
+                "description": "The statements endpoint returns statements according to the query parameters.\nThe statement is returned in Wikidata JSON format, plain JSON format,\nor TSV format, depending on the value of the Accept header.\n",
+                "parameters": [
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "query offset",
+                        "required": false,
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 0
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "number of statements to return",
+                        "required": false,
+                        "type": "integer",
+                        "format": "int32",
+                        "default": 10,
+                        "maximum": 1000
+                    },
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "description": "filter by state",
+                        "type": "string",
+                        "format": "string",
+                        "default": "unapproved",
+                        "required": false,
+                        "enum": [
+                            "",
+                            "unapproved"
+                        ]
+                    },
+                    {
+                        "name": "dataset",
+                        "in": "query",
+                        "description": "filter by dataset",
+                        "type": "string",
+                        "format": "string",
+                        "default": ""
+                    },
+                    {
+                        "name": "property",
+                        "in": "query",
+                        "description": "filter by main snak property",
+                        "type": "string",
+                        "format": "string",
+                        "default": "",
+                        "required": false,
+                        "pattern": "P\\d+"
+                    },
+                    {
+                        "name": "value",
+                        "in": "query",
+                        "description": "filter by main snak value formatted in the TSV format",
+                        "type": "string",
+                        "format": "string",
+                        "default": "",
+                        "required": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "statments found, returned according to Accept header\n"
                     },
                     "404": {
                         "description": "no statement found"
