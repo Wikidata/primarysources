@@ -6,6 +6,7 @@
 namespace Serializer {
 
     static void writeValueTSV(const Value& v, std::ostream* out) {
+        std::string serialization;
         switch (v.getType()) {
             case ITEM:
                 *out << v.getString();
@@ -15,7 +16,12 @@ namespace Serializer {
                      << "/" << v.getLocation().second;
                 break;
             case QUANTITY:
-                *out << std::showpos << std::fixed << v.getQuantity() << std::noshowpos;
+                serialization = boost::str(boost::format("%+f") % v.getQuantity());
+                if(v.getQuantity() != (long) v.getQuantity()) {
+                    //We removes extra zeros added by the serialization
+                    serialization.erase(serialization.find_last_not_of('0') + 1, std::string::npos);
+                }
+                *out << serialization;
                 break;
             case STRING:
                 if (v.getLanguage() != "") {
