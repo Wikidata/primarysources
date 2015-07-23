@@ -15,7 +15,7 @@ namespace Serializer {
                      << "/" << v.getLocation().second;
                 break;
             case QUANTITY:
-                *out << std::showpos << std::fixed << v.getQuantity();
+                *out << std::showpos << std::fixed << v.getQuantity() << std::noshowpos;
                 break;
             case STRING:
                 if (v.getLanguage() != "") {
