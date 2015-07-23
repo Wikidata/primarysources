@@ -606,7 +606,7 @@ $(document).ready(function() {
         }
       }
       return false;
-    }
+    };
   }
 
   function parsePrimarySourcesStatement(statement, isBlacklisted) {
@@ -1060,13 +1060,7 @@ $(document).ready(function() {
         qualifier.qualifierPropertyLabel = labels[qualifierProperty];
       });
 
-      var freebaseObject = {
-        object: object.object,
-        id: object.id,
-        qualifiers: object.qualifiers,
-        sources: object.sources
-      };
-      return createNewStatement(property, freebaseObject);
+      return createNewStatement(property, object);
     });
   }
 
@@ -1417,9 +1411,7 @@ $(document).ready(function() {
 
   function getEntityLabels(entityIds) {
     if (entityIds.length === 0) {
-      return $.Deferred().then(function() {
-        return {};
-      });
+      return $.Deferred().resolve({});
     }
     var api = new mw.Api();
     var language = mw.config.get('wgUserLanguage');
@@ -1638,9 +1630,7 @@ $(document).ready(function() {
       }
       if (now - blacklist.timestamp < CACHE_EXPIRY) {
         debug.log('Using cached source URL blacklist');
-        var deferred = $.Deferred();
-        deferred.resolve(blacklist.data);
-        return deferred.promise();
+        return $.Deferred().resolve(blacklist.data);
       }
     }
     return $.ajax({
@@ -1815,7 +1805,7 @@ $(document).ready(function() {
             .attr('colspan', 4)
             .append(progressBar.$element)
         );
-    }
+    };
 
     /**
      * The main dialog
