@@ -15,34 +15,50 @@ CREATE TABLE snak (
 CREATE TABLE statement (
     id       INTEGER NOT NULL AUTO_INCREMENT,
     subject  VARCHAR(32),
-    mainsnak INTEGER REFERENCES snak(id),
+    mainsnak INTEGER,
     state    INT DEFAULT 0,
     dataset  VARCHAR(32),
     upload   INTEGER DEFAULT 0,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    FOREIGN KEY (mainsnak)
+        REFERENCES snak(id)
 );
 
 CREATE TABLE qualifier (
     id       INTEGER NOT NULL AUTO_INCREMENT,
     stmt     INTEGER REFERENCES statement(id),
     snak     INTEGER REFERENCES snak(id),
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    FOREIGN KEY (stmt)
+        REFERENCES statement(id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (snak)
+        REFERENCES snak(id)
+        ON DELETE CASCADE
 );
 
 CREATE TABLE source (
     id       INTEGER NOT NULL AUTO_INCREMENT,
-    stmt     INTEGER REFERENCES statement(id),
-    snak     INTEGER REFERENCES snak(id),
-    PRIMARY KEY (id)
+    stmt     INTEGER,
+    snak     INTEGER,
+    PRIMARY KEY (id),
+    FOREIGN KEY (stmt)
+        REFERENCES statement(id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (snak)
+        REFERENCES snak(id)
+        ON DELETE CASCADE
 );
 
 CREATE TABLE userlog (
     id       INTEGER NOT NULL AUTO_INCREMENT,
     user     VARCHAR(64),
-    stmt     INTEGER REFERENCES statement(id),
+    stmt     INTEGER,
     state    INT DEFAULT 0,
     changed  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    FOREIGN KEY (stmt)
+        REFERENCES statement(id)
 );
 
 CREATE INDEX idx_stmt_subject_state_dataset ON statement(subject, state, dataset);
