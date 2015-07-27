@@ -320,18 +320,6 @@ $(document).ready(function() {
     // Handle clicks on approve/edit/reject buttons
     (function addClickHandlers() {
 
-      var isUrl = function(url) {
-        try {
-          url = new URL(url.toString().replace(/^["']/, '').replace(/["']$/, ''));
-          if ((url.protocol.indexOf('http' === 0)) && (url.host)) {
-            return true;
-          }
-        } catch (e) {
-          return false;
-        }
-        return false;
-      };
-
       var contentDiv = document.getElementById('content');
       contentDiv.addEventListener('click', function(event) {
         var classList = event.target.classList;
@@ -932,10 +920,17 @@ $(document).ready(function() {
       };
     } else {
       value = value.replace(/^["']/, '').replace(/["']$/, '');
-      return {
-        type: isUrl(value) ? 'url' : 'string',
-        value: value
-      };
+      if (isUrl(value)) {
+        return {
+          type: 'url',
+          value: normalizeUrl(value)
+        };
+      } else {
+        return {
+          type: 'string',
+          value: value
+        };
+      }
     }
   }
 
@@ -1002,18 +997,20 @@ $(document).ready(function() {
   }
 
   function buildValueKeysFromWikidataStatement(statement) {
-    if (statement.mainsnak.snaktype !== 'value') {
-      return [statement.mainsnak.snaktype];
+    var mainSnak = statement.mainsnak;
+    if (mainSnak.snaktype !== 'value') {
+      return [mainSnak.snaktype];
     }
 
-    var keys = [jsonToTsvValue(statement.mainsnak.datavalue)];
+    var keys = [jsonToTsvValue(mainSnak.datavalue, mainSnak.datatype)];
 
     if (statement.qualifiers) {
       var qualifierKeyParts = [];
       $.each(statement.qualifiers, function(_, qualifiers) {
         qualifiers.forEach(function(qualifier) {
           qualifierKeyParts.push(
-              qualifier.property + '\t' + jsonToTsvValue(qualifier.datavalue)
+              qualifier.property + '\t' +
+                  jsonToTsvValue(qualifier.datavalue, qualifier.datatype)
           );
         });
       });
@@ -1024,7 +1021,7 @@ $(document).ready(function() {
     return keys;
   }
 
-  function jsonToTsvValue(dataValue) {
+  function jsonToTsvValue(dataValue, dataType) {
     switch (dataValue.type) {
     case 'quantity':
       return dataValue.value.amount;
@@ -1035,7 +1032,9 @@ $(document).ready(function() {
     case 'monolingualtext':
       return dataValue.value.language + ':"' + dataValue.value.text + '"';
     case 'string':
-      return '"' + dataValue.value + '"';
+      var str = (dataType === 'url') ? normalizeUrl(dataValue.value)
+                                     : dataValue.value;
+      return '"' + str + '"';
     case 'wikibase-entityid':
       switch (dataValue.value['entity-type']) {
         case 'item':
@@ -1046,6 +1045,14 @@ $(document).ready(function() {
     }
     debug.log('Unknown data value type ' + dataValue.type);
     return dataValue.value;
+  }
+
+  function normalizeUrl(url) {
+    try {
+      return (new URL(url.toString())).href;
+    } catch (e) {
+      return url;
+    }
   }
 
   function prepareNewWikidataStatement(property, object, language) {
@@ -1080,7 +1087,8 @@ $(document).ready(function() {
         for (var j in snakBag[prop]) {
           var snak = snakBag[prop][j];
           if (snak.snaktype === 'value') {
-            existingSources[prop][jsonToTsvValue(snak.datavalue)] = true;
+            existingSources[prop]
+                [jsonToTsvValue(snak.datavalue, snak.datatype)] = true;
           }
         }
       }
@@ -1529,9 +1537,10 @@ $(document).ready(function() {
       var index = -1;
       for (var i = 0, lenI = data.claims[predicate].length; i < lenI; i++) {
         var claimObject = data.claims[predicate][i];
+        var mainSnak = claimObject.mainsnak;
         if (
-            claimObject.mainsnak.snaktype === 'value' &&
-            jsonToTsvValue(claimObject.mainsnak.datavalue) === object
+            mainSnak.snaktype === 'value' &&
+            jsonToTsvValue(mainSnak.datavalue, mainSnak.datatype) === object
         ) {
           index = i;
           break;
