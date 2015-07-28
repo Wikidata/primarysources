@@ -454,7 +454,7 @@ $(document).ready(function() {
     })();
 
     qid = getQid();
-    if (!qid) {
+    if (!qid || mw.config.get('wgIsRedirect')) {
       return debug.log('Not on an item page');
     }
     debug.log('On item page ' + qid);
