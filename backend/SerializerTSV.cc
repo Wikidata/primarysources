@@ -24,7 +24,7 @@ namespace Serializer {
 
     static void writeValueTSV(const Value& v, std::ostream* out) {
         switch (v.getType()) {
-            case ITEM:
+            case ENTITY:
                 *out << v.getString();
                 break;
             case LOCATION:

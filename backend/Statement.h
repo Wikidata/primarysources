@@ -16,7 +16,7 @@ enum ApprovalState {
 };
 
 enum ValueType {
-    ITEM, STRING, TIME, LOCATION, QUANTITY
+    ENTITY, STRING, TIME, LOCATION, QUANTITY
 };
 
 
@@ -63,7 +63,7 @@ class Value : public cppcms::serializable {
     /**
     * Initialise a value of type ITEM using the QID passed as argument.
     */
-    explicit Value(std::string qid) : str(qid), type(ITEM) { }
+    explicit Value(std::string qid) : str(qid), type(ENTITY) { }
 
     /**
     * Initialise a value of type STRING using the text and language

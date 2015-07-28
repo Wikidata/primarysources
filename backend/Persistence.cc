@@ -93,7 +93,7 @@ std::string timeToSql(const Time& time) {
 
 int64_t Persistence::addSnak(const PropertyValue &pv) {
     switch (pv.getValue().getType()) {
-        case ITEM:
+        case ENTITY:
             return (sql << "INSERT INTO snak(property,svalue,vtype) "
                            "VALUES (?,?,'item')"
                         << pv.getProperty() << pv.getValue().getString()
@@ -133,7 +133,7 @@ int64_t Persistence::addSnak(const PropertyValue &pv) {
 int64_t Persistence::getSnakID(const PropertyValue &pv) {
     cppdb::result r;
     switch (pv.getValue().getType()) {
-        case ITEM:
+        case ENTITY:
             r = (sql << "SELECT id FROM snak "
                         "WHERE property=? AND svalue=? AND vtype='item'"
                      << pv.getProperty() << pv.getValue().getString()
@@ -387,7 +387,7 @@ std::vector<Statement> Persistence::getAllStatements(
     std::string valueSelector = "";
     if(value != nullptr) {
         switch (value->getType()) {
-            case ITEM:
+            case ENTITY:
                 valueSelector = "AND snak.svalue = ?";
                 break;
             case STRING:
@@ -418,7 +418,7 @@ std::vector<Statement> Persistence::getAllStatements(
 
     if(value != nullptr) {
         switch (value->getType()) {
-            case ITEM:
+            case ENTITY:
                 statement = (statement << value->getString());
                 break;
             case STRING:

@@ -53,7 +53,7 @@ void Statement::serialize(cppcms::archive &a) {
 bool operator==(const Value& lhs, const Value& rhs) {
     if (lhs.type != rhs.type) return false;
     switch (lhs.type) {
-        case ITEM:
+        case ENTITY:
             return lhs.str == rhs.str;
         case STRING:
             return lhs.str == rhs.str && lhs.lang == rhs.lang;

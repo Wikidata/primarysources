@@ -17,7 +17,7 @@ static cppcms::json::value createWikidataSnak(const PropertyValue& pv) {
     snak["snaktype"] = "value";
     snak["property"] = pv.getProperty();
     switch (v.getType()) {
-        case ITEM: {
+        case ENTITY: {
             const std::string &qid = pv.getValue().getString();
             snak["datavalue"]["type"] = "wikibase-entityid";
             switch (qid[0]) {
