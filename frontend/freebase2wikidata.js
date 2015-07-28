@@ -453,11 +453,14 @@ $(document).ready(function() {
       });
     })();
 
-    qid = getQid();
-    if (!qid || mw.config.get('wgIsRedirect')) {
-      return debug.log('Not on an item page');
+    if (mw.config.get('wgPageContentModel') !== 'wikibase-item' ||
+        mw.config.get('wgIsRedirect')) {
+      return;
     }
-    debug.log('On item page ' + qid);
+    qid = getQid();
+    if (!qid) {
+      return debug.log('Do not manage to load the QID.');
+    }
 
     async.parallel({
       blacklistedSourceUrls: getBlacklistedSourceUrlsWithCallback,
