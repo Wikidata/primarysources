@@ -4,22 +4,6 @@
 #include "SerializerTSV.h"
 
 
-std::string decimalToString(decimal_t decimal) {
-    std::ostringstream stream;
-    stream.precision(100);
-    stream << std::showpos << std::fixed << decimal;
-    std::string string = stream.str();
-
-    //Removes trailing zeros
-    string.erase(string.find_last_not_of('0') + 1, std::string::npos);
-
-    //Removes the '.' if needed
-    if(string.back() == '.') {
-        string.pop_back();
-    }
-    return string;
-}
-
 namespace Serializer {
 
     static void writeValueTSV(const Value& v, std::ostream* out) {
@@ -32,7 +16,7 @@ namespace Serializer {
                      << "/" << v.getLocation().second;
                 break;
             case QUANTITY:
-                *out << decimalToString(v.getQuantity());
+                *out << v.getQuantityAsString();
                 break;
             case STRING:
                 if (v.getLanguage() != "") {

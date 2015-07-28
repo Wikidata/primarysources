@@ -18,7 +18,7 @@ static cppcms::json::value createWikidataSnak(const PropertyValue& pv) {
     snak["property"] = pv.getProperty();
     switch (v.getType()) {
         case ENTITY: {
-            const std::string &qid = pv.getValue().getString();
+            const std::string &qid = v.getString();
             snak["datavalue"]["type"] = "wikibase-entityid";
             switch (qid[0]) {
                 case 'Q':
@@ -27,32 +27,29 @@ static cppcms::json::value createWikidataSnak(const PropertyValue& pv) {
                 case 'P':
                     snak["datavalue"]["value"]["entity-type"] = "property";
                     break;
-                case 'S':
-                    snak["datavalue"]["value"]["entity-type"] = "source";
-                    break;
                 default:
                     snak["datavalue"]["value"]["entity-type"] = "unknown";
                     break;
             }
             snak["datavalue"]["value"]["numeric-id"] =
-                    atol(v.getString().c_str() + 1);
+                    atol(qid.c_str() + 1);
         }
             break;
-        case STRING: {;
-            const std::string &txt = v.getString();
-            snak["datavalue"]["type"] = "string";
-            snak["datavalue"]["value"] = txt;
-            if (pv.getValue().getLanguage() != "") {
-                // TODO(schaffert): is this correct? documentation doesn't
-                // mention the case
-                snak["datavalue"]["language"] = v.getLanguage();
+        case STRING:
+            if (v.getLanguage() == "") {
+                snak["datavalue"]["type"] = "string";
+                snak["datavalue"]["value"] = v.getString();
+            } else {
+                snak["datavalue"]["type"] = "monolingualtext";
+                snak["datavalue"]["value"]["language"] = v.getLanguage();
+                snak["datavalue"]["value"]["text"] = v.getString();
             }
-        }
             break;
         case LOCATION:
             snak["datavalue"]["type"] = "globecoordinate";
             snak["datavalue"]["value"]["latitude"] = v.getLocation().first;
             snak["datavalue"]["value"]["longitude"] = v.getLocation().second;
+            snak["datavalue"]["value"]["globe"] = "http://www.wikidata.org/entity/Q2";
             break;
         case TIME: {
             std::ostringstream fmt;
@@ -67,7 +64,20 @@ static cppcms::json::value createWikidataSnak(const PropertyValue& pv) {
                     << "Z";
             snak["datavalue"]["type"] = "time";
             snak["datavalue"]["value"]["time"] = fmt.str();
+            snak["datavalue"]["value"]["timezone"] = 0;
+            snak["datavalue"]["value"]["before"] = 0;
+            snak["datavalue"]["value"]["after"] = 0;
             snak["datavalue"]["value"]["precision"] = v.getPrecision();
+            snak["datavalue"]["value"]["calendarmodel"] = "http://www.wikidata.org/entity/Q1985727";
+        }
+            break;
+        case QUANTITY: {
+            const std::string& amount = v.getQuantityAsString();
+            snak["datavalue"]["type"] = "quantity";
+            snak["datavalue"]["value"]["amount"] = amount;
+            snak["datavalue"]["value"]["unit"] = "1";
+            snak["datavalue"]["value"]["upperBound"] = amount;
+            snak["datavalue"]["value"]["lowerBound"] = amount;
         }
             break;
     }

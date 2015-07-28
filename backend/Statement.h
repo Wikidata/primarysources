@@ -138,6 +138,12 @@ class Value : public cppcms::serializable {
     }
 
     /**
+    * Return the decimal value contained in this object as string. Only
+    * applicable to values of type QUANTITY.
+    */
+    std::string getQuantityAsString() const;
+
+    /**
     * Return the language of this value.
     */
     const std::string &getLanguage() const {

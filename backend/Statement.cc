@@ -36,6 +36,22 @@ std::string stateToString(ApprovalState state) {
     return "";
 }
 
+std::string Value::getQuantityAsString() const {
+    std::ostringstream stream;
+    stream.precision(100);
+    stream << std::showpos << std::fixed << quantity;
+    std::string string = stream.str();
+
+    //Removes trailing zeros
+    string.erase(string.find_last_not_of('0') + 1, std::string::npos);
+
+    //Removes the '.' if needed
+    if(string.back() == '.') {
+       string.pop_back();
+    }
+    return string;
+}
+
 void Value::serialize(cppcms::archive &a) {
     a & str & lang & cppcms::as_pod(time) & loc & precision
       & cppcms::as_pod(quantity) & cppcms::as_pod(type);
