@@ -850,15 +850,16 @@ $(document).ready(function() {
 
     // "http://research.google.com/pubs/vrandecic.html"
     var isUrl = function(url) {
+      if (typeof URL !== 'function') {
+        return url.indexOf('http') === 0; //TODO: very bad fallback hack
+      }
+
       try {
         url = new URL(url.toString());
-        if ((url.protocol.indexOf('http' === 0)) && (url.host)) {
-          return value;
-        }
+        return url.protocol.indexOf('http') === 0 && url.host;
       } catch (e) {
         return false;
       }
-      return false;
     };
 
     if (itemRegEx.test(value)) {
