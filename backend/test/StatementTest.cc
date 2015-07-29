@@ -41,6 +41,13 @@ TEST(ValueTest, Equality) {
     ASSERT_NE(t1, t4);
 }
 
+TEST(ValueTest, getQuantityAsString) {
+    Value q1(decimal_t("100000000000000000000")), q2(decimal_t("-0.000001"));
+
+    ASSERT_EQ(q1.getQuantityAsString(), "+100000000000000000000");
+    ASSERT_EQ(q2.getQuantityAsString(), "-0.000001");
+}
+
 TEST(ValueTest, Serialize) {
     cppcms::archive archive;
 
