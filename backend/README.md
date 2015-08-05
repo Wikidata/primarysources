@@ -2,6 +2,8 @@
 
 # REST API
 
+Base URL of the Wikimedia Tools Labs instance: http://tools.wmflabs.org/wikidata-primary-sources
+
 ## Get Entity by QID
 
 The following HTTP request retrieves an entity by Wikidata QID:
