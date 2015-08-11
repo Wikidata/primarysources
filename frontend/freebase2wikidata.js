@@ -346,7 +346,8 @@ $(document).ready(function() {
                   return document.location.reload();
                 }
 
-                setStatementState(id, STATEMENT_STATES.approved, function() {
+                setStatementState(id, STATEMENT_STATES.approved)
+                .done(function() {
                   debug.log('Approved property statement ' + id);
                   if (data.pageinfo && data.pageinfo.lastrevid) {
                     document.location.hash = 'revision=' +
@@ -356,9 +357,22 @@ $(document).ready(function() {
                 });
               });
           } else if (classList.contains('f2w-reject')) {
-            // Reject property
-            setStatementState(id, STATEMENT_STATES.wrong, function() {
-              debug.log('Disapproved property statement ' + id);
+            //Get the statements ids to reject
+            var idsSet = {};
+            idsSet[id] = true;
+            var sources = JSON.parse(statement.sources);
+            sources.forEach(function(source) {
+              idsSet[source[0].sourceId] = true;
+            });
+
+            // Reject statements
+            var rejectPromises = [];
+            for (var statementId in idsSet) {
+              rejectPromises.push(
+                  setStatementState(statementId, STATEMENT_STATES.wrong));
+            }
+            $.when.apply(this, rejectPromises).done(function() {
+              debug.log('Disapproved statement');
               return document.location.reload();
             });
           }
@@ -387,8 +401,8 @@ $(document).ready(function() {
                   if (error) {
                     return reportError(error);
                   }
-                  setStatementState(id, STATEMENT_STATES.approved,
-                      function() {
+                  setStatementState(id, STATEMENT_STATES.approved)
+                  .done(function() {
                     debug.log('Approved source statement ' + id);
                     if (data.pageinfo && data.pageinfo.lastrevid) {
                       document.location.hash = 'revision=' +
@@ -404,8 +418,8 @@ $(document).ready(function() {
                     return reportError(error);
                   })
                   .done(function(data) {
-                    setStatementState(id, STATEMENT_STATES.approved,
-                    function() {
+                    setStatementState(id, STATEMENT_STATES.approved)
+                    .done(function() {
                       debug.log('Approved source statement ' + id);
                       if (data.pageinfo && data.pageinfo.lastrevid) {
                         document.location.hash = 'revision=' +
@@ -418,7 +432,7 @@ $(document).ready(function() {
             });
           } else if (classList.contains('f2w-reject')) {
             // Reject source
-            setStatementState(id, STATEMENT_STATES.wrong, function() {
+            setStatementState(id, STATEMENT_STATES.wrong).done(function() {
               debug.log('Disapproved source statement ' + id);
               return document.location.reload();
             });
@@ -672,8 +686,8 @@ $(document).ready(function() {
             if (blacklisted) {
               debug.log('Encountered blacklisted source url ' + url);
               (function(currentId, currentUrl) {
-                setStatementState(currentId, STATEMENT_STATES.blacklisted,
-                    function() {
+                setStatementState(currentId, STATEMENT_STATES.blacklisted)
+                .done(function() {
                   debug.log('Automatically blacklisted statement ' +
                       currentId + ' with blacklisted source url ' +
                       currentUrl);
@@ -966,8 +980,8 @@ $(document).ready(function() {
             // Existing object
             if (freebaseObject.sources.length === 0) {
               //No source, duplicate statement
-              setStatementState(freebaseObject.id, STATEMENT_STATES.duplicate,
-                  function() {
+              setStatementState(freebaseObject.id, STATEMENT_STATES.duplicate)
+              .done(function() {
                 debug.log('Automatically duplicate statement ' +
                     freebaseObject.id);
               });
@@ -1033,10 +1047,10 @@ $(document).ready(function() {
       var time = dataValue.value.time;
 
       //Normalize the timestamp
-      if(dataValue.value.precision < 11) {
+      if (dataValue.value.precision < 11) {
         time = time.replace('-01T', '-00T');
       }
-      if(dataValue.value.precision < 10) {
+      if (dataValue.value.precision < 10) {
         time = time.replace('-01-', '-00-');
       }
 
@@ -1458,7 +1472,7 @@ $(document).ready(function() {
     });
   }
 
-  function setStatementState(id, state, callback) {
+  function setStatementState(id, state) {
     if (!STATEMENT_STATES[state]) {
       reportError('Invalid statement state');
     }
@@ -1468,7 +1482,7 @@ $(document).ready(function() {
         .replace(/\{\{state\}\}/, state)
         .replace(/\{\{id\}\}/, id);
 
-    $.post(url, callback).fail(function() {
+    return $.post(url).fail(function() {
       reportError('Set statement state to ' + state + ' failed.');
     });
   }
@@ -1779,7 +1793,7 @@ $(document).ready(function() {
               ) !== -1) {
                 widget.toggle(false).setDisabled(true);
                 setStatementState(widget.statement.id,
-                  STATEMENT_STATES.duplicate, function() {
+                  STATEMENT_STATES.duplicate).done(function() {
                     debug.log(widget.statement.id + ' tagged as duplicate');
                   });
                 return;
@@ -1803,8 +1817,8 @@ $(document).ready(function() {
       ).fail(function(error) {
         return reportError(error);
       }).done(function() {
-        setStatementState(widget.statement.id, STATEMENT_STATES.approved,
-        function() {
+        setStatementState(widget.statement.id, STATEMENT_STATES.approved)
+        .done(function() {
           widget.toggle(false).setDisabled(true);
         });
       });
@@ -1814,8 +1828,8 @@ $(document).ready(function() {
       var widget = this;
 
       this.showProgressBar();
-      setStatementState(widget.statement.id, STATEMENT_STATES.wrong,
-      function() {
+      setStatementState(widget.statement.id, STATEMENT_STATES.wrong)
+      .done(function() {
         widget.toggle(false).setDisabled(true);
       });
     };
