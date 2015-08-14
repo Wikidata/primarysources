@@ -1751,12 +1751,25 @@ $(document).ready(function() {
 
       this.statement = config.statement;
       var widget = this;
+      var numberOfSnaks = this.statement.qualifiers.length + 1;
 
-      $.when(
-          getValueHtml(this.statement.subject),
-          getValueHtml(this.statement.predicate),
-          getValueHtml(this.statement.object, this.statement.predicate)
-      ).then(function(subjectHtml, propertyHtml, objectHtml) {
+      var htmlCallbacks = [
+        getValueHtml(this.statement.subject),
+        getValueHtml(this.statement.predicate),
+        getValueHtml(this.statement.object, this.statement.predicate)
+      ];
+      this.statement.qualifiers.forEach(function(qualifier) {
+        htmlCallbacks.push(getValueHtml(qualifier.qualifierProperty));
+        htmlCallbacks.push(
+          getValueHtml(qualifier.qualifierObject, qualifier.qualifierProperty)
+        );
+      });
+
+      $.when.apply(this, htmlCallbacks).then(function() {
+        var subjectHtml = arguments[0];
+        var propertyHtml = arguments[1];
+        var objectHtml = arguments[2];
+
         var approveButton = new OO.ui.ButtonWidget({
           label: 'Approve',
           flags: 'constructive'
@@ -1772,38 +1785,62 @@ $(document).ready(function() {
         var buttonGroup = new OO.ui.ButtonGroupWidget({
           items: [approveButton, rejectButton]
         });
+
+        //Main row
         widget.$element
           .attr('data-id', widget.statement.id)
           .append(
-            $('<td>').html(subjectHtml),
-            $('<td>').html(propertyHtml),
-            $('<td>').html(objectHtml),
-            $('<td>').append(buttonGroup.$element)
+            $('<tr>').append(
+              $('<td>')
+                .attr('rowspan', numberOfSnaks)
+                .html(subjectHtml),
+              $('<td>')
+                .attr('rowspan', numberOfSnaks)
+                .html(propertyHtml),
+              $('<td>')
+                .attr('colspan', 2)
+                .html(objectHtml),
+              $('<td>')
+                .attr('rowspan', numberOfSnaks)
+                .append(buttonGroup.$element)
+            )
           );
+
+        //Qualifiers
+        for (var i = 3; i < arguments.length; i += 2) {
+          widget.$element.append(
+            $('<tr>').append(
+              $('<td>').html(arguments[i]),
+              $('<td>').html(arguments[i + 1])
+            )
+          );
+        }
 
         //Check that the statement don't already exist
         getClaims(widget.statement.subject, widget.statement.predicate,
           function(err, statements) {
-            var currentStatementKey = widget.statement.object; //TODO: support qualifiers
-
             for (var i in statements) {
+              var externalKey = widget.statement.subject + '\t' +
+                                widget.statement.predicate + '\t' +
+                buildValueKeysFromWikidataStatement(statements[i]);
               if ($.inArray(
-                  currentStatementKey,
+                  widget.statement.key,
                   buildValueKeysFromWikidataStatement(statements[i])
               ) !== -1) {
                 widget.toggle(false).setDisabled(true);
-                setStatementState(widget.statement.id,
-                  STATEMENT_STATES.duplicate).done(function() {
-                    debug.log(widget.statement.id + ' tagged as duplicate');
-                  });
-                return;
+                if (widget.statement.source.length === 0) {
+                  setStatementState(widget.statement.id,
+                    STATEMENT_STATES.duplicate).done(function() {
+                      debug.log(widget.statement.id + ' tagged as duplicate');
+                    });
+                }
               }
             }
           });
       });
     }
     OO.inheritClass(StatementRow, OO.ui.Widget);
-    StatementRow.static.tagName = 'tr';
+    StatementRow.static.tagName = 'tbody';
 
     StatementRow.prototype.approve = function() {
       var widget = this;
@@ -1817,6 +1854,9 @@ $(document).ready(function() {
       ).fail(function(error) {
         return reportError(error);
       }).done(function() {
+        if (statement.source.length > 0) {
+          return; //TODO add support of source review
+        }
         setStatementState(widget.statement.id, STATEMENT_STATES.approved)
         .done(function() {
           widget.toggle(false).setDisabled(true);
@@ -1944,6 +1984,7 @@ $(document).ready(function() {
           offset: 0,
           limit: 100
         };
+      this.alreadyDisplayedStatementKeys = {};
 
       this.executeQuery();
     };
@@ -1997,9 +2038,17 @@ $(document).ready(function() {
       }
 
       statements.map(function(statement) {
-        if (statement.qualifiers.length > 0 || statement.source.length > 0) {
-          return; //TODO support qualifiers and sources
+        statement.key = statement.subject + '\t' +
+                        statement.predicate + '\t' +
+                        statement.object;
+        statement.qualifiers.forEach(function(qualifier) {
+          statement.key += '\t' + qualifier.qualifierProperty + '\t' +
+                                  qualifier.qualifierObject;
+        });
+        if (statement.key in widget.alreadyDisplayedStatementKeys) {
+          return; //Don't display twice the same statement
         }
+        widget.alreadyDisplayedStatementKeys[statement.key] = true;
 
         var row = new StatementRow({
           statement: statement
@@ -2013,13 +2062,14 @@ $(document).ready(function() {
         .addClass('wikitable')
         .css('width', '100%')
         .append(
-          $('<tr>')
-            .append(
+          $('<thead>').append(
+            $('<tr>').append(
               $('<th>').text('Subject'),
               $('<th>').text('Property'),
-              $('<th>').text('Object'),
+              $('<th>').attr('colspan', 2).text('Object'),
               $('<th>').text('Action')
             )
+          )
         );
       this.mainPanel.$element.append(this.table);
     };
