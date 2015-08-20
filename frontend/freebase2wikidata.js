@@ -1303,6 +1303,10 @@ $(document).ready(function() {
                  parsed.value + '</a>';
         }
       });
+    } else if(parsed.type === 'url') {
+      valueHtmlCache[cacheKey] = $.Deferred().resolve(
+          '<a rel="nofollow" class="external free" href="' + parsed.value + '">' + parsed.value + '</a>'
+      );
     } else {
       var api = new mw.Api();
       valueHtmlCache[cacheKey] = api.get({
