@@ -92,8 +92,12 @@ int main(int argc, char **argv) {
                 std::chrono::system_clock::now().time_since_epoch()).count();
 
         int64_t count = 0;
-        Parser::parseTSV(dataset, upload, in, [&sql, &p, &count](Statement st)  {
-            p.addStatement(st);
+        Parser::parseTSV(dataset, upload, in, [&sql, &p, &count](Statement st) {
+            try {
+                p.addStatement(st);
+            } catch (PersistenceException& e) {
+                std::cerr << "Skipping statement because of error: " << e.what() << std::endl;
+            }
             count++;
 
             // batch commit
