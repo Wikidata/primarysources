@@ -82,7 +82,7 @@ $(document).ready(function() {
               '<div class="wikibase-snakview listview-item">' +
                 '<div class="wikibase-snakview-property-container">' +
                   '<div class="wikibase-snakview-property" dir="auto">' +
-                    '<a href="/wiki/Property:{{qualifier-property}}" title="Property:{{qualifier-property}}">{{qualifier-property-label}}</a>' +
+                    '{{qualifier-property-html}}' +
                   '</div>' +
                 '</div>' +
                 '<div class="wikibase-snakview-value-container" dir="auto">' +
@@ -137,7 +137,7 @@ $(document).ready(function() {
         '<div class="wikibase-snakview listview-item">' +
           '<div class="wikibase-snakview-property-container">' +
             '<div class="wikibase-snakview-property" dir="auto">' +
-              '<a href="/wiki/Property:{{source-property}}" title="Property:{{source-property}}">{{source-property-label}}</a>' +
+              '{{source-property-html}}' +
             '</div>' +
           '</div>' +
           '<div class="wikibase-snakview-value-container" dir="auto">' +
@@ -162,7 +162,7 @@ $(document).ready(function() {
               '<div class="wikibase-snakview">' +
                 '<div class="wikibase-snakview-property-container">' +
                   '<div class="wikibase-snakview-property" dir="auto">' +
-                    '<a href="/wiki/Property:{{property}}" title="Property:{{property}}">{{property-label}}</a>' +
+                    '{{property-html}}' +
                   '</div>' +
                 '</div>' +
                 '<div class="wikibase-snakview-value-container" dir="auto">' +
@@ -218,7 +218,7 @@ $(document).ready(function() {
         '<div class="wikibase-statementgroupview listview-item" id="{{property}}">' +
           '<div class="wikibase-statementgroupview-property new-property">' +
             '<div class="wikibase-statementgroupview-property-label" dir="auto">' +
-              '<a title="Property:{{property}}" href="/wiki/Property:{{property}}">{{property-label}}</a>' +
+              '{{property-html}}' +
             '</div>' +
           '</div>' +
           '<!-- wikibase-statementlistview -->' +
@@ -771,7 +771,7 @@ $(document).ready(function() {
       }
       return -1;
     };
-    freebaseEntityData.filter(function(freebaseEntity, index, self) {
+    var statements = freebaseEntityData.filter(function(freebaseEntity, index, self) {
       return statementUnique(self, freebaseEntity.statement) === index;
     })
     // Only show v1 unapproved statements
@@ -779,9 +779,13 @@ $(document).ready(function() {
       return freebaseEntity.format === STATEMENT_FORMAT &&
           freebaseEntity.state === STATEMENT_STATES.unapproved;
     })
-    .forEach(function(freebaseEntity) {
-      var statement =
-        parsePrimarySourcesStatement(freebaseEntity, isBlacklisted);
+    .map(function(freebaseEntity) {
+      return parsePrimarySourcesStatement(freebaseEntity, isBlacklisted);
+    });
+
+    preloadEntityLabels(statements);
+
+    statements.forEach(function(statement) {
       var predicate = statement.predicate;
       var key = statement.key;
 
@@ -936,7 +940,6 @@ $(document).ready(function() {
   function matchClaims(wikidataClaims, freebaseClaims) {
     var existingClaims = {};
     var newClaims = {};
-    var language = mw.language.getFallbackLanguageChain()[0] || 'en';
     for (var property in freebaseClaims) {
       if (wikidataClaims[property]) {
         existingClaims[property] = freebaseClaims[property];
@@ -971,28 +974,23 @@ $(document).ready(function() {
               prepareNewSources(
                   property,
                   freebaseObject,
-                  language,
                   existingWikidataObjects[freebaseKey]
               );
             }
           } else {
             // New object
-            prepareNewWikidataStatement(property, freebaseObject, language);
+            createNewStatement(property, freebaseObject);
           }
         }
       } else {
         newClaims[property] = freebaseClaims[property];
       }
     }
-    var allProperties =
-        Object.keys(newClaims).concat(Object.keys(existingClaims));
-    getEntityLabels(allProperties).done(function(labels) {
-      for (var property in newClaims) {
-        var claims = newClaims[property];
-        debug.log('New claim ' + labels[property]);
-        createNewClaim(property, labels[property], claims, language);
-      }
-    });
+    for (var property in newClaims) {
+      var claims = newClaims[property];
+      debug.log('New claim ' + property);
+      createNewClaim(property, claims);
+    }
   }
 
   function buildValueKeysFromWikidataStatement(statement) {
@@ -1085,7 +1083,7 @@ $(document).ready(function() {
     });
   }
 
-  function prepareNewSources(property, object, language, wikidataStatement) {
+  function prepareNewSources(property, object, wikidataStatement) {
     var wikidataSources = ('references' in wikidataStatement) ?
                 wikidataStatement.references :
                 [];
@@ -1113,19 +1111,12 @@ $(document).ready(function() {
       }).length > 0;
     });
 
-    getQualifiersAndSourcesLabels([], object.sources).done(function(labels) {
-      object.sources.forEach(function(source) {
-        source.forEach(function(snak) {
-          snak.sourcePropertyLabel = labels[snak.sourceProperty];
-        });
-      });
-      return createNewSources(
-          object.sources,
-          property,
-          object,
-          wikidataStatement.id
-      );
-    });
+    return createNewSources(
+      object.sources,
+      property,
+      object,
+      wikidataStatement.id
+    );
   }
 
   function createNewSources(sources, property, object, statementId) {
@@ -1169,10 +1160,9 @@ $(document).ready(function() {
     });
   }
 
-  function createNewClaim(property, propertyLabel, claims) {
+  function createNewClaim(property, claims) {
     var newClaim = {
       property: property,
-      propertyLabel: propertyLabel,
       objects: []
     };
     var objectsLength = Object.keys(claims).length;
@@ -1190,22 +1180,10 @@ $(document).ready(function() {
         key: key
       });
       (function(currentNewClaim, currentKey) {
-        getQualifiersAndSourcesLabels(qualifiers, sources)
-        .done(function(labels) {
-          currentNewClaim.objects.forEach(function(object) {
-            if (object.key !== currentKey) {
-              return;
-            }
-            object.sources.forEach(function(source) {
-              source.forEach(function(snak) {
-                snak.sourcePropertyLabel = labels[snak.sourceProperty];
-              });
-            });
-            object.qualifiers.forEach(function(qualifier) {
-              var qualifierProperty = qualifier.qualifierProperty;
-              qualifier.qualifierPropertyLabel = labels[qualifierProperty];
-            });
-          });
+        currentNewClaim.objects.forEach(function(object) {
+          if (object.key !== currentKey) {
+            return;
+          }
           i++;
           if (i === objectsLength) {
             return createNewClaimList(currentNewClaim);
@@ -1213,20 +1191,6 @@ $(document).ready(function() {
         });
       })(newClaim, key);
     }
-  }
-
-  function getQualifiersAndSourcesLabels(qualifiers, sources) {
-    var propertyIds = qualifiers.map(function(qualifier) {
-      return qualifier.qualifierProperty;
-    });
-    sources.forEach(function(source) {
-      propertyIds = propertyIds.concat(
-        source.map(function(snak) {
-          return snak.sourceProperty;
-        })
-      );
-    });
-    return getEntityLabels(propertyIds);
   }
 
   function createNewClaimList(newClaim) {
@@ -1237,19 +1201,21 @@ $(document).ready(function() {
       return getStatementHtml(newClaim.property, object);
     });
 
-    $.when.apply($, statementPromises).then(function() {
-      var statementViewsHtml = Array.prototype.slice.call(arguments).join('');
-      var mainHtml = HTML_TEMPLATES.mainHtml
-          .replace(/\{\{statement-views\}\}/g, statementViewsHtml)
-          .replace(/\{\{property\}\}/g, newClaim.property)
-          .replace(/\{\{data-property\}\}/g, newClaim.property)
-          .replace(/\{\{property-label\}\}/g, newClaim.propertyLabel);
+    getValueHtml(newClaim.property).done(function(propertyHtml) {
+      $.when.apply($, statementPromises).then(function() {
+        var statementViewsHtml = Array.prototype.slice.call(arguments).join('');
+        var mainHtml = HTML_TEMPLATES.mainHtml
+            .replace(/\{\{statement-views\}\}/g, statementViewsHtml)
+            .replace(/\{\{property\}\}/g, newClaim.property)
+            .replace(/\{\{data-property\}\}/g, newClaim.property)
+            .replace(/\{\{property-html\}\}/g, propertyHtml);
 
-      var fragment = document.createDocumentFragment();
-      var child = document.createElement('div');
-      child.innerHTML = mainHtml;
-      fragment.appendChild(child.firstChild);
-      container.appendChild(fragment);
+        var fragment = document.createDocumentFragment();
+        var child = document.createElement('div');
+        child.innerHTML = mainHtml;
+        fragment.appendChild(child.firstChild);
+        container.appendChild(fragment);
+      });
     });
   }
 
@@ -1289,8 +1255,12 @@ $(document).ready(function() {
       });
     } else if (parsed.type === 'url') {
       valueHtmlCache[cacheKey] = $.Deferred().resolve(
-          '<a rel="nofollow" class="external free" href="' + parsed.value +
-          '">' + parsed.value + '</a>');
+          '<a rel="nofollow" class="external free" href="' + parsed.value + '">' + parsed.value + '</a>'
+      );
+    } else if(parsed.type === 'wikibase-item' || parsed.type === 'wikibase-property') {
+      return getEntityLabel(value).then(function(label) {
+        return '<a href="/entity/' + value + '">' + label + '</a>'; //TODO: better URL
+      });
     } else {
       var api = new mw.Api();
       valueHtmlCache[cacheKey] = api.get({
@@ -1340,22 +1310,83 @@ $(document).ready(function() {
     return urlFormatterCache[property];
   }
 
+  var entityLabelCache = {};
+  function getEntityLabel(entityId) {
+    if(!(entityId in entityLabelCache)) {
+      loadEntityLabels([entityId]);
+    }
+
+    return entityLabelCache[entityId];
+  }
+
+  function loadEntityLabels(entityIds) {
+    entityIds = entityIds.filter(function(entityId) {
+      return !(entityId in entityLabelCache);
+    });
+    if(entityIds.length === 0) {
+      return;
+    }
+
+    var promise = getEntityLabels(entityIds);
+    entityIds.forEach(function(entityId) {
+      entityLabelCache[entityId] = promise.then(function(labels) {
+        return labels[entityId];
+      });
+    });
+  }
+
+  function preloadEntityLabels(statements) {
+    var entityIds = [];
+    statements.forEach(function(statement) {
+      entityIds = entityIds.concat(extractEntityIdsFromStatement(statement));
+    });
+    loadEntityLabels(entityIds);
+  }
+
+  function extractEntityIdsFromStatement(statement) {
+    function isEntityId(str) {
+      return /^[PQ]\d+$/.test(str);
+    }
+
+    var entityIds = [statement.subject, statement.predicate];
+
+    if (isEntityId(statement.object)) {
+      entityIds.push(statement.object);
+    }
+
+    statement.qualifiers.forEach(function(qualifier) {
+      entityIds.push(qualifier.qualifierProperty);
+      if(isEntityId(qualifier.qualifierObject)) {
+        entityIds.push(qualifier.qualifierObject);
+      }
+    });
+
+    statement.source.forEach(function(snak) {
+      entityIds.push(snak.sourceProperty);
+      if(isEntityId(snak.sourceObject)) {
+        entityIds.push(snak.sourceObject);
+      }
+    });
+
+    return entityIds;
+  }
+
   function getSourcesHtml(sources, property, object) {
     var sourcePromises = sources.map(function(source) {
       var sourceItemsPromises = source.map(function(snak) {
-        return getValueHtml(snak.sourceObject, snak.sourceProperty)
-          .then(function(formattedValue) {
+        return $.when(
+            getValueHtml(snak.sourceProperty),
+            getValueHtml(snak.sourceObject, snak.sourceProperty)
+        ).then(function(formattedProperty, formattedValue) {
           return HTML_TEMPLATES.sourceItemHtml
-            .replace(/\{\{source-property\}\}/g, snak.sourceProperty)
-            .replace(/\{\{source-property-label\}\}/g,
-                snak.sourcePropertyLabel)
+            .replace(/\{\{source-property-html\}\}/g, formattedProperty)
             .replace(/\{\{source-object\}\}/g, formattedValue);
         });
       });
 
       return $.when.apply($, sourceItemsPromises).then(function() {
         return HTML_TEMPLATES.sourceHtml
-          .replace(/\{\{data-source\}\}/g,  escapeHtml(JSON.stringify(source)))
+          .replace(/\{\{data-source\}\}/g, escapeHtml(JSON.stringify(source)))
           .replace(/\{\{data-property\}\}/g, property)
           .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
           .replace(/\{\{statement-id\}\}/g, source[0].sourceId)
@@ -1373,18 +1404,13 @@ $(document).ready(function() {
 
   function getQualifiersHtml(qualifiers) {
     var qualifierPromises = qualifiers.map(function(qualifier) {
-      return getValueHtml(qualifier.qualifierObject,
-          qualifier.qualifierProperty).then(
-        function(formattedValue) {
+      return $.when(
+        getValueHtml(qualifier.qualifierProperty),
+        getValueHtml(qualifier.qualifierObject, qualifier.qualifierProperty)
+      ).then(function(formattedProperty, formattedValue) {
         return HTML_TEMPLATES.qualifierHtml
-          .replace(/\{\{qualifier-property\}\}/g,
-              qualifier.qualifierProperty)
-          .replace(/\{\{data-qualifier-property\}\}/g,
-              qualifier.qualifierProperty)
-          .replace(/\{\{qualifier-property-label\}\}/g,
-            qualifier.qualifierPropertyLabel)
-          .replace(/\{\{qualifier-object\}\}/g,
-              formattedValue);
+          .replace(/\{\{qualifier-property-html\}\}/g, formattedProperty)
+          .replace(/\{\{qualifier-object\}\}/g, formattedValue);
       });
     });
 
@@ -1439,7 +1465,31 @@ $(document).ready(function() {
     });
   }
 
+
   function getEntityLabels(entityIds) {
+    //Split entityIds per bucket in order to match limits
+    var buckets = [];
+    var currentBucket = [];
+
+    entityIds.forEach(function(entityId) {
+      currentBucket.push(entityId);
+      if(currentBucket.length > 40) {
+        buckets.push(currentBucket);
+        currentBucket = [];
+      }
+    });
+    buckets.push(currentBucket);
+
+    var promises = buckets.map(function(bucket) {
+      return getFewEntityLabels(bucket);
+    });
+
+    return $.when.apply(this, promises).then(function() {
+      return $.extend.apply(this, arguments);
+    });
+  }
+
+  function getFewEntityLabels(entityIds) {
     if (entityIds.length === 0) {
       return $.Deferred().resolve({});
     }
@@ -1449,7 +1499,7 @@ $(document).ready(function() {
       action: 'wbgetentities',
       ids: entityIds.join('|'),
       props: 'labels',
-      languages: mw.config.get('wgUserLanguage'),
+      languages: language,
       languagefallback: true
     }).then(function(data) {
       var labels = {};
@@ -1743,9 +1793,11 @@ $(document).ready(function() {
       getBlacklistedSourceUrls()
    ).then(function(data, blacklistedSourceUrls) {
       var isBlacklisted = isBlackListedBuilder(blacklistedSourceUrls);
-      return data.map(function(statement) {
+      var statements = data.map(function(statement) {
         return parsePrimarySourcesStatement(statement, isBlacklisted);
       });
+      preloadEntityLabels(statements);
+      return statements;
     });
   }
 
