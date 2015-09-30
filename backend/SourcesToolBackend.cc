@@ -19,11 +19,11 @@ int64_t SourcesToolBackend::cacheMisses = 0;
 // all statements of the given dataset having the entity as subject. If dataset
 // is "", the cache key refers to all statements and the dataset name "all" will
 // be used.
-std::string createCacheKey(const std::string& qid, const std::string& dataset) {
+std::string createCacheKey(const std::string& qid, ApprovalState state, const std::string& dataset) {
     if (dataset == "") {
-        return "ALL-" + qid;
+        return "ALL-" + qid + "-" + stateToString(state);
     } else {
-        return qid + "-" + dataset;
+        return qid + "-" + dataset + "-" + stateToString(state);;
     }
 }
 
@@ -82,7 +82,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
         cache_t &cache, const std::string &qid,
         ApprovalState state, const std::string &dataset){
     std::vector<Statement> statements;
-    std::string cacheKey = createCacheKey(qid,dataset);
+    std::string cacheKey = createCacheKey(qid,state,dataset);
 
     // look up in cache and only hit backend in case of a cache miss
     if(!cache.fetch_data(cacheKey, statements)) {
@@ -144,8 +144,10 @@ void SourcesToolBackend::updateStatement(
         sql.commit();
 
         // update cache
-        cache.rise(createCacheKey(st.getQID(),st.getDataset()));
-        cache.rise(createCacheKey(st.getQID(),""));
+        for (ApprovalState state : { APPROVED, UNAPPROVED, WRONG, DUPLICATE, BLACKLISTED }) {
+            cache.rise(createCacheKey(st.getQID(), state, st.getDataset()));
+            cache.rise(createCacheKey(st.getQID(), state, ""));
+        }
         cache.rise("STATUS");
         cache.rise("ACTIVITIES");
     } catch (PersistenceException const &e) {
