@@ -89,16 +89,7 @@ namespace Serializer {
         (*out)["format"] = "v1";
         (*out)["dataset"] = stmt.getDataset();
         (*out)["upload"] = stmt.getUpload();
-
-        switch (stmt.getApprovalState()) {
-            case UNAPPROVED: (*out)["state"] = "unapproved"; break;
-            case APPROVED: (*out)["state"] = "approved"; break;
-            case WRONG: (*out)["state"] = "wrong"; break;
-            case OTHERSOURCE: (*out)["state"] = "othersource"; break;
-            case SKIPPED: (*out)["state"] = "skipped"; break;
-            case DUPLICATE: (*out)["state"] = "duplicate"; break;
-            case BLACKLISTED: (*out)["state"] = "blacklisted"; break;
-        }
+        (*out)["state"] = stateToString(stmt.getApprovalState());
     }
 
 }  // namespace Serializer

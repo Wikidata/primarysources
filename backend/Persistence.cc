@@ -69,6 +69,7 @@ inline int16_t getSQLState(ApprovalState state) {
         case SKIPPED:     return 4;
         case DUPLICATE:   return 5;
         case BLACKLISTED: return 6;
+        case ANY:         return -1; // Special query only case.
     }
 }
 
@@ -345,18 +346,21 @@ Statement Persistence::getStatement(int64_t id) {
 }
 
 std::vector<Statement> Persistence::getStatementsByQID(
-        const std::string &qid, bool unapprovedOnly,
-        const std::string& dataset) {
+        const std::string &qid, ApprovalState state,
+        const std::string &dataset) {
     if (!managedTransactions)
         sql.begin();
 
     std::vector<Statement> result;
 
+    int16_t sqlState = getSQLState(state);
     cppdb::result res =(
             sql << "SELECT id, subject, mainsnak, state, dataset, upload "
                     "FROM statement WHERE subject = ?"
-                    " AND (state = 0 OR ?) AND (dataset = ? OR ?)"
-                    << qid << !unapprovedOnly << dataset << (dataset == ""));
+                    " AND (state = ? OR ?) AND (dataset = ? OR ?)"
+                << qid
+                << sqlState << (sqlState == -1)
+                << dataset << (dataset == ""));
 
 
     while (res.next()) {
@@ -375,7 +379,7 @@ std::vector<Statement> Persistence::getStatementsByQID(
 
 std::vector<Statement> Persistence::getAllStatements(
         int offset, int limit,
-        bool unapprovedOnly,
+        ApprovalState state,
         const std::string& dataset,
         const std::string& property,
         const std::shared_ptr<Value> value) {
@@ -385,7 +389,7 @@ std::vector<Statement> Persistence::getAllStatements(
     std::vector<Statement> result;
 
     std::string valueSelector = "";
-    if(value != nullptr) {
+    if (value != nullptr) {
         switch (value->getType()) {
             case ENTITY:
                 valueSelector = "AND snak.svalue = ?";
@@ -407,16 +411,18 @@ std::vector<Statement> Persistence::getAllStatements(
         }
     }
 
+    int16_t sqlState = getSQLState(state);
     cppdb::statement statement = (
             sql << "SELECT statement.id AS sid, subject, mainsnak, state, dataset, upload "
                    "FROM statement INNER JOIN snak ON statement.mainsnak = snak.id "
-                   "WHERE (statement.state = 0 OR ?) AND (statement.dataset = ? OR ?) "
+                   "WHERE (statement.state = ? OR ?) AND (statement.dataset = ? OR ?) "
                    "AND (snak.property = ? OR ?) " + valueSelector + " "
                    "ORDER BY statement.id LIMIT ? OFFSET ?"
-                   << !unapprovedOnly << dataset << (dataset == "")
-                   << property << (property == ""));
+                << sqlState << (sqlState == -1)
+                << dataset << (dataset == "")
+                << property << (property == ""));
 
-    if(value != nullptr) {
+    if (value != nullptr) {
         switch (value->getType()) {
             case ENTITY:
                 statement = (statement << value->getString());
@@ -453,25 +459,28 @@ std::vector<Statement> Persistence::getAllStatements(
 
 
 std::vector<Statement> Persistence::getRandomStatements(
-        int count, bool unapprovedOnly) {
+        int count, ApprovalState state) {
     if (!managedTransactions)
         sql.begin();
 
     std::vector<Statement> result;
 
-    std::string query = "SELECT id, subject, mainsnak, state, dataset, upload "
-            "FROM statement WHERE (state = 0 OR ?) "
-            "AND id >= abs(RANDOM()) % (SELECT max(id) FROM statement) "
-            "ORDER BY id LIMIT ?";
+    int16_t sqlState = getSQLState(state);
+    std::string query;
+
     if(sql.engine() == "mysql") {
         query ="SELECT id, subject, mainsnak, state, dataset, upload "
-                "FROM statement WHERE (state = 0 OR ?) "
+                "FROM statement WHERE (state = ? OR ?) "
                 "AND id >= RAND() * (SELECT max(id) FROM statement) "
+                "ORDER BY id LIMIT ?";
+    } else {
+        query = "SELECT id, subject, mainsnak, state, dataset, upload "
+                "FROM statement WHERE (state = ? OR ?) "
+                "AND id >= abs(RANDOM()) % (SELECT max(id) FROM statement) "
                 "ORDER BY id LIMIT ?";
     }
 
-    cppdb::result res =(sql << query << !unapprovedOnly << count);
-
+    cppdb::result res =(sql << query << sqlState << (sqlState == -1) << count);
 
     while (res.next()) {
         result.push_back(buildStatement(
@@ -486,29 +495,33 @@ std::vector<Statement> Persistence::getRandomStatements(
     return result;
 }
 
-std::string Persistence::getRandomQID(bool unapprovedOnly, const std::string& dataset) {
+std::string Persistence::getRandomQID(ApprovalState state, const std::string &dataset) {
     if (!managedTransactions)
         sql.begin();
 
-    std::string query = "SELECT subject "
-            "FROM statement WHERE (state = 0 OR ?) AND (dataset = ? OR ?) "
-            "AND id >= abs(RANDOM()) % (SELECT max(id) FROM statement "
-            "WHERE (state = 0 OR ?) AND (dataset = ? OR ?)) "
-            "ORDER BY id "
-            "LIMIT 1";
+    int16_t sqlState = getSQLState(state);
+
+    std::string query;
     if(sql.engine() == "mysql") {
         query = "SELECT subject "
-                "FROM statement WHERE (state = 0 OR ?) AND (dataset = ? OR ?) "
+                "FROM statement WHERE (state = ? OR ? = -1) AND (dataset = ? OR ?) "
                 "AND id >= RAND() * (SELECT max(id) FROM statement "
-                "WHERE (state = 0 OR ?) AND (dataset = ? OR ?)) "
+                "WHERE (state = ? OR ?) AND (dataset = ? OR ?)) "
+                "ORDER BY id "
+                "LIMIT 1";
+    } else {
+        query = "SELECT subject "
+                "FROM statement WHERE (state = ? OR ? = -1) AND (dataset = ? OR ?) "
+                "AND id >= abs(RANDOM()) % (SELECT max(id) FROM statement "
+                "WHERE (state = ? OR ?) AND (dataset = ? OR ?)) "
                 "ORDER BY id "
                 "LIMIT 1";
     }
 
     cppdb::result res =(
             sql << query
-                << !unapprovedOnly << dataset << (dataset == "")
-                << !unapprovedOnly  << dataset << (dataset == "") << cppdb::row);
+                << sqlState << (sqlState == -1) << dataset << (dataset == "")
+                << sqlState << (sqlState == -1) << dataset << (dataset == "") << cppdb::row);
 
 
     if (!res.empty()) {
@@ -620,7 +633,7 @@ void Persistence::markDuplicates(int64_t start_id) {
     std::vector<Statement> statements;
     while (r_entities.next()) {
         qid = r_entities.get<std::string>("subject");
-        statements = getStatementsByQID(qid, false);
+        statements = getStatementsByQID(qid, ANY);
 
         if (statements.size() > 1) {
             for (auto it1 = statements.begin(); it1 != statements.end(); it1++) {

@@ -79,8 +79,8 @@ SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config) {
 
 
 std::vector<Statement> SourcesToolBackend::getStatementsByQID(
-        cache_t& cache, const std::string& qid,
-        bool unapprovedOnly, const std::string& dataset){
+        cache_t &cache, const std::string &qid,
+        ApprovalState state, const std::string &dataset){
     std::vector<Statement> statements;
     std::string cacheKey = createCacheKey(qid,dataset);
 
@@ -89,7 +89,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
         cppdb::session sql(connstr); // released when sql is destroyed
 
         Persistence p(sql);
-        statements = p.getStatementsByQID(qid, unapprovedOnly, dataset);
+        statements = p.getStatementsByQID(qid, state, dataset);
         cache.store_data(cacheKey, statements, 3600);
 
         cacheMisses++;
@@ -101,23 +101,23 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
 }
 
 std::vector<Statement> SourcesToolBackend::getRandomStatements(
-        cache_t& cache, int count, bool unapprovedOnly) {
+        cache_t &cache, int count, ApprovalState state) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
-    return p.getRandomStatements(count, unapprovedOnly);
+    return p.getRandomStatements(count, state);
 }
 
 std::vector<Statement> SourcesToolBackend::getAllStatements(
         cache_t& cache, int offset, int limit,
-        bool unapprovedOnly,
+        ApprovalState state,
         const std::string& dataset,
         const std::string& property,
         const std::shared_ptr<Value> value) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
-    return p.getAllStatements(offset, limit, unapprovedOnly, dataset, property, value);
+    return p.getAllStatements(offset, limit, state, dataset, property, value);
 }
 
 Statement SourcesToolBackend::getStatementByID(cache_t& cache, int64_t id) {
@@ -157,11 +157,11 @@ void SourcesToolBackend::updateStatement(
 }
 
 std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
-        cache_t& cache, bool unapprovedOnly, const std::string& dataset) {
+        cache_t& cache, ApprovalState state, const std::string& dataset) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
-    std::string qid = p.getRandomQID(unapprovedOnly, dataset);
+    std::string qid = p.getRandomQID(state, dataset);
 
     std::vector<Statement> statements;
     std::string cacheKey = qid + "-" + dataset;
@@ -171,7 +171,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
         cppdb::session sql(connstr); // released when sql is destroyed
 
         Persistence p(sql);
-        statements = p.getStatementsByQID(qid, unapprovedOnly, dataset);
+        statements = p.getStatementsByQID(qid, state, dataset);
         cache.store_data(cacheKey, statements, 3600);
 
         cacheMisses++;

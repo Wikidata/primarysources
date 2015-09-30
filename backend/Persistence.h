@@ -72,20 +72,20 @@ class Persistence {
     * Return a list of all statements with the given QID as subject.
     */
     std::vector<Statement> getStatementsByQID(
-            const std::string& qid, bool unapprovedOnly,
-            const std::string& dataset = "");
+            const std::string &qid, ApprovalState state,
+            const std::string &dataset = "");
 
     /**
     * Return a list of count random statements. Selection is up to the backend.
     */
     std::vector<Statement> getRandomStatements(
-            int count, bool unapprovedOnly);
+            int count, ApprovalState state);
 
     /**
     * Return all statements.
     */
     std::vector<Statement> getAllStatements(int offset = 0, int limit = 10,
-                                            bool unapprovedOnly = true,
+                                            ApprovalState state = ANY,
                                             const std::string& dataset = "",
                                             const std::string& property = "",
                                             const std::shared_ptr<Value> value = nullptr);
@@ -99,8 +99,9 @@ class Persistence {
 
 
     /**
-    * Retrieve a random QID from the database. If unapprovedOnly is true,
-    * only return QIDs of entities with at least one unapproved statement.
+    * Retrieve a random QID from the database. If state is not ANY,
+    * only return QIDs of entities with at least one statement of the given
+    * state.
     *
     * If dataset is set only returns QIDs of entites with at least one
     * statement in this dataset.
@@ -108,8 +109,8 @@ class Persistence {
     * Throws PersistenceException in case there are no entities (or no
     * unapproved entities).
     */
-    std::string getRandomQID(bool unapprovedOnly,
-                             const std::string& dataset = "");
+    std::string getRandomQID(ApprovalState state = UNAPPROVED,
+                             const std::string &dataset = "");
 
 
     /**

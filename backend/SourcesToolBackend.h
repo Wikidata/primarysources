@@ -37,26 +37,28 @@ public:
     * is set, return only statements with state "unapproved". If dataset
     * is set return only statements in this dataset
     */
-    std::vector<Statement> getStatementsByQID(cache_t& cache, const std::string& qid,
-                                              bool unapprovedOnly, const std::string& dataset = "");
+    std::vector<Statement> getStatementsByQID(cache_t &cache, const std::string &qid,
+                                              ApprovalState state, const std::string &dataset = "");
 
     /**
     * Return a list of statements for a randomly selected entity ID. If unapprovedOnly
     * is set, return only statements with state "unapproved".
     */
-    std::vector<Statement> getStatementsByRandomQID(cache_t& cache,bool unapprovedOnly,
+    std::vector<Statement> getStatementsByRandomQID(cache_t& cache,
+                                                    ApprovalState state = UNAPPROVED,
                                                     const std::string& dataset = "");
 
     /**
     * Return a list of count random statements.
     */
-    std::vector<Statement> getRandomStatements(cache_t& cache, int count, bool unapprovedOnly);
+    std::vector<Statement> getRandomStatements(cache_t &cache, int count,
+                                               ApprovalState state = UNAPPROVED);
 
     /**
     * Return all statements.
     */
     std::vector<Statement> getAllStatements(cache_t& cache, int offset = 0, int limit = 10,
-                                            bool unapprovedOnly = true,
+                                            ApprovalState state = UNAPPROVED,
                                             const std::string& dataset = "",
                                             const std::string& property = "",
                                             const std::shared_ptr<Value> value = nullptr);

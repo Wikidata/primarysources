@@ -27,12 +27,25 @@ ApprovalState stateFromString(const std::string &state) {
         return DUPLICATE;
     } else if(state == "blacklisted") {
         return BLACKLISTED;
+    } else if(state == "any") {
+        return ANY;
     } else {
         throw InvalidApprovalState("Bad Request: invalid or missing state parameter ("+state+")");
     }
 }
 
 std::string stateToString(ApprovalState state) {
+    switch (state) {
+        case APPROVED:    return "approved";
+        case UNAPPROVED:  return "unapproved";
+        case WRONG:       return "wrong";
+        case SKIPPED:     return "skipped";
+        case OTHERSOURCE: return "othersource";
+        case DUPLICATE:   return "duplicate";
+        case BLACKLISTED: return "blacklisted";
+        case ANY:         return "any";
+        default:          return "";
+    }
     return "";
 }
 

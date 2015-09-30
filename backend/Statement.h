@@ -12,7 +12,29 @@
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
 enum ApprovalState {
-    UNAPPROVED, APPROVED, OTHERSOURCE, WRONG, SKIPPED, DUPLICATE, BLACKLISTED
+    // Statement is a new import and has not yet been approved for Wikidata.
+    UNAPPROVED,
+
+    // Statement has already been approved for Wikidata.
+    APPROVED,
+
+    // TODO: unused.
+    OTHERSOURCE,
+
+    // Statement is wrong (e.g. wrong source, wrong fact).
+    WRONG,
+
+    // TODO: unused.
+    SKIPPED,
+
+    // Statement already exists in the database.
+    DUPLICATE,
+
+    // Statement has been blacklisted (e.g. because it comes from an untrustworthy source).
+    BLACKLISTED,
+
+    // Special state only used for querying purposes.
+    ANY
 };
 
 enum ValueType {

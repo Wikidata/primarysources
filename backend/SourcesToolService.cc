@@ -123,23 +123,29 @@ void SourcesToolService::handleGetPostStatement(std::string stid) {
 void SourcesToolService::getEntityByQID(std::string qid) {
     clock_t begin = std::clock();
 
-    bool unapprovedOnly = true;
-    if (request().get("state") == "any") {
-        unapprovedOnly = false;
+    try {
+        // By default only return unapproved statements.
+        ApprovalState state = UNAPPROVED;
+        if (request().get("state") != "") {
+            state = stateFromString(request().get("state"));
+        }
+
+        std::vector<Statement> statements = backend
+                .getStatementsByQID(cache(), qid, state, request().get("dataset"));
+
+        addCORSHeaders();
+        addVersionHeaders();
+
+        if (statements.size() > 0) {
+            serializeStatements(statements);
+        } else {
+            response().status(404, "no statements found for entity " + qid);
+        }
+
+        reqGetEntityCount++;
+    } catch(InvalidApprovalState const &e) {
+        response().status(400, "Bad Request: invalid state parameter");
     }
-
-    std::vector<Statement> statements = backend.getStatementsByQID(cache(), qid, unapprovedOnly, request().get("dataset"));
-
-    addCORSHeaders();
-    addVersionHeaders();
-
-    if (statements.size() > 0) {
-        serializeStatements(statements);
-    } else {
-        response().status(404, "no statements found for entity "+qid);
-    }
-
-    reqGetEntityCount++;
 
     clock_t end = std::clock();
     TIMING("GET /entities/" + qid, begin, end);
@@ -152,8 +158,17 @@ void SourcesToolService::getRandomEntity() {
     addVersionHeaders();
 
     try {
-        std::vector<Statement> statements = backend.getStatementsByRandomQID(cache(), true, request().get("dataset"));
+        // By default only return unapproved statements.
+        ApprovalState state = UNAPPROVED;
+        if (request().get("state") != "") {
+            state = stateFromString(request().get("state"));
+        }
+
+        std::vector<Statement> statements =
+                backend.getStatementsByRandomQID(cache(), state, request().get("dataset"));
         serializeStatements(statements);
+    } catch(InvalidApprovalState const &e) {
+        response().status(400, "Bad Request: invalid state parameter");
     } catch(PersistenceException const &e) {
         response().status(404, "no random unapproved entity found");
     }
@@ -166,8 +181,6 @@ void SourcesToolService::getRandomEntity() {
 
 void SourcesToolService::approveStatement(int64_t stid) {
     clock_t begin = std::clock();
-
-    ApprovalState state;
 
     addCORSHeaders();
     addVersionHeaders();
@@ -218,15 +231,25 @@ void SourcesToolService::getStatement(int64_t stid) {
 void SourcesToolService::getRandomStatements() {
     clock_t begin = std::clock();
 
-    int count = 10;
-    if (request().get("count") != "") {
-        count = std::stoi(request().get("count"));
-    }
-
     addCORSHeaders();
     addVersionHeaders();
 
-    serializeStatements(backend.getRandomStatements(cache(), count, true));
+    try {
+        int count = 10;
+        if (request().get("count") != "") {
+            count = std::stoi(request().get("count"));
+        }
+
+        // By default only return unapproved statements.
+        ApprovalState state = UNAPPROVED;
+        if (request().get("state") != "") {
+            state = stateFromString(request().get("state"));
+        }
+
+        serializeStatements(backend.getRandomStatements(cache(), count, state));
+    } catch(InvalidApprovalState const &e) {
+        response().status(400, "Bad Request: invalid state parameter");
+    }
 
     clock_t end = std::clock();
     TIMING("GET /statements/any", begin, end);
@@ -235,39 +258,44 @@ void SourcesToolService::getRandomStatements() {
 void SourcesToolService::getAllStatements() {
     clock_t begin = std::clock();
 
-    int offset = 0;
-    if (request().get("offset") != "") {
-        offset = std::stoi(request().get("offset"));
-    }
-
-    int limit = 10;
-    if (request().get("limit") != "") {
-        limit = std::min(std::stoi(request().get("limit")), 1000);
-    }
-
-    bool unapprovedOnly = true;
-    if (request().get("state") == "any") {
-        unapprovedOnly = false;
-    }
-
-    std::shared_ptr<Value> value;
-    if (request().get("value") != "") {
-        value = std::make_shared<Value>(Parser::parseValue(request().get("value")));
-    }
-
     addCORSHeaders();
     addVersionHeaders();
 
-    std::vector<Statement> statements =
-            backend.getAllStatements(cache(), offset, limit,
-                                     unapprovedOnly,
-                                     request().get("dataset"),
-                                     request().get("property"),
-                                     value);
-    if (statements.size() > 0) {
-        serializeStatements(statements);
-    } else {
-        response().status(404, "no statements found");
+    try {
+        int offset = 0;
+        if (request().get("offset") != "") {
+            offset = std::stoi(request().get("offset"));
+        }
+
+        int limit = 10;
+        if (request().get("limit") != "") {
+            limit = std::min(std::stoi(request().get("limit")), 1000);
+        }
+
+        // By default return only unapproved statements.
+        ApprovalState state = UNAPPROVED;
+        if (request().get("state") != "") {
+            state = stateFromString(request().get("state"));
+        }
+
+        std::shared_ptr<Value> value;
+        if (request().get("value") != "") {
+            value = std::make_shared<Value>(Parser::parseValue(request().get("value")));
+        }
+
+        std::vector<Statement> statements =
+                backend.getAllStatements(cache(), offset, limit,
+                                         state,
+                                         request().get("dataset"),
+                                         request().get("property"),
+                                         value);
+        if (statements.size() > 0) {
+            serializeStatements(statements);
+        } else {
+            response().status(404, "no statements found");
+        }
+    } catch(InvalidApprovalState const &e) {
+        response().status(400, "Bad Request: invalid or missing state parameter");
     }
 
     clock_t end = std::clock();

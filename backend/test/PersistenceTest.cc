@@ -94,7 +94,7 @@ TEST_F(PersistenceTest, AddGetStatement) {
     ASSERT_EQ(stmt.getValue().getString(), stmt2.getValue().getString());
 
     sql.begin();
-    std::vector<Statement> stmts = p.getStatementsByQID("Q123", false);
+    std::vector<Statement> stmts = p.getStatementsByQID("Q123", ANY);
     sql.commit();
     ASSERT_EQ(stmts.size(), 1);
     ASSERT_EQ(stmts[0].getQID(), stmt.getQID());
@@ -166,14 +166,14 @@ TEST_F(PersistenceTest, RandomQID) {
     std::string qid;
     for(int i=0; i<4; i++) {
         sql.begin();
-        qid = p.getRandomQID(true);
+        qid = p.getRandomQID(UNAPPROVED);
         p.updateStatement(id4 - i, APPROVED);
         sql.commit();
         ASSERT_NE(qid, "");
     }
 
     // nothing left, expect exception
-    ASSERT_THROW(p.getRandomQID(true), PersistenceException);
+    ASSERT_THROW(p.getRandomQID(UNAPPROVED), PersistenceException);
 }
 
 
@@ -204,7 +204,7 @@ TEST_F(PersistenceTest, AllStatements) {
     sql.commit();
 
     sql.begin();
-    std::vector<Statement> statements = p.getAllStatements(0, 10, true, "foo", "P234", std::make_shared<Value>(Value("Q789")));
+    std::vector<Statement> statements = p.getAllStatements(0, 10, ANY, "foo", "P234", std::make_shared<Value>(Value("Q789")));
     sql.commit();
 
     ASSERT_EQ(statements.size(), 2);

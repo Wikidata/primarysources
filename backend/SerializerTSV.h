@@ -44,6 +44,10 @@ namespace Serializer {
     void writeEnvelopeJSON(Iterator begin, Iterator end, std::ostream* out) {
         cppcms::json::value result;
 
+        // Force type to array so we get an empty list in case the iterator
+        // is empty.
+        result.array({});
+
         for (int count = 0; begin != end; ++begin, ++count) {
             writeStatementEnvelopeJSON(*begin, &result[count]);
         }
