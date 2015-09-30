@@ -504,14 +504,14 @@ std::string Persistence::getRandomQID(ApprovalState state, const std::string &da
     std::string query;
     if(sql.engine() == "mysql") {
         query = "SELECT subject "
-                "FROM statement WHERE (state = ? OR ? = -1) AND (dataset = ? OR ?) "
+                "FROM statement WHERE (state = ? OR ?) AND (dataset = ? OR ?) "
                 "AND id >= RAND() * (SELECT max(id) FROM statement "
                 "WHERE (state = ? OR ?) AND (dataset = ? OR ?)) "
                 "ORDER BY id "
                 "LIMIT 1";
     } else {
         query = "SELECT subject "
-                "FROM statement WHERE (state = ? OR ? = -1) AND (dataset = ? OR ?) "
+                "FROM statement WHERE (state = ? OR ?) AND (dataset = ? OR ?) "
                 "AND id >= abs(RANDOM()) % (SELECT max(id) FROM statement "
                 "WHERE (state = ? OR ?) AND (dataset = ? OR ?)) "
                 "ORDER BY id "
