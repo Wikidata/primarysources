@@ -205,7 +205,7 @@ PropertyValue Persistence::getSnak(int64_t snakid) {
             return PropertyValue(prop, Value(lat, lng));
         } else if (vtype == "quantity") {
             std::string dvalue = res.get<std::string>("dvalue");
-            return PropertyValue(prop, Value(decimal_t(dvalue)));
+            return PropertyValue(prop, Value(Quantity(dvalue)));
         } else {
             // no result found
             throw PersistenceException("snak has unknown type");

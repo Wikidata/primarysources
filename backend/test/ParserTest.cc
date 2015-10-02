@@ -80,7 +80,7 @@ TEST(ParserTest, ParseQuantity) {
     ASSERT_EQ(result.size(), 1);
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value(decimal_t("123.21")));
+    ASSERT_EQ(result[0].getValue(), Value(Quantity("123.21")));
 }
 
 

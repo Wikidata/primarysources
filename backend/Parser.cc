@@ -32,7 +32,7 @@ Value Parser::parseValue(const std::string& value) {
     if (boost::regex_match(value, sm, re_entity)) {
         return Value(sm[1]);
     } else if (boost::regex_match(value, re_num)) {
-        return Value(decimal_t(value));
+        return Value(Quantity(value));
     } else if (boost::regex_match(value, sm, re_loc)) {
         return Value(std::stod(sm.str(1)), std::stod(sm.str(2)));
     } else if (boost::regex_match(value, sm, re_text)) {

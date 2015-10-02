@@ -40,10 +40,10 @@ enum ApprovalState {
 
 // define decimal datatype to represent wikidata quantities as multi-
 // precision
-typedef boost::multiprecision::cpp_dec_float_50 decimal_t;
+typedef boost::multiprecision::cpp_dec_float_50 Quantity;
 
 // define locations as pairs of doubles
-typedef std::pair<double, double> location_t;
+typedef std::pair<double, double> Location;
 
 // Time structure more lenient than Time
 class Time {
@@ -201,7 +201,7 @@ class Value : public cppcms::serializable {
     * Initialise a value of type QUANTITY using the multiprecision decimal
     * number given as argument.
     */
-    explicit Value(decimal_t d) : quantity(d), type(QUANTITY) { }
+    explicit Value(Quantity d) : quantity(d), type(QUANTITY) { }
 
     // default copy constructor and assignment operator
     Value(const Value& other) = default;
@@ -227,7 +227,7 @@ class Value : public cppcms::serializable {
     * Return the latitude/longitude pair contained in this object. Only
     * applicable to values of type LOCATION.
     */
-    const location_t &getLocation() const {
+    const Location &getLocation() const {
         return loc;
     }
 
@@ -235,7 +235,7 @@ class Value : public cppcms::serializable {
     * Return the decimal value contained in this object. Only
     * applicable to values of type QUANTITY.
     */
-    const decimal_t &getQuantity() const {
+    const Quantity &getQuantity() const {
         return quantity;
     }
 
@@ -267,8 +267,8 @@ class Value : public cppcms::serializable {
 
     std::string str, lang;
     Time        time;
-    location_t  loc;
-    decimal_t   quantity;
+    Location    loc;
+    Quantity    quantity;
 
     ValueType   type;
 

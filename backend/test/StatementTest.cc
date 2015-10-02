@@ -18,7 +18,7 @@ TEST(ValueTest, Equality) {
     ASSERT_NE(str1, str4);
 
     // quantity values
-    Value q1(decimal_t(1.0)), q2(decimal_t(1.0)), q3(decimal_t(1.1));
+    Value q1(Quantity(1.0)), q2(Quantity(1.0)), q3(Quantity(1.1));
 
     ASSERT_EQ(q1, q2);
     ASSERT_NE(q1, q3);
@@ -47,7 +47,7 @@ TEST(ValueTest, Equality) {
 }
 
 TEST(ValueTest, getQuantityAsString) {
-    Value q1(decimal_t("100000000000000000000")), q2(decimal_t("-0.000001"));
+    Value q1(Quantity("100000000000000000000")), q2(Quantity("-0.000001"));
 
     ASSERT_EQ(q1.getQuantityAsString(), "+100000000000000000000");
     ASSERT_EQ(q2.getQuantityAsString(), "-0.000001");
