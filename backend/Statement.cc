@@ -19,8 +19,8 @@ std::string Time::toWikidataString() const {
 
 std::string Time::toSQLString() const {
     std::ostringstream stream;
-    stream << year << '-' << month << '-' << day << ' '
-           << hour << ':' << minute << ':' << second;
+    stream << (int)year << '-' << (int)month << '-' << (int)day << ' '
+           << (int)hour << ':' << (int)minute << ':' << (int)second;
     return stream.str();
 }
 
