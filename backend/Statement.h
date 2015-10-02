@@ -51,35 +51,35 @@ public:
 
     Time() {}
 
-    explicit Time(int year)
+    explicit Time(int16_t year)
             : year(year), month(0), day(0),
               hour(0), minute(0), second(0),
               precision(9) { }
 
-    Time(int year, int month)
+    Time(int16_t year, int8_t month)
             : year(year), month(month), day(0),
               hour(0), minute(0), second(0),
               precision(10) { }
 
-    Time(int year, int month, int day)
+    Time(int16_t year, int8_t month, int8_t day)
             : year(year), month(month), day(day),
               hour(0), minute(0), second(0),
               precision(11) { }
 
-    Time(int year, int month, int day,
-         int hour, int minute)
+    Time(int16_t year, int8_t month, int8_t day,
+         int8_t hour, int8_t minute)
             : year(year), month(month), day(day),
               hour(hour), minute(minute), second(0),
               precision(13) { }
 
-    Time(int year, int month, int day,
-         int hour, int minute, int second)
+    Time(int16_t year, int8_t month, int8_t day,
+         int8_t hour, int8_t minute, int8_t second)
             : year(year), month(month), day(day),
               hour(hour), minute(minute), second(second),
               precision(14) { }
 
-    Time(int year, int month, int day,
-         int hour, int minute, int second, int precision)
+    Time(int16_t year, int8_t month, int8_t day,
+         int8_t hour, int8_t minute, int8_t second, int8_t precision)
             : year(year), month(month), day(day),
               hour(hour), minute(minute), second(second),
               precision(precision) { }
@@ -97,15 +97,15 @@ public:
      */
     std::string toSQLString() const;
 
-    int year;
-    int month;
-    int day;
-    int hour;
-    int minute;
-    int second;
+    int16_t year;
+    int8_t month;
+    int8_t day;
+    int8_t hour;
+    int8_t minute;
+    int8_t second;
 
     // Wikidata precision specification.
-    int precision;
+    int8_t precision;
 
     friend bool operator==(const Time& lhs, const Time& rhs);
 };

@@ -76,7 +76,7 @@ inline int16_t getSQLState(ApprovalState state) {
 Time timeFromSql(const std::string& str) {
     Time time;
 
-    if (sscanf(str.c_str(), "%d-%d-%d %d:%d:%d",
+    if (sscanf(str.c_str(), "%hd-%hhd-%hhd %hhd:%hhd:%hhd",
                &time.year, &time.month, &time.day,
                &time.hour, &time.minute, &time.second) != 6) {
         throw PersistenceException("Invalid time: " + str);
@@ -88,8 +88,8 @@ Time timeFromSql(const std::string& str) {
 
 std::string timeToSql(const Time& time) {
     std::ostringstream stream;
-    stream << time.year << '-' << time.month << '-' << time.day << ' '
-           << time.hour << ':' << time.minute << ':' << time.second;
+    stream << (int)time.year << '-' << (int)time.month << '-' << (int)time.day << ' '
+           << (int)time.hour << ':' << (int)time.minute << ':' << (int)time.second;
     return stream.str();
 }
 
