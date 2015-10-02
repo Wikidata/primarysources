@@ -62,7 +62,7 @@ TEST_F(PersistenceTest, AddGetSnak) {
             PropertyValue("P123", Value("Hello, World!", "en")),
             PropertyValue("P124", Value("Q321")),
             PropertyValue("P125", Value(42.11, 11.32)),
-            PropertyValue("P126", Value(Time(1901, 1), 10)),
+            PropertyValue("P126", Value(Time(1901, 1))),
             PropertyValue("P127", Value(decimal_t("-1234.42"))),
     };
 

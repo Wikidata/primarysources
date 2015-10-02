@@ -40,7 +40,7 @@ namespace Serializer {
                         << "T" << std::setw(2) << time.hour
                         << ":" << std::setw(2) << time.minute
                         << ":" << std::setw(2) << time.second
-                        << "Z/" << v.getPrecision();
+                        << "Z/" << time.precision;
                 break;
         }
     }

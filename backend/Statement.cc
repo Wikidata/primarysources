@@ -9,7 +9,8 @@ bool operator==(const Time& lhs, const Time& rhs) {
            lhs.day == rhs.day &&
            lhs.hour == rhs.hour &&
            lhs.minute == rhs.minute &&
-           lhs.second == rhs.second;
+           lhs.second == rhs.second &&
+           lhs.precision == rhs.precision;
 }
 
 ApprovalState stateFromString(const std::string &state) {
@@ -66,7 +67,7 @@ std::string Value::getQuantityAsString() const {
 }
 
 void Value::serialize(cppcms::archive &a) {
-    a & str & lang & cppcms::as_pod(time) & loc & precision
+    a & str & lang & cppcms::as_pod(time) & loc
       & cppcms::as_pod(quantity) & cppcms::as_pod(type);
 }
 
@@ -87,8 +88,7 @@ bool operator==(const Value& lhs, const Value& rhs) {
         case STRING:
             return lhs.str == rhs.str && lhs.lang == rhs.lang;
         case TIME:
-            return lhs.time == rhs.time
-                   && lhs.precision == rhs.precision;
+            return lhs.time == rhs.time;
         case QUANTITY:
             return lhs.quantity == rhs.quantity;
         case LOCATION:

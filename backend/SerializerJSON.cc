@@ -67,7 +67,7 @@ static cppcms::json::value createWikidataSnak(const PropertyValue& pv) {
             snak["datavalue"]["value"]["timezone"] = 0;
             snak["datavalue"]["value"]["before"] = 0;
             snak["datavalue"]["value"]["after"] = 0;
-            snak["datavalue"]["value"]["precision"] = v.getPrecision();
+            snak["datavalue"]["value"]["precision"] = time.precision;
             snak["datavalue"]["value"]["calendarmodel"] = "http://www.wikidata.org/entity/Q1985727";
         }
             break;

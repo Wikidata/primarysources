@@ -50,7 +50,44 @@ typedef boost::multiprecision::cpp_dec_float_50 decimal_t;
 typedef std::pair<double, double> location_t;
 
 // Time structure more lenient than Time
-struct Time {
+class Time {
+public:
+
+    Time() {}
+
+    explicit Time(int year)
+            : year(year), month(0), day(0),
+              hour(0), minute(0), second(0),
+              precision(9) { }
+
+    Time(int year, int month)
+            : year(year), month(month), day(0),
+              hour(0), minute(0), second(0),
+              precision(10) { }
+
+    Time(int year, int month, int day)
+            : year(year), month(month), day(day),
+              hour(0), minute(0), second(0),
+              precision(11) { }
+
+    Time(int year, int month, int day,
+         int hour, int minute)
+            : year(year), month(month), day(day),
+              hour(hour), minute(minute), second(0),
+              precision(13) { }
+
+    Time(int year, int month, int day,
+         int hour, int minute, int second)
+            : year(year), month(month), day(day),
+              hour(hour), minute(minute), second(second),
+              precision(14) { }
+
+    Time(int year, int month, int day,
+         int hour, int minute, int second, int precision)
+            : year(year), month(month), day(day),
+              hour(hour), minute(minute), second(second),
+              precision(precision) { }
+
     int year;
     int month;
     int day;
@@ -58,8 +95,8 @@ struct Time {
     int minute;
     int second;
 
-    explicit Time(int year = 0, int month = 0, int day = 0, int hour = 0, int minute = 0, int second = 0)
-             : year(year), month(month), day(day), hour(hour), minute(minute), second(second) { }
+    // Wikidata precision specification.
+    int precision;
 
     friend bool operator==(const Time& lhs, const Time& rhs);
 };
@@ -99,8 +136,8 @@ class Value : public cppcms::serializable {
     * Initialise a value of type TIME using the time structure and precision
     * given as argument.
     */
-    explicit Value(Time t, int precision)
-            : time(t), precision(precision), type(TIME) { }
+    explicit Value(Time t)
+            : time(t), type(TIME) { }
 
     /**
     * Initialise a value if type LOCATION using the latitude and longitude
@@ -133,14 +170,6 @@ class Value : public cppcms::serializable {
     */
     const Time &getTime() const {
         return time;
-    }
-
-    /**
-    * Return the time precision contained in this object. Only applicable to
-    * values of type TIME.
-    */
-    int getPrecision() const {
-        return precision;
     }
 
     /**
@@ -189,7 +218,6 @@ class Value : public cppcms::serializable {
     Time        time;
     location_t  loc;
     decimal_t   quantity;
-    int         precision;
 
     ValueType   type;
 

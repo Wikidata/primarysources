@@ -31,10 +31,15 @@ TEST(ValueTest, Equality) {
 
     // time values
     Time tv1(1923, 1, 1);
-    Value t1(tv1, 11), t2(tv1, 11);
-
+    tv1.precision = 11;
     Time tv2(1923, 1, 2);
-    Value t3(tv2, 11), t4(tv1, 9);
+    tv2.precision = 11;
+    Time tv3 = tv1;
+    tv3.precision = 9;
+
+    Value t1(tv1), t2(tv1);
+
+    Value t3(tv2), t4(tv3);
 
     ASSERT_EQ(t1, t2);
     ASSERT_NE(t1, t3);

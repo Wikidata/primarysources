@@ -118,7 +118,7 @@ int64_t Persistence::addSnak(const PropertyValue &pv) {
             return (sql << "INSERT INTO snak(property,tvalue,`precision`,vtype) "
                         "VALUES (?,?,?,'time')"
                         << pv.getProperty() << timeToSql(pv.getValue().getTime())
-                        << pv.getValue().getPrecision() << cppdb::exec)
+                        << pv.getValue().getTime().precision << cppdb::exec)
                         .last_insert_id();
         case LOCATION:
             return (sql << "INSERT INTO snak(property,lat,lng,vtype) "
@@ -159,7 +159,7 @@ int64_t Persistence::getSnakID(const PropertyValue &pv) {
                         "WHERE property=? AND tvalue=? AND `precision`=? "
                         "AND vtype='time'"
                     << pv.getProperty() << timeToSql(pv.getValue().getTime())
-                    << pv.getValue().getPrecision() << cppdb::row);
+                    << pv.getValue().getTime().precision << cppdb::row);
             break;
         case LOCATION:
             r = (sql << "SELECT id FROM snak "
@@ -196,8 +196,8 @@ PropertyValue Persistence::getSnak(int64_t snakid) {
             return PropertyValue(prop, Value(svalue, lang));
         } else if (vtype == "time") {
             Time tvalue = timeFromSql(res.get<std::string>("tvalue"));
-            int precision = res.get<int>("precision");
-            return PropertyValue(prop, Value(tvalue, precision));
+            tvalue.precision = res.get<int>("precision");
+            return PropertyValue(prop, Value(tvalue));
         } else if (vtype == "location") {
             double lat = res.get<double>("lat");
             double lng = res.get<double>("lng");

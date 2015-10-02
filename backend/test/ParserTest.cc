@@ -63,7 +63,6 @@ TEST(ParserTest, ParseTime) {
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
     ASSERT_EQ(result[0].getValue().getTime(), Time(1967, 1, 17));
-    ASSERT_EQ(result[0].getValue().getPrecision(), 11);
 }
 
 TEST(ParserTest, ParseTimeYear) {
@@ -73,7 +72,6 @@ TEST(ParserTest, ParseTimeYear) {
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
     ASSERT_EQ(result[0].getValue().getTime(), Time(1967));
-    ASSERT_EQ(result[0].getValue().getPrecision(), 9);
 }
 
 TEST(ParserTest, ParseQuantity) {

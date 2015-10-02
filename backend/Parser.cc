@@ -38,9 +38,9 @@ Value Parser::parseValue(const std::string& value) {
     } else if (boost::regex_match(value, sm, re_text)) {
         return Value(sm.str(2), sm.str(1));
     } else if (boost::regex_match(value, sm, re_time)) {
-        Time time(std::stoi(sm.str(1)), std::stoi(sm.str(2)), std::stoi(sm.str(3)),
-                  std::stoi(sm.str(4)), std::stoi(sm.str(5)), std::stoi(sm.str(6)));
-        return Value(time, std::stoi(sm.str(7)));
+        return Value(Time(std::stoi(sm.str(1)), std::stoi(sm.str(2)), std::stoi(sm.str(3)),
+                          std::stoi(sm.str(4)), std::stoi(sm.str(5)), std::stoi(sm.str(6)),
+                          std::stoi(sm.str(7))));
     } else {
         return Value(value);
     }
