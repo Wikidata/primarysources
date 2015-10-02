@@ -32,15 +32,7 @@ namespace Serializer {
                 out->put('"');
                 break;
             case TIME:
-                Time time = v.getTime();
-                *out << std::setfill('0')
-                        << "+" << std::setw(4) << time.year
-                        << "-" << std::setw(2) << time.month
-                        << "-" << std::setw(2) << time.day
-                        << "T" << std::setw(2) << time.hour
-                        << ":" << std::setw(2) << time.minute
-                        << ":" << std::setw(2) << time.second
-                        << "Z/" << time.precision;
+                *out << v.getTime().toWikidataString();
                 break;
         }
     }
@@ -90,6 +82,13 @@ namespace Serializer {
         (*out)["dataset"] = stmt.getDataset();
         (*out)["upload"] = stmt.getUpload();
         (*out)["state"] = stateToString(stmt.getApprovalState());
+
+        for (int i=0; i< stmt.getActivities().size(); i++) {
+            const LogEntry& entry = stmt.getActivities().at(i);
+            (*out)["activities"][i]["user"] = entry.getUser();
+            (*out)["activities"][i]["state"] = stateToString(entry.getState());
+            (*out)["activities"][i]["timestamp"] = entry.getTime().toWikidataString();
+        }
     }
 
 }  // namespace Serializer

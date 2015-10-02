@@ -184,6 +184,10 @@ private:
     // Throws PersistenceException in case the snak with this ID is not found.
     PropertyValue getSnak(int64_t snakid);
 
+    // Return the list of log entries for the statement with the given ID.
+    // Returns an empty vector in case there are no log entries for this ID.
+    std::vector<LogEntry> getLogEntries(int64_t stmtid);
+
     Statement buildStatement(int64_t id, const std::string& qid,
                              int64_t snak, const std::string& dataset,
                              int64_t upload, int16_t state);

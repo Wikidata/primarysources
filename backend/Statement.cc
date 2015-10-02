@@ -3,6 +3,27 @@
 
 #include "Statement.h"
 
+std::string Time::toWikidataString() const {
+    std::ostringstream out;
+    out << std::setfill('0')
+        << "+" << std::setw(4) << year
+        << "-" << std::setw(2) << month
+        << "-" << std::setw(2) << day
+        << "T" << std::setw(2) << hour
+        << ":" << std::setw(2) << minute
+        << ":" << std::setw(2) << second
+        << "Z/" << precision;
+
+    return out.str();
+}
+
+std::string Time::toSQLString() const {
+    std::ostringstream stream;
+    stream << year << '-' << month << '-' << day << ' '
+           << hour << ':' << minute << ':' << second;
+    return stream.str();
+}
+
 bool operator==(const Time& lhs, const Time& rhs) {
     return lhs.year == rhs.year &&
            lhs.month == rhs.month &&
@@ -47,7 +68,6 @@ std::string stateToString(ApprovalState state) {
         case ANY:         return "any";
         default:          return "";
     }
-    return "";
 }
 
 std::string Value::getQuantityAsString() const {
@@ -66,6 +86,10 @@ std::string Value::getQuantityAsString() const {
     return string;
 }
 
+void LogEntry::serialize(cppcms::archive &a) {
+    a & user & cppcms::as_pod(state) & cppcms::as_pod(time);
+}
+
 void Value::serialize(cppcms::archive &a) {
     a & str & lang & cppcms::as_pod(time) & loc
       & cppcms::as_pod(quantity) & cppcms::as_pod(type);
@@ -77,7 +101,7 @@ void PropertyValue::serialize(cppcms::archive &a) {
 
 void Statement::serialize(cppcms::archive &a) {
     a & id & qid & propertyValue & qualifiers & sources
-      & cppcms::as_pod(approved);
+      & cppcms::as_pod(approved) & activities;
 }
 
 bool operator==(const Value& lhs, const Value& rhs) {
@@ -129,3 +153,4 @@ bool operator==(const Statement& lhs, const Statement& rhs) {
 
     return true;
 }
+

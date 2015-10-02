@@ -37,10 +37,6 @@ enum ApprovalState {
     ANY
 };
 
-enum ValueType {
-    ENTITY, STRING, TIME, LOCATION, QUANTITY
-};
-
 
 // define decimal datatype to represent wikidata quantities as multi-
 // precision
@@ -88,6 +84,19 @@ public:
               hour(hour), minute(minute), second(second),
               precision(precision) { }
 
+    /**
+     * Return a wikidata string representation of this time using the format described in
+     * http://tools.wmflabs.org/wikidata-todo/quick_statements.php
+     */
+    std::string toWikidataString() const;
+
+    /**
+     * Return a SQL string representation of this time using the standard format used by
+     * SQLLite and MySQL. Note that this representation does not take into account the
+     * precision.
+     */
+    std::string toSQLString() const;
+
     int year;
     int month;
     int day;
@@ -106,6 +115,48 @@ bool operator==(const Time& lhs, const Time& rhs);
 inline bool operator!=(const Time& lhs, const Time& rhs) {
     return !(lhs == rhs);
 }
+
+/**
+ * Representation of an activity entry for a statement. Each activity
+ * is carried out by a user, changes the statement state to a new state,
+ * and happened at a specific timepoint.
+ */
+class LogEntry : public cppcms::serializable {
+public:
+
+    LogEntry(const std::string &user, ApprovalState state, const Time &time)
+            : user(user), state(state), time(time) { }
+
+    const std::string &getUser() const {
+        return user;
+    }
+
+    const ApprovalState &getState() const {
+        return state;
+    }
+
+    const Time &getTime() const {
+        return time;
+    }
+
+    void serialize(cppcms::archive &a) override;
+
+private:
+    LogEntry() { }
+
+    std::string user;
+    ApprovalState state;
+    Time time;
+
+    friend class cppcms::archive;
+    friend void cppcms::details::archive_load_container<LogEntry>(LogEntry&, cppcms::archive&);
+    friend void cppcms::details::archive_load_container<std::vector<LogEntry>>(std::vector<LogEntry>&, cppcms::archive&);
+};
+
+
+enum ValueType {
+    ENTITY, STRING, TIME, LOCATION, QUANTITY
+};
 
 /**
 * Representation of a Wikidata value. Wikidata values can be of several
@@ -309,10 +360,12 @@ class Statement : public cppcms::serializable {
 
     Statement(int64_t id, std::string qid, PropertyValue propertyValue,
               extensions_t qualifiers, extensions_t sources,
-              std::string dataset, int64_t upload, ApprovalState approved)
+              std::string dataset, int64_t upload, ApprovalState approved,
+              std::vector<LogEntry> activities = {})
             : id(id), qid(qid), propertyValue(propertyValue),
               qualifiers(qualifiers), sources(sources),
-              dataset(dataset), upload(upload), approved(approved) { }
+              dataset(dataset), upload(upload), approved(approved),
+              activities(activities) { }
 
     Statement(std::string qid, PropertyValue propertyValue)
             : id(-1), qid(qid), propertyValue(propertyValue),
@@ -368,7 +421,7 @@ class Statement : public cppcms::serializable {
         return upload;
     }
 
-/**
+    /**
     * Return true if this statement has already been approved, false otherwise.
     */
     ApprovalState getApprovalState() const { return approved; }
@@ -376,6 +429,11 @@ class Statement : public cppcms::serializable {
 
     void setApprovalState(ApprovalState const &approved) {
         Statement::approved = approved;
+    }
+
+
+    const std::vector<LogEntry> &getActivities() const {
+        return activities;
     }
 
     void serialize(cppcms::archive &a) override;
@@ -399,6 +457,10 @@ class Statement : public cppcms::serializable {
     int64_t upload;
 
     ApprovalState approved;
+
+    // Activity log for this statement. Populated from the database only, never
+    // changed at runtime.
+    std::vector<LogEntry> activities;
 
     // needed for (de-)serialization
     friend class cppcms::archive;

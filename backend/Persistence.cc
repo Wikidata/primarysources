@@ -81,6 +81,7 @@ Time timeFromSql(const std::string& str) {
                &time.hour, &time.minute, &time.second) != 6) {
         throw PersistenceException("Invalid time: " + str);
     }
+    time.precision = 14;
 
     return time;
 }
@@ -216,6 +217,26 @@ PropertyValue Persistence::getSnak(int64_t snakid) {
     }
 }
 
+std::vector<LogEntry> Persistence::getLogEntries(int64_t stmtid) {
+    std::vector<LogEntry> result;
+    cppdb::result res =(
+            sql << "SELECT user, state, changed "
+                    "FROM userlog WHERE stmt = ? "
+                    "ORDER BY id ASC"
+                << stmtid);
+
+    while (res.next()) {
+        result.push_back(LogEntry(
+                res.get<std::string>("user"),
+                getApprovalState(res.get<int16_t>("state")),
+                timeFromSql(res.get<std::string>("changed"))
+        ));
+    }
+
+    return result;
+}
+
+
 Statement Persistence::buildStatement(int64_t id, const std::string& qid,
                                       int64_t snak, const std::string& dataset,
                                       int64_t upload, int16_t state) {
@@ -239,7 +260,10 @@ Statement Persistence::buildStatement(int64_t id, const std::string& qid,
 
     return Statement(id, qid, getSnak(snak),
                      qualifiers, sources,
-                     dataset, upload, getApprovalState(state));
+                     dataset, upload,
+                     getApprovalState(state),
+                     getLogEntries(id)
+    );
 }
 
 Persistence::Persistence(cppdb::session &sql, bool managedTransactions)

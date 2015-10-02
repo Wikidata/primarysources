@@ -279,3 +279,36 @@ TEST_F(PersistenceTest, Datasets) {
     ASSERT_EQ(count_noexist, 0);
     ASSERT_EQ(count_all, 10);
 }
+
+TEST_F(PersistenceTest, Activities) {
+    Statement stmt1(-1, "Q123", PropertyValue("P234", Value("Q789")),
+                    Statement::extensions_t(), Statement::extensions_t(),
+                    "foo", 0, UNAPPROVED);
+
+    Persistence p(sql, true);
+    sql.begin();
+    p.addStatement(stmt1);
+    sql.commit();
+
+    sql.begin();
+    std::vector<Statement> stmts = p.getRandomStatements(1, ANY);
+    sql.commit();
+
+    ASSERT_EQ(stmts.size(), 1);
+
+    int64_t id = stmts[0].getID();
+
+    sql.begin();
+    p.updateStatement(id, WRONG);
+    p.addUserlog("foouser", id, WRONG);
+
+    p.updateStatement(id, APPROVED);
+    p.addUserlog("baruser", id, APPROVED);
+    sql.commit();
+
+    sql.begin();
+    Statement stmt2 = p.getStatement(id);
+    sql.commit();
+
+    ASSERT_EQ(stmt2.getActivities().size(), 2);
+}
