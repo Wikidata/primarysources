@@ -43,17 +43,17 @@ $(document).ready(function() {
   var CACHE_EXPIRY = 60 * 60 * 1000;
 
   var WIKIDATA_ENTITY_DATA_URL =
-      'https:// www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
+      'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
   var FREEBASE_ENTITY_DATA_URL =
-      'https:// tools.wmflabs.org/wikidata-primary-sources/entities/{{qid}}';
+      'https://tools.wmflabs.org/wikidata-primary-sources/entities/{{qid}}';
   var FREEBASE_STATEMENT_APPROVAL_URL =
-      'https:// tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
+      'https://tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
       '?state={{state}}&user={{user}}';
   var FREEBASE_STATEMENT_SEARCH_URL =
-    'https:// tools.wmflabs.org/wikidata-primary-sources/statements/all';
+    'https://tools.wmflabs.org/wikidata-primary-sources/statements/all';
   var FREEBASE_DATASETS =
-    'https:// tools.wmflabs.org/wikidata-primary-sources/datasets/all';
-  var FREEBASE_SOURCE_URL_BLACKLIST = 'https:// www.wikidata.org/w/api.php' +
+    'https://tools.wmflabs.org/wikidata-primary-sources/datasets/all';
+  var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
       '?action=parse&format=json&prop=text' +
       '&page=Wikidata:Primary_sources_tool/URL_blacklist';
 
@@ -281,14 +281,14 @@ $(document).ready(function() {
       ));
       portletLink.children().click(function(e) {
         e.preventDefault();
-        e.target.innerHTML = '<img src="https:// upload.wikimedia.org/' +
+        e.target.innerHTML = '<img src="https://upload.wikimedia.org/' +
             'wikipedia/commons/f/f8/Ajax-loader%282%29.gif" class="ajax"/>';
         $.ajax({
           url: FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') +
               '?dataset=' + dataset
         }).done(function(data) {
           var newQid = data[0].statement.split(/\t/)[0];
-          document.location.href = 'https:// www.wikidata.org/wiki/' + newQid;
+          document.location.href = 'https://www.wikidata.org/wiki/' + newQid;
         }).fail(function() {
           return reportError('Could not obtain random Primary Sources item');
         });
@@ -329,7 +329,7 @@ $(document).ready(function() {
           return;
         }
         event.preventDefault();
-        event.target.innerHTML = '<img src="https:// upload.wikimedia.org/' +
+        event.target.innerHTML = '<img src="https://upload.wikimedia.org/' +
             'wikipedia/commons/f/f8/Ajax-loader%282%29.gif" class="ajax"/>';
         var statement = event.target.dataset;
         var id = statement.statementId;
@@ -487,7 +487,7 @@ $(document).ready(function() {
       if (err) {
         reportError(err);
       }
-      // See https:// www.mediawiki.org/wiki/Wikibase/Notes/JSON
+      // See https://www.mediawiki.org/wiki/Wikibase/Notes/JSON
       var wikidataEntityData = results.wikidataEntityData;
       var wikidataClaims = wikidataEntityData.claims || {};
 
@@ -735,25 +735,25 @@ $(document).ready(function() {
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP108\tQ95\tS854\t"http:// research.google.com/pubs/vrandecic.html"',
+        statement: qid + '\tP108\tQ95\tS854\t"http://research.google.com/pubs/vrandecic.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http:// simia.net/wiki/Denny"\tS813\t+2015-02-14T00:00:00Z/11',
+        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+2015-02-14T00:00:00Z/11',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP1451\ten:"foo bar"\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http:// www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
+        statement: qid + '\tP1451\ten:"foo bar"\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"https:// lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
+        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
@@ -777,7 +777,7 @@ $(document).ready(function() {
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP569\t+1840-01-01T00:00:00Z/11\tS854\t"https:// lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
+        statement: qid + '\tP569\t+1840-01-01T00:00:00Z/11\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
@@ -841,7 +841,7 @@ $(document).ready(function() {
     return parts[1].length;
   }
 
-  // "http:// research.google.com/pubs/vrandecic.html"
+  // "http://research.google.com/pubs/vrandecic.html"
   function isUrl(url) {
     if (typeof URL !== 'function') {
       return url.indexOf('http') === 0; // TODO: very bad fallback hack
@@ -856,9 +856,9 @@ $(document).ready(function() {
   }
 
   function tsvValueToJson(value) {
-    // From https:// www.wikidata.org/wiki/Special:ListDatatypes and
-    // https:// de.wikipedia.org/wiki/Wikipedia:Wikidata/Wikidata_Spielwiese
-    // https:// www.wikidata.org/wiki/Special:EntityData/Q90.json
+    // From https://www.wikidata.org/wiki/Special:ListDatatypes and
+    // https://de.wikipedia.org/wiki/Wikipedia:Wikidata/Wikidata_Spielwiese
+    // https://www.wikidata.org/wiki/Special:EntityData/Q90.json
 
     // Q1
     var itemRegEx = /^Q\d+$/;
@@ -906,7 +906,7 @@ $(document).ready(function() {
           longitude: parseFloat(longitude),
           altitude: null,
           precision: computeCoordinatesPrecision(latitude, longitude),
-          globe: 'http:// www.wikidata.org/entity/Q2'
+          globe: 'http://www.wikidata.org/entity/Q2'
         }
       };
     } else if (languageStringRegEx.test(value)) {
@@ -927,7 +927,7 @@ $(document).ready(function() {
           before: 0,
           after: 0,
           precision: parseInt(parts[1]),
-          calendarmodel: 'http:// www.wikidata.org/entity/Q1985727'
+          calendarmodel: 'http://www.wikidata.org/entity/Q1985727'
         }
       };
     } else if (quantityRegEx.test(value)) {
@@ -1325,7 +1325,7 @@ $(document).ready(function() {
       }).then(function(result) {
         // Create links for geocoordinates
         if (parsed.type === 'globe-coordinate') {
-          var url = 'https:// tools.wmflabs.org/geohack/geohack.php' +
+          var url = 'https://tools.wmflabs.org/geohack/geohack.php' +
               '?language=' + mw.config.get('wgUserLanguage') + '&params=' +
               dataValue.value.latitude + '_N_' +
               dataValue.value.longitude + '_E_globe:earth';
@@ -1503,7 +1503,7 @@ $(document).ready(function() {
     });
   }
 
-  // https:// www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
+  // https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
   function createClaim(subject, predicate, object, qualifiers) {
     var value = (tsvValueToJson(object)).value;
     var api = new mw.Api();
@@ -1539,7 +1539,7 @@ $(document).ready(function() {
     });
   }
 
-  // https:// www.wikidata.org/w/api.php?action=help&modules=wbsetreference
+  // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
   function createClaimWithReference(subject, predicate, object,
       qualifiers, sourceSnaks) {
     var api = new mw.Api();
@@ -1555,7 +1555,7 @@ $(document).ready(function() {
     });
   }
 
-  // https:// www.wikidata.org/w/api.php?action=help&modules=wbgetclaims
+  // https://www.wikidata.org/w/api.php?action=help&modules=wbgetclaims
   function getClaims(subject, predicate, callback) {
     var api = new mw.Api();
     api.get({
@@ -1569,7 +1569,7 @@ $(document).ready(function() {
     });
   }
 
-  // https:// www.wikidata.org/w/api.php?action=help&modules=wbsetreference
+  // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
   function createReference(subject, predicate, object, sourceSnaks, callback) {
     var api = new mw.Api();
     api.get({
