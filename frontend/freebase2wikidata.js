@@ -470,13 +470,15 @@ $(document).ready(function() {
       });
     })();
 
-    if (mw.config.get('wgPageContentModel') !== 'wikibase-item' ||
-        mw.config.get('wgIsRedirect')) {
+    if ((mw.config.get('wgPageContentModel') !== 'wikibase-item') ||
+        (mw.config.get('wgIsRedirect')) ||
+        // Do not run on diff pages
+        (document.location.search.indexOf('&diff=') !== -1)) {
       return;
     }
     qid = getQid();
     if (!qid) {
-      return debug.log('Do not manage to load the QID.');
+      return debug.log('Did not manage to load the QID.');
     }
 
     async.parallel({
