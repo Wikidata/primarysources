@@ -4,6 +4,7 @@
  * Wikidata user script for the migration of Freebase facts into Wikidata.
  *
  * @author: Thomas Steiner (tomac@google.com)
+ * @author: Thomas Pellissier Tanon (thomas@pellissier-tanon.fr)
  * @license: CC0 1.0 Universal (CC0 1.0)
  */
 
@@ -12,7 +13,7 @@
   curly: true,
   indent: 2,
   immed: true,
-  latedef: true,
+  latedef: nofunc,
   loopfunc: true,
   maxlen: 80,
   newcap: true,
@@ -29,7 +30,7 @@
 */
 
 /* global
-  console, mw, $, async, HTML_TEMPLATES
+  console, mw, $, async, HTML_TEMPLATES, OO, wikibase
 */
 
 $(document).ready(function() {
@@ -42,17 +43,17 @@ $(document).ready(function() {
   var CACHE_EXPIRY = 60 * 60 * 1000;
 
   var WIKIDATA_ENTITY_DATA_URL =
-      'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
+      'https:// www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
   var FREEBASE_ENTITY_DATA_URL =
-      'https://tools.wmflabs.org/wikidata-primary-sources/entities/{{qid}}';
+      'https:// tools.wmflabs.org/wikidata-primary-sources/entities/{{qid}}';
   var FREEBASE_STATEMENT_APPROVAL_URL =
-      'https://tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
+      'https:// tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
       '?state={{state}}&user={{user}}';
   var FREEBASE_STATEMENT_SEARCH_URL =
-    'https://tools.wmflabs.org/wikidata-primary-sources/statements/all';
+    'https:// tools.wmflabs.org/wikidata-primary-sources/statements/all';
   var FREEBASE_DATASETS =
-    'https://tools.wmflabs.org/wikidata-primary-sources/datasets/all';
-  var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
+    'https:// tools.wmflabs.org/wikidata-primary-sources/datasets/all';
+  var FREEBASE_SOURCE_URL_BLACKLIST = 'https:// www.wikidata.org/w/api.php' +
       '?action=parse&format=json&prop=text' +
       '&page=Wikidata:Primary_sources_tool/URL_blacklist';
 
@@ -280,13 +281,14 @@ $(document).ready(function() {
       ));
       portletLink.children().click(function(e) {
         e.preventDefault();
-        e.target.innerHTML = '<img src="https://upload.wikimedia.org/' +
+        e.target.innerHTML = '<img src="https:// upload.wikimedia.org/' +
             'wikipedia/commons/f/f8/Ajax-loader%282%29.gif" class="ajax"/>';
         $.ajax({
-          url: FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') + '?dataset=' + dataset
+          url: FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') +
+              '?dataset=' + dataset
         }).done(function(data) {
           var newQid = data[0].statement.split(/\t/)[0];
-          document.location.href = 'https://www.wikidata.org/wiki/' + newQid;
+          document.location.href = 'https:// www.wikidata.org/wiki/' + newQid;
         }).fail(function() {
           return reportError('Could not obtain random Primary Sources item');
         });
@@ -327,7 +329,7 @@ $(document).ready(function() {
           return;
         }
         event.preventDefault();
-        event.target.innerHTML = '<img src="https://upload.wikimedia.org/' +
+        event.target.innerHTML = '<img src="https:// upload.wikimedia.org/' +
             'wikipedia/commons/f/f8/Ajax-loader%282%29.gif" class="ajax"/>';
         var statement = event.target.dataset;
         var id = statement.statementId;
@@ -342,7 +344,8 @@ $(document).ready(function() {
               .fail(function(error) {
                 return reportError(error);
               }).done(function(data) {
-                if (sources.length > 0) { //Sources, don't validate the statement
+                // Sources, don't validate the statement
+                if (sources.length > 0) {
                   return document.location.reload();
                 }
 
@@ -357,7 +360,7 @@ $(document).ready(function() {
                 });
               });
           } else if (classList.contains('f2w-reject')) {
-            //Get the statements ids to reject
+            // Get the statements ids to reject
             var idsSet = {};
             idsSet[id] = true;
             var sources = JSON.parse(statement.sources);
@@ -484,7 +487,7 @@ $(document).ready(function() {
       if (err) {
         reportError(err);
       }
-      // See https://www.mediawiki.org/wiki/Wikibase/Notes/JSON
+      // See https:// www.mediawiki.org/wiki/Wikibase/Notes/JSON
       var wikidataEntityData = results.wikidataEntityData;
       var wikidataClaims = wikidataEntityData.claims || {};
 
@@ -732,25 +735,25 @@ $(document).ready(function() {
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP108\tQ95\tS854\t"http://research.google.com/pubs/vrandecic.html"',
+        statement: qid + '\tP108\tQ95\tS854\t"http:// research.google.com/pubs/vrandecic.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+2015-02-14T00:00:00Z/11',
+        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http:// simia.net/wiki/Denny"\tS813\t+2015-02-14T00:00:00Z/11',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP1451\ten:"foo bar"\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
+        statement: qid + '\tP1451\ten:"foo bar"\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http:// www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
+        statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"https:// lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
@@ -774,7 +777,7 @@ $(document).ready(function() {
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
-        statement: qid + '\tP569\t+1840-01-01T00:00:00Z/11\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
+        statement: qid + '\tP569\t+1840-01-01T00:00:00Z/11\tS854\t"https:// lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
         state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
@@ -816,7 +819,8 @@ $(document).ready(function() {
       }
 
       if (statement.source.length > 0) {
-        freebaseClaims[predicate][key].sources.push(statement.source); //TODO: find duplicates
+        // TODO: find duplicates
+        freebaseClaims[predicate][key].sources.push(statement.source);
       }
     });
     return freebaseClaims;
@@ -837,10 +841,24 @@ $(document).ready(function() {
     return parts[1].length;
   }
 
+  // "http:// research.google.com/pubs/vrandecic.html"
+  function isUrl(url) {
+    if (typeof URL !== 'function') {
+      return url.indexOf('http') === 0; // TODO: very bad fallback hack
+    }
+
+    try {
+      url = new URL(url.toString());
+      return url.protocol.indexOf('http') === 0 && url.host;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function tsvValueToJson(value) {
-    // From https://www.wikidata.org/wiki/Special:ListDatatypes and
-    // https://de.wikipedia.org/wiki/Wikipedia:Wikidata/Wikidata_Spielwiese
-    // https://www.wikidata.org/wiki/Special:EntityData/Q90.json
+    // From https:// www.wikidata.org/wiki/Special:ListDatatypes and
+    // https:// de.wikipedia.org/wiki/Wikipedia:Wikidata/Wikidata_Spielwiese
+    // https:// www.wikidata.org/wiki/Special:EntityData/Q90.json
 
     // Q1
     var itemRegEx = /^Q\d+$/;
@@ -861,20 +879,6 @@ $(document).ready(function() {
 
     // +/-1234.4567
     var quantityRegEx = /^[+-]\d+(\.\d+)?$/;
-
-    // "http://research.google.com/pubs/vrandecic.html"
-    var isUrl = function(url) {
-      if (typeof URL !== 'function') {
-        return url.indexOf('http') === 0; //TODO: very bad fallback hack
-      }
-
-      try {
-        url = new URL(url.toString());
-        return url.protocol.indexOf('http') === 0 && url.host;
-      } catch (e) {
-        return false;
-      }
-    };
 
     if (itemRegEx.test(value)) {
       return {
@@ -902,7 +906,7 @@ $(document).ready(function() {
           longitude: parseFloat(longitude),
           altitude: null,
           precision: computeCoordinatesPrecision(latitude, longitude),
-          globe: 'http://www.wikidata.org/entity/Q2'
+          globe: 'http:// www.wikidata.org/entity/Q2'
         }
       };
     } else if (languageStringRegEx.test(value)) {
@@ -923,7 +927,7 @@ $(document).ready(function() {
           before: 0,
           after: 0,
           precision: parseInt(parts[1]),
-          calendarmodel: 'http://www.wikidata.org/entity/Q1985727'
+          calendarmodel: 'http:// www.wikidata.org/entity/Q1985727'
         }
       };
     } else if (quantityRegEx.test(value)) {
@@ -979,7 +983,7 @@ $(document).ready(function() {
           if (existingWikidataObjects[freebaseKey]) {
             // Existing object
             if (freebaseObject.sources.length === 0) {
-              //No source, duplicate statement
+              // No source, duplicate statement
               setStatementState(freebaseObject.id, STATEMENT_STATES.duplicate)
               .done(function() {
                 debug.log('Automatically duplicate statement ' +
@@ -1050,7 +1054,7 @@ $(document).ready(function() {
     case 'time':
       var time = dataValue.value.time;
 
-      //Normalize the timestamp
+      // Normalize the timestamp
       if (dataValue.value.precision < 11) {
         time = time.replace('-01T', '-00T');
       }
@@ -1087,7 +1091,7 @@ $(document).ready(function() {
     }
   }
 
-  function prepareNewWikidataStatement(property, object, language) {
+  function prepareNewWikidataStatement(property, object) {
     getQualifiersAndSourcesLabels(object.qualifiers, object.sources)
     .done(function(labels) {
       object.sources.forEach(function(source) {
@@ -1110,7 +1114,6 @@ $(document).ready(function() {
                 [];
     var existingSources = {};
     for (var i in wikidataSources) {
-      var wikidataObject = wikidataSources[i];
       var snakBag = wikidataSources[i].snaks;
       for (var prop in snakBag) {
         if (!(prop in existingSources)) {
@@ -1125,7 +1128,7 @@ $(document).ready(function() {
         }
       }
     }
-    //Filter already present sources
+    // Filter already present sources
     object.sources = object.sources.filter(function(source) {
       return source.filter(function(snak) {
         return !existingSources[snak.sourceProperty] ||
@@ -1189,7 +1192,7 @@ $(document).ready(function() {
     });
   }
 
-  function createNewClaim(property, propertyLabel, claims, lang) {
+  function createNewClaim(property, propertyLabel, claims) {
     var newClaim = {
       property: property,
       propertyLabel: propertyLabel,
@@ -1296,7 +1299,7 @@ $(document).ready(function() {
         'lang': mw.language.getFallbackLanguageChain()[0] || 'en'
       };
 
-    if (parsed.type === 'string') { //Link to external database
+    if (parsed.type === 'string') { // Link to external database
       valueHtmlCache[cacheKey] = getUrlFormatter(property)
       .then(function(urlFormatter) {
         if (urlFormatter === '') {
@@ -1307,22 +1310,22 @@ $(document).ready(function() {
                  parsed.value + '</a>';
         }
       });
-    } else if(parsed.type === 'url') {
+    } else if (parsed.type === 'url') {
       valueHtmlCache[cacheKey] = $.Deferred().resolve(
-          '<a rel="nofollow" class="external free" href="' + parsed.value + '">' + parsed.value + '</a>'
-      );
+          '<a rel="nofollow" class="external free" href="' + parsed.value +
+          '">' + parsed.value + '</a>');
     } else {
       var api = new mw.Api();
       valueHtmlCache[cacheKey] = api.get({
-        action:'wbformatvalue',
-        generate:'text/html',
-        datavalue:JSON.stringify(dataValue),
-        datatype:parsed.type,
-        options:JSON.stringify(options)
+        action: 'wbformatvalue',
+        generate: 'text/html',
+        datavalue: JSON.stringify(dataValue),
+        datatype: parsed.type,
+        options: JSON.stringify(options)
       }).then(function(result) {
-        //Create links for geocoordinates
+        // Create links for geocoordinates
         if (parsed.type === 'globe-coordinate') {
-          var url = 'https://tools.wmflabs.org/geohack/geohack.php' +
+          var url = 'https:// tools.wmflabs.org/geohack/geohack.php' +
               '?language=' + mw.config.get('wgUserLanguage') + '&params=' +
               dataValue.value.latitude + '_N_' +
               dataValue.value.longitude + '_E_globe:earth';
@@ -1345,14 +1348,14 @@ $(document).ready(function() {
 
     var api = new mw.Api();
     urlFormatterCache[property] = api.get({
-      action:'wbgetentities',
-      ids:property,
-      props:'claims'
+      action: 'wbgetentities',
+      ids: property,
+      props: 'claims'
     }).then(function(result) {
       var urlFormatter = '';
       $.each(result.entities, function(_, entity) {
         if (entity.claims && 'P1630' in entity.claims) {
-          urlFormatter = entity.claims['P1630'][0].mainsnak.datavalue.value;
+          urlFormatter = entity.claims.P1630[0].mainsnak.datavalue.value;
         }
       });
       return urlFormatter;
@@ -1381,7 +1384,8 @@ $(document).ready(function() {
           .replace(/\{\{statement-id\}\}/g, source[0].sourceId)
           .replace(/\{\{source-html\}\}/g,
               Array.prototype.slice.call(arguments).join(''))
-          .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(object.qualifiers)));
+          .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(
+              object.qualifiers)));
       });
     });
 
@@ -1429,14 +1433,17 @@ $(document).ready(function() {
         .replace(/\{\{sources\}\}/g, sourcesHtml)
         .replace(/\{\{qualifiers\}\}/g, qualifiersHtml)
         .replace(/\{\{statement-id\}\}/g, object.id)
-        .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(object.qualifiers)))
-        .replace(/\{\{data-sources\}\}/g, escapeHtml(JSON.stringify(object.sources)));
+        .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(
+            object.qualifiers)))
+        .replace(/\{\{data-sources\}\}/g, escapeHtml(JSON.stringify(
+            object.sources)));
     });
   }
 
   function getWikidataEntityData(qid, callback) {
     $.ajax({
-      url: WIKIDATA_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '?revision=' + mw.config.get('wgRevisionId')
+      url: WIKIDATA_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '?revision=' +
+          mw.config.get('wgRevisionId')
     }).done(function(data) {
       return callback(null, data.entities[qid]);
     }).fail(function() {
@@ -1448,7 +1455,8 @@ $(document).ready(function() {
     $.ajax({
       url: FAKE_OR_RANDOM_DATA ?
           FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') :
-          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '?dataset=' + dataset
+          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '?dataset=' +
+          dataset
     }).done(function(data) {
       return callback(null, data);
     });
@@ -1495,7 +1503,7 @@ $(document).ready(function() {
     });
   }
 
-  // https://www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
+  // https:// www.wikidata.org/w/api.php?action=help&modules=wbcreateclaim
   function createClaim(subject, predicate, object, qualifiers) {
     var value = (tsvValueToJson(object)).value;
     var api = new mw.Api();
@@ -1508,7 +1516,7 @@ $(document).ready(function() {
       value: JSON.stringify(value),
       summary: WIKIDATA_API_COMMENT
     }).then(function(data) {
-      //We save the qualifiers sequentially in order to avoid edit conflict
+      // We save the qualifiers sequentially in order to avoid edit conflict
       var saveQualifiers = function() {
         var qualifier = qualifiers.pop();
         if (qualifier === undefined) {
@@ -1531,10 +1539,9 @@ $(document).ready(function() {
     });
   }
 
-  // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
+  // https:// www.wikidata.org/w/api.php?action=help&modules=wbsetreference
   function createClaimWithReference(subject, predicate, object,
       qualifiers, sourceSnaks) {
-    var value = (tsvValueToJson(object)).value;
     var api = new mw.Api();
     return createClaim(subject, predicate, object, qualifiers)
     .then(function(data) {
@@ -1548,7 +1555,7 @@ $(document).ready(function() {
     });
   }
 
-  // https://www.wikidata.org/w/api.php?action=help&modules=wbgetclaims
+  // https:// www.wikidata.org/w/api.php?action=help&modules=wbgetclaims
   function getClaims(subject, predicate, callback) {
     var api = new mw.Api();
     api.get({
@@ -1562,7 +1569,7 @@ $(document).ready(function() {
     });
   }
 
-  // https://www.wikidata.org/w/api.php?action=help&modules=wbsetreference
+  // https:// www.wikidata.org/w/api.php?action=help&modules=wbsetreference
   function createReference(subject, predicate, object, sourceSnaks, callback) {
     var api = new mw.Api();
     api.get({
@@ -1622,49 +1629,6 @@ $(document).ready(function() {
   function getValueTypeFromDataValueType(dataValueType) {
     return wikibase.dataTypeStore.getDataType(dataValueType)
         .getDataValueType();
-  }
-
-  function getPropertyNames(callback) {
-    var now = Date.now();
-    if (localStorage.getItem('f2w_properties')) {
-      var properties = JSON.parse(localStorage.getItem('f2w_properties'));
-      if (!properties.timestamp) {
-        properties.timestamp = 0;
-      }
-      if (now - properties.timestamp < CACHE_EXPIRY) {
-        debug.log('Using cached properties list');
-        return callback(null, properties.data);
-      }
-    }
-    var iframe = document.createElement('iframe');
-    document.body.appendChild(iframe);
-
-    iframe.addEventListener('load', function() {
-
-      var scraperFunction = function scraperFunction() {
-        var properties = {};
-        var anchors = document.querySelectorAll('a[href^="/wiki/Property:"]');
-        [].forEach.call(anchors, function(a) {
-          properties[a.title.replace('Property:', '')] =
-          a.parentNode.parentNode.querySelector('td').textContent;
-        });
-        return properties;
-      };
-
-      var script = iframe.contentWindow.document.createElement('script');
-      script.textContent = scraperFunction.toString();
-      iframe.contentWindow.document.body.appendChild(script);
-
-      var properties = iframe.contentWindow.scraperFunction();
-      debug.log('Caching properties list');
-      localStorage.setItem('f2w_properties', JSON.stringify({
-        timestamp: now,
-        data: properties
-      }));
-      return callback(null, properties);
-    }, false);
-
-    iframe.src = LIST_OF_PROPERTIES_URL;
   }
 
   function getBlacklistedSourceUrls() {
@@ -1794,7 +1758,7 @@ $(document).ready(function() {
           items: [approveButton, rejectButton]
         });
 
-        //Main row
+        // Main row
         widget.$element
           .attr('data-id', widget.statement.id)
           .append(
@@ -1814,7 +1778,7 @@ $(document).ready(function() {
             )
           );
 
-        //Qualifiers
+        // Qualifiers
         for (var i = 3; i < arguments.length; i += 2) {
           widget.$element.append(
             $('<tr>').append(
@@ -1824,23 +1788,21 @@ $(document).ready(function() {
           );
         }
 
-        //Check that the statement don't already exist
+        // Check that the statement don't already exist
         getClaims(widget.statement.subject, widget.statement.predicate,
           function(err, statements) {
             for (var i in statements) {
-              var externalKey = widget.statement.subject + '\t' +
-                                widget.statement.predicate + '\t' +
-                buildValueKeysFromWikidataStatement(statements[i]);
+              buildValueKeysFromWikidataStatement(statements[i]);
               if ($.inArray(
-                  widget.statement.key,
-                  buildValueKeysFromWikidataStatement(statements[i])
+                widget.statement.key,
+                buildValueKeysFromWikidataStatement(statements[i])
               ) !== -1) {
                 widget.toggle(false).setDisabled(true);
                 if (widget.statement.source.length === 0) {
                   setStatementState(widget.statement.id,
-                    STATEMENT_STATES.duplicate).done(function() {
-                      debug.log(widget.statement.id + ' tagged as duplicate');
-                    });
+                      STATEMENT_STATES.duplicate).done(function() {
+                    debug.log(widget.statement.id + ' tagged as duplicate');
+                  });
                 }
               }
             }
@@ -1862,8 +1824,8 @@ $(document).ready(function() {
       ).fail(function(error) {
         return reportError(error);
       }).done(function() {
-        if (statement.source.length > 0) {
-          return; //TODO add support of source review
+        if (this.statement.source.length > 0) {
+          return; // TODO add support of source review
         }
         setStatementState(widget.statement.id, STATEMENT_STATES.approved)
         .done(function() {
@@ -1915,7 +1877,7 @@ $(document).ready(function() {
 
       var widget = this;
 
-      //Selection form
+      // Selection form
       this.datasetInput = new OO.ui.DropdownInputWidget();
       getPossibleDatasets(function(datasets) {
         var options = [{data: '', label: 'All sources'}];
@@ -1937,7 +1899,7 @@ $(document).ready(function() {
 
       var loadButton = new OO.ui.ButtonInputWidget({
         label: 'Load',
-        flags:'progressive',
+        flags: 'progressive',
         type: 'submit'
       });
       loadButton.connect(this, {click: 'onOptionSubmit'});
@@ -1958,7 +1920,7 @@ $(document).ready(function() {
       });
       formPanel.$element.append(fieldset.$element);
 
-      //Main panel
+      // Main panel
       var alertIcon = new OO.ui.IconWidget({
         icon: 'alert'
       });
@@ -2018,7 +1980,8 @@ $(document).ready(function() {
         widget.parameters.offset += widget.parameters.limit;
         widget.displayStatements(statements);
 
-        if (statements.length > 0) { //We may assume that more statements remains
+        // We may assume that more statements remains
+        if (statements.length > 0) {
           widget.nextStatementsButton = new OO.ui.ButtonWidget({
             label: 'Load more statements',
           });
@@ -2041,7 +2004,7 @@ $(document).ready(function() {
     ListDialog.prototype.displayStatements = function(statements) {
       var widget = this;
 
-      if (this.table === null) { //Initialize the table
+      if (this.table === null) { // Initialize the table
         this.initTable();
       }
 
@@ -2054,7 +2017,7 @@ $(document).ready(function() {
                                   qualifier.qualifierObject;
         });
         if (statement.key in widget.alreadyDisplayedStatementKeys) {
-          return; //Don't display twice the same statement
+          return; // Don't display twice the same statement
         }
         widget.alreadyDisplayedStatementKeys[statement.key] = true;
 
