@@ -1040,6 +1040,10 @@ $(document).ready(function() {
   }
 
   function jsonToTsvValue(dataValue, dataType) {
+    if (!dataValue.type) {
+      debug.log('No data value type given');
+      return dataValue.value;
+    }
     switch (dataValue.type) {
     case 'quantity':
       return dataValue.value.amount;
