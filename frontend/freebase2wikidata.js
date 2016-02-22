@@ -473,7 +473,9 @@ $(document).ready(function() {
     if ((mw.config.get('wgPageContentModel') !== 'wikibase-item') ||
         (mw.config.get('wgIsRedirect')) ||
         // Do not run on diff pages
-        (document.location.search.indexOf('&diff=') !== -1)) {
+        (document.location.search.indexOf('&diff=') !== -1) ||
+        // Do not run on history pages
+        (document.location.search.indexOf('&action=history') !== -1)) {
       return;
     }
     qid = getQid();
