@@ -638,9 +638,9 @@ $(document).ready(function() {
     // Handle any qualifiers and/or sources
     var qualifierKeyParts = [];
     var lineLength = line.length;
-    for (i = 3; i < lineLength; i+=2) {
-      if (i == lineLength - 1) {
-        debug.log("Malformed qualifier/source pieces");
+    for (var i = 3; i < lineLength; i += 2) {
+      if (i === lineLength - 1) {
+        debug.log('Malformed qualifier/source pieces');
         break;
       }
       if (/^P\d+$/.exec(line[i])) {
@@ -673,7 +673,7 @@ $(document).ready(function() {
             debug.log('Encountered blacklisted source url ' + url);
             (function(currentId, currentUrl) {
               setStatementState(currentId, STATEMENT_STATES.blacklisted)
-              .done(function() {
+                  .done(function() {
                 debug.log('Automatically blacklisted statement ' +
                     currentId + ' with blacklisted source url ' +
                     currentUrl);
