@@ -635,83 +635,58 @@ $(document).ready(function() {
     var qualifiers = [];
     var source = [];
     var key = object;
-    // If there are qualifiers and/or sources
+    // Handle any qualifiers and/or sources
+    var qualifierKeyParts = [];
     var lineLength = line.length;
-    if (lineLength > 3) {
-      var qualifiersAndOrSources = line.slice(3).join('\t');
-      // Qualifier regular expression
-      var hasQualifiers = /P\d+/.exec(qualifiersAndOrSources);
-      // Source regular expression
-      var hasSources = /S\d+/.exec(qualifiersAndOrSources);
-      var qualifiersString = '';
-      var sourcesString = '';
-      if (hasQualifiers) {
-        qualifiersString = hasSources ?
-            qualifiersAndOrSources.substring(0, hasSources.index) :
-            qualifiersAndOrSources;
-        qualifiersString = qualifiersString.replace(/^\t/, '')
-            .replace(/\t$/, '').split(/\t/);
-        if ((qualifiersString.length % 2) !== 0) {
-          return debug.log('Error: invalid qualifiers: ' +
-              qualifiersString);
-        }
-        var qualifiersStringLen = qualifiersString.length;
-        var qualifierKeyParts = [];
-        for (var i = 0; i < qualifiersStringLen; i = i + 2) {
-          var qualifierKey =
-              qualifiersString[i] + '\t' + qualifiersString[i + 1];
-          qualifiers.push({
-            qualifierProperty: qualifiersString[i],
-            qualifierObject: qualifiersString[i + 1],
-            key: qualifierKey
-          });
-          qualifierKeyParts.push(qualifierKey);
-        }
-        qualifierKeyParts.sort();
-        key += '\t' + qualifierKeyParts.join('\t');
+    for (i = 3; i < lineLength; i+=2) {
+      if (i == lineLength - 1) {
+        debug.log("Malformed qualifier/source pieces");
+        break;
       }
-      if (hasSources) {
-        sourcesString = hasQualifiers ?
-            qualifiersAndOrSources.substring(hasSources.index) :
-            qualifiersAndOrSources;
-        sourcesString = sourcesString.replace(/^\t/, '')
-            .replace(/\t$/, '').split(/\t/);
-        if ((sourcesString.length % 2) !== 0) {
-          return debug.log('Error: invalid sources: ' + sourcesString);
-        }
-        var sourcesStringLen = sourcesString.length;
-        for (var i = 0; i < sourcesStringLen; i = i + 2) {
-          source.push({
-            sourceProperty: sourcesString[i].replace(/^S/, 'P'),
-            sourceObject: sourcesString[i + 1],
-            sourceType: (tsvValueToJson(sourcesString[i + 1])).type,
-            sourceId: id,
-            key: sourcesString[i] + '\t' + sourcesString[i + 1]
-          });
-        }
-        // Filter out blacklisted source URLs
-        source = source.filter(function(source) {
-          if (source.sourceType === 'url') {
-            var url = source.sourceObject.replace(/^"/, '').replace(/"$/, '');
-            var blacklisted = isBlacklisted(url);
-            if (blacklisted) {
-              debug.log('Encountered blacklisted source url ' + url);
-              (function(currentId, currentUrl) {
-                setStatementState(currentId, STATEMENT_STATES.blacklisted)
-                .done(function() {
-                  debug.log('Automatically blacklisted statement ' +
-                      currentId + ' with blacklisted source url ' +
-                      currentUrl);
-                });
-              })(id, url);
-            }
-            // Return the opposite, i.e., the whitelisted URLs
-            return !blacklisted;
-          }
-          return true;
+      if (/^P\d+$/.exec(line[i])) {
+        var qualifierKey = line[i] + '\t' + line[i + 1];
+        qualifiers.push({
+          qualifierProperty: line[i],
+          qualifierObject: line[i + 1],
+          key: qualifierKey
+        });
+        qualifierKeyParts.push(qualifierKey);
+      } else if (/^S\d+$/.exec(line[i])) {
+        source.push({
+          sourceProperty: line[i].replace(/^S/, 'P'),
+          sourceObject: line[i + 1],
+          sourceType: (tsvValueToJson(line[i + 1])).type,
+          sourceId: id,
+          key: line[i] + '\t' + line[i + 1]
         });
       }
+
+      qualifierKeyParts.sort();
+      key += '\t' + qualifierKeyParts.join('\t');
+
+      // Filter out blacklisted source URLs
+      source = source.filter(function(source) {
+        if (source.sourceType === 'url') {
+          var url = source.sourceObject.replace(/^"/, '').replace(/"$/, '');
+          var blacklisted = isBlacklisted(url);
+          if (blacklisted) {
+            debug.log('Encountered blacklisted source url ' + url);
+            (function(currentId, currentUrl) {
+              setStatementState(currentId, STATEMENT_STATES.blacklisted)
+              .done(function() {
+                debug.log('Automatically blacklisted statement ' +
+                    currentId + ' with blacklisted source url ' +
+                    currentUrl);
+              });
+            })(id, url);
+          }
+          // Return the opposite, i.e., the whitelisted URLs
+          return !blacklisted;
+        }
+        return true;
+      });
     }
+
     return {
       id: id,
       subject: subject,
