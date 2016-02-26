@@ -23,7 +23,7 @@ std::string createCacheKey(const std::string& qid, ApprovalState state, const st
     if (dataset == "") {
         return "ALL-" + qid + "-" + stateToString(state);
     } else {
-        return qid + "-" + dataset + "-" + stateToString(state);;
+        return qid + "-" + dataset + "-" + stateToString(state);
     }
 }
 
@@ -139,7 +139,9 @@ void SourcesToolBackend::updateStatement(
         Statement st = p.getStatement(id);
 
         p.updateStatement(id, state);
-        p.addUserlog(user, id, state);
+        if (state != DUPLICATE && state != BLACKLISTED) {
+            p.addUserlog(user, id, state);
+        }
 
         sql.commit();
 
@@ -166,7 +168,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
     std::string qid = p.getRandomQID(state, dataset);
 
     std::vector<Statement> statements;
-    std::string cacheKey = qid + "-" + dataset;
+    std::string cacheKey = createCacheKey(qid, state, dataset);
 
     // look up in cache and only hit backend in case of a cache miss
     if(!cache.fetch_data(cacheKey, statements)) {
