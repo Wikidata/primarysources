@@ -616,6 +616,7 @@ std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t li
 
     cppdb::result res = (
             sql << "SELECT user, count(id) AS activities FROM userlog "
+                   "WHERE state != 5 AND state != 6 "
                    "GROUP BY user ORDER BY activities DESC LIMIT ?"
                 << limit
     );
