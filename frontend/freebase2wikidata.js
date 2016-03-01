@@ -184,18 +184,15 @@ $(document).ready(function() {
           '<!-- wikibase-toolbar -->' +
           '<span class="wikibase-toolbar-container wikibase-edittoolbar-container">' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
-              '[' +
-              '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}">approve claim</a>' +
+              '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-add">' +
+                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>approve claim</a>' +
               '</span>' +
-              ']' +
             '</span>' +
+            ' ' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
-              '[' +
-              '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}">reject claim</a>' +
+              '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-remove">' +
+                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>reject claim</a>' +
               '</span>' +
-              ']' +
             '</span>' +
           '</span>' +
           '<div class="wikibase-statementview-references-container">' +
