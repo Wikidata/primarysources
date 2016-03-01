@@ -103,12 +103,11 @@ $(document).ready(function() {
           '<div class="wikibase-referenceview-heading new-source">' +
             '<div class="wikibase-edittoolbar-container wikibase-toolbar-container">' +
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
-                '[' +
-                '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}">approve reference</a>' +
+                '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-add">' +
+                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>approve reference</a>' +
                 '</span>' +
-                ']' +
               '</span>' +
+              ' ' +
               /* TODO: Broken by the last changes.
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '[' +
@@ -118,11 +117,9 @@ $(document).ready(function() {
                 ']' +
               '</span>' +*/
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
-                '[' +
-                '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-edit">' +
-                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}">reject reference</a>' +
+                '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-remove">' +
+                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>reject reference</a>' +
                 '</span>' +
-                ']' +
               '</span>' +
             '</div>' +
           '</div>' +
