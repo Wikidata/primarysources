@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.4)
-project(freebase_backend)
-set(VERSION_MAJOR 1)
+project(primarysources)
+set(VERSION_MAJOR 2)
 set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
 set(DATABASE sqlite3)
@@ -17,6 +17,9 @@ ADD_DEFINITIONS(
     -DBOOST_LOG_DYN_LINK
 )
 
+find_package (GFlags REQUIRED)
+find_package (Protobuf REQUIRED)
+find_package (GLog REQUIRED)
 find_package (Threads)
 find_package (CPPCMS REQUIRED)
 find_package (CPPDB REQUIRED)
@@ -31,24 +34,30 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-include(GetGitRevisionDescription)
-get_git_head_revision(GIT_REFSPEC GIT_SHA1)
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.cc.in" "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" @ONLY)
+add_subdirectory(model)
+add_subdirectory(parser)
+add_subdirectory(persistence)
+add_subdirectory(serializer)
+add_subdirectory(service)
+add_subdirectory(status)
+add_subdirectory(util)
 
-add_library(persistence STATIC Parser.cc Statement.cc Persistence.cc)
-target_link_libraries(persistence ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIES} ${LIBCPPDB_LIBRARY} ${Boost_LIBRARIES})
+include_directories(. ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/model)
 
-add_library(util STATIC TimeLogger.cc MemStat.cc)
+add_executable(primarysources_inject inject.cc)
+add_executable(primarysources_deduplicate deduplicate.cc)
+add_executable(primarysources_service main.cc Status.cc Dashboard.h Dashboard.cc)
 
-add_executable(inject inject.cc)
-add_executable(deduplicate deduplicate.cc)
-add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" Status.cc Dashboard.h Dashboard.cc)
+target_link_libraries(primarysources_service
+        primarysources_backend primarysources_serializer primarysources_persistence
+        primarysources_status primarysources_util
+        ${DB_LIBS} ${Tcmalloc_LIBRARIES} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY})
+target_link_libraries(primarysources_inject  primarysources_persistence
+        ${DB_LIBS} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY})
+target_link_libraries(primarysources_deduplicate primarysources_persistence
+        ${DB_LIBS} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY})
 
-target_link_libraries(freebase_backend util persistence ${DB_LIBS} ${Tcmalloc_LIBRARIES})
-target_link_libraries(inject  persistence ${DB_LIBS})
-target_link_libraries(deduplicate  persistence ${DB_LIBS})
-
-install(TARGETS inject deduplicate freebase_backend
+install(TARGETS primarysources_inject primarysources_deduplicate primarysources_service
         RUNTIME DESTINATION bin)
 
 add_subdirectory(test)

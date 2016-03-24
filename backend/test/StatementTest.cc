@@ -1,7 +1,10 @@
 // Copyright 2015 Google Inc. All Rights Reserved.
 // Author: Sebastian Schaffert <schaffert@google.com>
 #include "gtest.h"
-#include "Statement.h"
+#include "model/Statement.h"
+
+namespace wikidata {
+namespace primarysources {
 
 TEST(ValueTest, Equality) {
     // entity values
@@ -114,3 +117,6 @@ TEST(StatementTest, Serialize) {
 
     ASSERT_EQ(s1, s2);
 }
+
+}  // namespace primarysources
+}  // namespace wikidata

@@ -8,7 +8,10 @@
 #include <cppdb/frontend.h>
 #include <boost/algorithm/string.hpp>
 
-#include "Persistence.h"
+#include "persistence/Persistence.h"
+
+namespace wikidata {
+namespace primarysources {
 
 class PersistenceTest : public ::testing::Test {
 
@@ -204,7 +207,8 @@ TEST_F(PersistenceTest, AllStatements) {
     sql.commit();
 
     sql.begin();
-    std::vector<Statement> statements = p.getAllStatements(0, 10, ANY, "foo", "P234", std::make_shared<Value>(Value("Q789")));
+    std::unique_ptr<Value> value(new Value("Q789"));
+    std::vector<Statement> statements = p.getAllStatements(0, 10, ANY, "foo", "P234", value.get());
     sql.commit();
 
     ASSERT_EQ(statements.size(), 2);
@@ -312,3 +316,5 @@ TEST_F(PersistenceTest, Activities) {
 
     ASSERT_EQ(stmt2.getActivities().size(), 2);
 }
+}  // namespace primarysources
+}  // namespace wikidata

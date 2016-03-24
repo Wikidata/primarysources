@@ -11,6 +11,9 @@
 #include <cppcms/serialization.h>
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
+namespace wikidata {
+namespace primarysources {
+
 enum ApprovalState {
     // Statement is a new import and has not yet been approved for Wikidata.
     UNAPPROVED,
@@ -494,5 +497,9 @@ private:
 // TODO: define as operator? but it will throw an exception...
 ApprovalState stateFromString(const std::string& state);
 std::string stateToString(ApprovalState state);
+
+
+}  // namespace primarysources
+}  // namespace wikidata
 
 #endif  // HAVE_STATEMENT_H_

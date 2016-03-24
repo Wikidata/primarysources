@@ -4,16 +4,20 @@
 
 #include <sstream>
 
-#include "Statement.h"
-#include "Parser.h"
+#include "model/Statement.h"
+#include "parser/Parser.h"
+
+namespace wikidata {
+namespace primarysources {
+namespace {
 
 // helper method: parse statements from a string and return a vector of
 // statement objects.
-std::vector<Statement> parseString(const std::string& data) {
+std::vector<Statement> parseString(const std::string &data) {
     std::stringstream buf(data);
     std::vector<Statement> result;
 
-    Parser::parseTSV("freebase", 0, buf, [&result](Statement st) {
+    parser::parseTSV("freebase", 0, buf, [&result](Statement st) {
         result.push_back(st);
     });
 
@@ -35,7 +39,7 @@ TEST(ParserTest, ParseString) {
     ASSERT_EQ(result.size(), 1);
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value("Q321",""));
+    ASSERT_EQ(result[0].getValue(), Value("Q321", ""));
 }
 
 TEST(ParserTest, ParseLangString) {
@@ -44,7 +48,7 @@ TEST(ParserTest, ParseLangString) {
     ASSERT_EQ(result.size(), 1);
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value("Q321","en"));
+    ASSERT_EQ(result[0].getValue(), Value("Q321", "en"));
 }
 
 TEST(ParserTest, ParseLocation) {
@@ -53,7 +57,7 @@ TEST(ParserTest, ParseLocation) {
     ASSERT_EQ(result.size(), 1);
     ASSERT_EQ(result[0].getQID(), "Q123");
     ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value(47.11,-10.09));
+    ASSERT_EQ(result[0].getValue(), Value(47.11, -10.09));
 }
 
 TEST(ParserTest, ParseTime) {
@@ -87,10 +91,14 @@ TEST(ParserTest, ParseQuantity) {
 TEST(ParserTest, ParseMulti) {
     std::vector<Statement> result = parseString(
             "Q123\tP123\tQ321\n"
-            "Q123\tP123\tQ322\n"
-            "Q123\tP123\tQ323\n"
-            "Q123\tP123\tQ324\n"
+                    "Q123\tP123\tQ322\n"
+                    "Q123\tP123\tQ323\n"
+                    "Q123\tP123\tQ324\n"
     );
 
     ASSERT_EQ(result.size(), 4);
 }
+
+}  // namespace
+}  // namespace primarysources
+}  // namespace wikidata

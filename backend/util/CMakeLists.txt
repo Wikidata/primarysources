@@ -1,0 +1,1 @@
+add_library(primarysources_util STATIC TimeLogger.cc MemStat.cc)

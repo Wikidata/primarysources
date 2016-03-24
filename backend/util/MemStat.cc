@@ -1,6 +1,6 @@
-//
-// Created by wastl on 24.03.16.
-//
+// Copyright 2016 Google Inc. All Rights Reserved.
+// Author: Sebastian Schaffert <schaffert@google.com>
+
 #include <fstream>
 #include <unistd.h>
 

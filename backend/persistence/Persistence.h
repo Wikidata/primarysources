@@ -7,7 +7,10 @@
 #include <cppdb/frontend.h>
 #include <exception>
 
-#include "Statement.h"
+#include "model/Statement.h"
+
+namespace wikidata {
+namespace primarysources {
 
 std::string build_connection(const cppcms::json::value& config);
 
@@ -88,7 +91,7 @@ class Persistence {
                                             ApprovalState state = ANY,
                                             const std::string& dataset = "",
                                             const std::string& property = "",
-                                            const std::shared_ptr<Value> value = nullptr);
+                                            const Value* value = nullptr);
 
     /**
     * Return a list of count random statements concerned with the topic given
@@ -194,5 +197,8 @@ private:
 
     friend class PersistenceTest_AddGetSnak_Test;
 };
+
+}  // namespace primarysources
+}  // namespace wikidata
 
 #endif  // HAVE_PERSISTENCE_H_

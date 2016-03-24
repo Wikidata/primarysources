@@ -1,4 +1,4 @@
 // Copyright 2015 Google Inc. All Rights Reserved.
 // Author: Sebastian Schaffert <schaffert@google.com>
-#include "Version.h"
+#include "status/Version.h"
 const char GIT_SHA1[] = "@GIT_SHA1@";

@@ -11,9 +11,11 @@
 
 #include <cppcms/json.h>
 
-#include "Statement.h"
+#include "model/Statement.h"
 
-namespace Serializer {
+namespace wikidata {
+namespace primarysources {
+namespace serializer {
 
     /**
     * Add a statement to the Wikidata JSON representation passed as output
@@ -44,5 +46,7 @@ namespace Serializer {
         result.save(*out, cppcms::json::readable);
     }
 
-}  // namespace Serializer
+}  // namespace serializer
+}  // namespace primarysources
+}  // namespace wikidata
 #endif  // HAVE_SERIALIZERJSON_H_
