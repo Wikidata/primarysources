@@ -3,13 +3,11 @@
 
 #include "SourcesToolService.h"
 
-#include <booster/log.h>
 #include <cppcms/service.h>
 #include <cppcms/http_response.h>
 #include <cppcms/http_request.h>
 #include <cppcms/url_dispatcher.h>
 #include <cppcms/url_mapper.h>
-#include <fstream>
 
 #include "SerializerTSV.h"
 #include "SerializerJSON.h"
@@ -17,13 +15,8 @@
 #include "Membuf.h"
 #include "Version.h"
 #include "Parser.h"
-
-#define TIMING(message, begin, end) \
-    BOOSTER_NOTICE("sourcestool") \
-        << request().remote_addr() << ": " \
-        << (message) << " time: " \
-        << 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC) \
-        << "ms" << std::endl;
+#include "TimeLogger.h"
+#include "MemStat.h"
 
 // initialise static counters for status reports
 time_t SourcesToolService::startupTime = std::time(NULL);
@@ -38,28 +31,6 @@ inline std::string formatGMT(time_t* time) {
     char result[128];
     std::strftime(result, 128, "%Y-%m-%dT%H:%M:%SZ", gmtime(time));
     return std::string(result);
-}
-
-// represent memory statistics (used for status)
-struct memstat {
-    double rss, shared_mem, private_mem;
-};
-
-// read memory statistics from /proc (used for status)
-inline memstat getMemStat() {
-    int tSize = 0, resident = 0, share = 0;
-    std::ifstream buffer("/proc/self/statm");
-    buffer >> tSize >> resident >> share;
-    buffer.close();
-
-    struct memstat result;
-
-    long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024; // in case x86-64 is configured to use 2MB pages
-    result.rss = resident * page_size_kb;
-    result.shared_mem = share * page_size_kb;
-    result.private_mem = result.rss - result.shared_mem;
-
-    return result;
 }
 
 // initialise service mappings from URLs to methods
@@ -121,7 +92,7 @@ void SourcesToolService::handleGetPostStatement(std::string stid) {
 }
 
 void SourcesToolService::getEntityByQID(std::string qid) {
-    clock_t begin = std::clock();
+    wikidata::primarysources::TimeLogger timer("GET /entities/" + qid);
 
     try {
         // By default only return unapproved statements.
@@ -146,13 +117,10 @@ void SourcesToolService::getEntityByQID(std::string qid) {
     } catch(InvalidApprovalState const &e) {
         response().status(400, "Bad Request: invalid state parameter");
     }
-
-    clock_t end = std::clock();
-    TIMING("GET /entities/" + qid, begin, end);
 }
 
 void SourcesToolService::getRandomEntity() {
-    clock_t begin = std::clock();
+    wikidata::primarysources::TimeLogger timer("GET /entities/any");
 
     addCORSHeaders();
     addVersionHeaders();
@@ -174,13 +142,10 @@ void SourcesToolService::getRandomEntity() {
     }
 
     reqGetRandomCount++;
-
-    clock_t end = std::clock();
-    TIMING("GET /entities/any", begin, end);
 }
 
 void SourcesToolService::approveStatement(int64_t stid) {
-    clock_t begin = std::clock();
+    wikidata::primarysources::TimeLogger timer("POST /statements/" + std::to_string(stid));
 
     addCORSHeaders();
     addVersionHeaders();
@@ -202,13 +167,10 @@ void SourcesToolService::approveStatement(int64_t stid) {
     }
 
     reqUpdateStatementCount++;
-
-    clock_t end = std::clock();
-    TIMING("POST /statements/" + std::to_string(stid), begin, end);
 }
 
 void SourcesToolService::getStatement(int64_t stid) {
-    clock_t begin = std::clock();
+    wikidata::primarysources::TimeLogger timer("GET /statements/" + std::to_string(stid));
 
     addCORSHeaders();
     addVersionHeaders();
@@ -223,13 +185,10 @@ void SourcesToolService::getStatement(int64_t stid) {
     }
 
     reqGetStatementCount++;
-
-    clock_t end = std::clock();
-    TIMING("GET /statements/" + std::to_string(stid), begin, end);
 }
 
 void SourcesToolService::getRandomStatements() {
-    clock_t begin = std::clock();
+    wikidata::primarysources::TimeLogger timer("GET /statements/any");
 
     addCORSHeaders();
     addVersionHeaders();
@@ -250,13 +209,10 @@ void SourcesToolService::getRandomStatements() {
     } catch(InvalidApprovalState const &e) {
         response().status(400, "Bad Request: invalid state parameter");
     }
-
-    clock_t end = std::clock();
-    TIMING("GET /statements/any", begin, end);
 }
 
 void SourcesToolService::getAllStatements() {
-    clock_t begin = std::clock();
+    wikidata::primarysources::TimeLogger timer("GET /statements/all");
 
     addCORSHeaders();
     addVersionHeaders();
@@ -297,14 +253,11 @@ void SourcesToolService::getAllStatements() {
     } catch(InvalidApprovalState const &e) {
         response().status(400, "Bad Request: invalid or missing state parameter");
     }
-
-    clock_t end = std::clock();
-    TIMING("GET /statements/all", begin, end);
 }
 
 
 void SourcesToolService::getStatus() {
-    clock_t begin = std::clock();
+    wikidata::primarysources::TimeLogger timer("GET /status");
 
     addCORSHeaders();
     addVersionHeaders();
@@ -335,10 +288,10 @@ void SourcesToolService::getStatus() {
     result["system"]["cache_hits"] = backend.getCacheHits();
     result["system"]["cache_misses"] = backend.getCacheMisses();
 
-    struct memstat meminfo = getMemStat();
-    result["system"]["shared_mem"] = meminfo.shared_mem;
-    result["system"]["private_mem"] = meminfo.private_mem;
-    result["system"]["rss"] = meminfo.rss;
+    wikidata::primarysources::MemStat meminfo;
+    result["system"]["shared_mem"] = meminfo.getSharedMem();
+    result["system"]["private_mem"] = meminfo.getPrivateMem();
+    result["system"]["rss"] = meminfo.getRSS();
 
     // request statistics
     result["requests"]["getentity"] = reqGetEntityCount;
@@ -351,9 +304,6 @@ void SourcesToolService::getStatus() {
     result.save(response().out(), cppcms::json::readable);
 
     reqStatusCount++;
-
-    clock_t end = std::clock();
-    TIMING("GET /status", begin, end);
 }
 
 void SourcesToolService::serializeStatements(const std::vector<Statement> &statements) {
@@ -402,25 +352,25 @@ void SourcesToolService::importStatements() {
             dedup = false;
         }
 
-        // wrap raw post data into a memory stream
-        Membuf body(request().raw_post_data());
-        std::istream in(&body);
+        {
+            wikidata::primarysources::TimeLogger timer("POST /import");
 
-        // import statements
-        int64_t count = backend.importStatements(
-                cache(), in, dataset, gzip, dedup);
+            // wrap raw post data into a memory stream
+            Membuf body(request().raw_post_data());
+            std::istream in(&body);
 
-        clock_t end = std::clock();
-
-        cppcms::json::value result;
-        result["count"] = count;
-        result["time"] = 1000 * (static_cast<double>(end - begin) / CLOCKS_PER_SEC);
-        result["dataset"] = dataset;
-
-        response().content_type("application/json");
-        result.save(response().out(), cppcms::json::readable);
-
-        TIMING("POST /import", begin, end);
+            // import statements
+            int64_t count = backend.importStatements(
+                    cache(), in, dataset, gzip, dedup);
+    
+            cppcms::json::value result;
+            result["count"] = count;
+            result["time"] = timer.Elapsed().count();
+            result["dataset"] = dataset;
+    
+            response().content_type("application/json");
+            result.save(response().out(), cppcms::json::readable);
+        }
     } else {
         response().status(405, "Method not allowed");
         response().set_header("Allow", "POST");
@@ -453,7 +403,7 @@ void SourcesToolService::deleteStatements() {
             return;
         }
 
-        clock_t begin = std::clock();
+        wikidata::primarysources::TimeLogger timer("POST /delete");
 
         // check if statement exists and update it with new state
         try {
@@ -463,10 +413,6 @@ void SourcesToolService::deleteStatements() {
         } catch(InvalidApprovalState const &e) {
             response().status(400, "Bad Request: invalid or missing state parameter");
         }
-
-        clock_t end = std::clock();
-
-        TIMING("POST /delete", begin, end);
     } else {
         response().status(405, "Method not allowed");
         response().set_header("Allow", "POST");
@@ -483,7 +429,7 @@ void SourcesToolService::addVersionHeaders() {
 
 
 void SourcesToolService::getActivityLog() {
-    clock_t begin = std::clock();
+    wikidata::primarysources::TimeLogger timer("GET /dashboard/activitylog");
 
     addCORSHeaders();
     addVersionHeaders();
@@ -525,7 +471,4 @@ void SourcesToolService::getActivityLog() {
     result.save(response().out(), cppcms::json::readable);
 
     reqStatusCount++;
-
-    clock_t end = std::clock();
-    TIMING("GET /dashboard/activitylog", begin, end);
 }

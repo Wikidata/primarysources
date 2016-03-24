@@ -38,11 +38,13 @@ configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Version.cc.in" "${CMAKE_CURRENT_BINA
 add_library(persistence STATIC Parser.cc Statement.cc Persistence.cc)
 target_link_libraries(persistence ${CMAKE_THREAD_LIBS_INIT} ${LIBCPPCMS_LIBRARIES} ${LIBCPPDB_LIBRARY} ${Boost_LIBRARIES})
 
+add_library(util STATIC TimeLogger.cc MemStat.cc)
+
 add_executable(inject inject.cc)
 add_executable(deduplicate deduplicate.cc)
 add_executable(freebase_backend main.cc SourcesToolService.cc SourcesToolBackend.cc SerializerTSV.cc SerializerJSON.cc "${CMAKE_CURRENT_BINARY_DIR}/Version.cc" Status.cc Dashboard.h Dashboard.cc)
 
-target_link_libraries(freebase_backend persistence ${DB_LIBS} ${Tcmalloc_LIBRARIES})
+target_link_libraries(freebase_backend util persistence ${DB_LIBS} ${Tcmalloc_LIBRARIES})
 target_link_libraries(inject  persistence ${DB_LIBS})
 target_link_libraries(deduplicate  persistence ${DB_LIBS})
 

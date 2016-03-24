@@ -9,7 +9,6 @@
 #include "Dashboard.h"
 
 #include <vector>
-#include <map>
 #include <string>
 
 #include <cppcms/cache_interface.h>

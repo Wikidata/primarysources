@@ -9,20 +9,13 @@
 
 #include <cppcms/serialization.h>
 
+// Simple container class representing the current status of the backend.
 class Status : public cppcms::serializable {
-private:
-    // current numbers of statements (total, and different states) in the
-    // database
-    int64_t statements, approved, unapproved, duplicate, blacklisted, wrong;
-
-    // top users with count of statements processed
-    std::vector<std::pair<std::string,int64_t>> topUsers;
-
-public:
+ public:
 
     Status() { }
 
-
+    // Get number of current statements.
     int64_t getStatements() const {
         return statements;
     }
@@ -31,6 +24,7 @@ public:
         Status::statements = statements;
     }
 
+    // Get number of approved statements.
     int64_t getApproved() const {
         return approved;
     }
@@ -39,6 +33,7 @@ public:
         Status::approved = approved;
     }
 
+    // Get number of unapproved statements.
     int64_t getUnapproved() const {
         return unapproved;
     }
@@ -47,6 +42,7 @@ public:
         Status::unapproved = unapproved;
     }
 
+    // Get number of wrong statements.
     int64_t getWrong() const {
         return wrong;
     }
@@ -55,6 +51,7 @@ public:
         Status::wrong = wrong;
     }
 
+    // Get number of duplicate statements.
     int64_t getDuplicate() const {
         return duplicate;
     }
@@ -63,6 +60,7 @@ public:
         Status::duplicate = duplicate;
     }
 
+    // Get number of blacklisted statements.
     int64_t getBlacklisted() const {
         return blacklisted;
     }
@@ -71,6 +69,7 @@ public:
         Status::blacklisted = blacklisted;
     }
 
+    // Get a vector of the top users.
     std::vector<std::pair<std::string, int64_t>> const &getTopUsers() const {
         return topUsers;
     }
@@ -80,6 +79,14 @@ public:
     }
 
     void serialize(cppcms::archive &a) override;
+
+ private:
+    // current numbers of statements (total, and different states) in the
+    // database
+    int64_t statements, approved, unapproved, duplicate, blacklisted, wrong;
+
+    // top users with count of statements processed
+    std::vector<std::pair<std::string,int64_t>> topUsers;
 };
 
 
