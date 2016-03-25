@@ -8,7 +8,9 @@ set(DATABASE sqlite3)
 enable_testing()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/modules/")
-include_directories("${CMAKE_INSTALL_PREFIX}/include" "${CMAKE_SOURCE_DIR}")
+include_directories(
+        ${CMAKE_INSTALL_PREFIX}/include ${CMAKE_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/model)
 
 ADD_DEFINITIONS(
     -std=c++11 # Or -std=c++0x
@@ -42,7 +44,7 @@ add_subdirectory(service)
 add_subdirectory(status)
 add_subdirectory(util)
 
-include_directories(. ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/model)
+include_directories()
 
 add_executable(primarysources_inject inject.cc)
 add_executable(primarysources_deduplicate deduplicate.cc)
