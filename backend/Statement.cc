@@ -6,13 +6,13 @@
 std::string Time::toWikidataString() const {
     std::ostringstream out;
     out << std::setfill('0')
-        << "+" << std::setw(4) << year
-        << "-" << std::setw(2) << month
-        << "-" << std::setw(2) << day
-        << "T" << std::setw(2) << hour
-        << ":" << std::setw(2) << minute
-        << ":" << std::setw(2) << second
-        << "Z/" << precision;
+        << "+" << std::setw(4) << (int)year
+        << "-" << std::setw(2) << (int)month
+        << "-" << std::setw(2) << (int)day
+        << "T" << std::setw(2) << (int)hour
+        << ":" << std::setw(2) << (int)minute
+        << ":" << std::setw(2) << (int)second
+        << "Z/" << (int)precision;
 
     return out.str();
 }

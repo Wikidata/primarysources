@@ -46,6 +46,22 @@ TEST(ValueTest, Equality) {
     ASSERT_NE(t1, t4);
 }
 
+TEST(TimeTest, toWikidataString) {
+    Time t1(1917, 01, 01);
+    Time t2(1917);
+
+    ASSERT_EQ(t1.toWikidataString(), "+1817-01-01T00:00:00Z/11");
+    ASSERT_EQ(t1.toWikidataString(), "+1817-00-00T00:00:00Z/9");
+}
+
+TEST(TimeTest, toSQLString) {
+    Time t1(1917, 01, 01);
+    Time t2(1917);
+
+    ASSERT_EQ(t1.toSQLString(), "1817-1-1 0:0:0");
+    ASSERT_EQ(t1.toSQLString(), "1817-0-0 0:0:0");
+}
+
 TEST(ValueTest, getQuantityAsString) {
     Value q1(Quantity("100000000000000000000")), q2(Quantity("-0.000001"));
 
