@@ -264,7 +264,15 @@ void SourcesToolService::getStatus() {
 
     cppcms::json::value result;
 
-    Status status = backend.getStatus(cache());
+    std::string dataset = request().get("dataset");
+    Status status = backend.getStatus(cache(), dataset);
+
+    // show dataset-specific statements count, defaulting to all datasets
+    if (dataset != "") {
+        result["dataset"] = dataset;
+    } else {
+        result["dataset"] = "all";
+    }
 
     result["statements"]["total"] = status.getStatements();
     result["statements"]["approved"] = status.getApproved();
@@ -272,6 +280,7 @@ void SourcesToolService::getStatus() {
     result["statements"]["blacklisted"] = status.getBlacklisted();
     result["statements"]["duplicate"] = status.getDuplicate();
     result["statements"]["wrong"] = status.getWrong();
+
 
     cppcms::json::array topusers;
     for (auto entry : status.getTopUsers()) {
