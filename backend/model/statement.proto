@@ -1,0 +1,148 @@
+// Copyright 2016 Google Inc. All Rights Reserved.
+// Author: Sebastian Schaffert <schaffert@google.com>
+
+syntax = "proto3";
+
+package wikidata.primarysources.model;
+
+import "google/protobuf/wrappers.proto";
+
+enum ApprovalState {
+    // Statement is a new import and has not yet been approved for Wikidata.
+    UNAPPROVED = 0;
+
+    // Statement has already been approved for Wikidata.
+    APPROVED = 1;
+
+    // TODO: unused.
+    OTHERSOURCE = 2;
+
+    // Statement is wrong (e.g. wrong source, wrong fact).
+    WRONG = 3;
+
+    // TODO: unused.
+    SKIPPED = 4;
+
+    // Statement already exists in the database.
+    DUPLICATE = 5;
+
+    // Statement has been blacklisted (e.g. because it comes from an
+    // untrustworthy source).
+    BLACKLISTED = 6;
+
+    // Special state only used for querying purposes.
+    ANY = 7;
+}
+
+// A Wikidata location value.
+message Location {
+    double latitude = 1;
+    double longitude = 2;
+}
+
+// A Wikidata time value with precision.
+message Time {
+    // Year. Arbitrary integer.
+    int32 year = 1;
+
+    // Month, between 1 and 12 (0: unspecified).
+    int32 month = 2;
+
+    // Day, between 1 and 31 (0: unspecified).
+    int32 day = 3;
+
+    // Hour, between 0 and 23.
+    int32 hour = 4;
+
+    // Minute, between 0 and 59.
+    int32 minute = 5;
+
+    // Second, between 0 and 59.
+    int32 second = 6;
+
+    // Wikidata time precision, a number indicating how precise a time value is.
+    // 9: year only
+    // 10: year/month
+    // ...
+    // 14: year/month/day hour:minute:second
+    int32 precision = 7;
+}
+
+// A value representing a Wikidata decimal quantity.
+message Quantity {
+    // Wikidata uses Decimal representation for values, we just represent them
+    // in a string.
+    string decimal = 1;
+}
+
+// A value representing another entity.
+message Entity {
+    // Wikidata identifier of the other entity, e.q. Q123.
+    string qid = 1;
+}
+
+// A value representing a string literal (with optional language).
+message Literal {
+    // Arbitrary string content.
+    string content = 1;
+
+    // ISO language code.
+    string language = 2;
+}
+
+// A Wikidata value is either an entity, a string literal, a quantity, a
+// location, or a time value.
+message Value {
+    oneof Values {
+        Entity   entity   = 1;
+        Literal  literal  = 2;
+        Quantity quantity = 3;
+        Location location = 4;
+        Time     time     = 5;
+    }
+}
+
+// A PropertyValue is a relating a value with an entity using a property ID.
+// PropertyValues can occur in a statement as main snak, as qualifiers, and as
+// sources.
+message PropertyValue {
+    // A property identifier, e.g. P123
+    string property = 1;
+    Value  value    = 2;
+}
+
+// Represents state changes of a statement by given users.
+message LogEntry {
+    // Name of the user who did the state change.
+    string user = 1;
+
+    // New state defined by the user.
+    ApprovalState state = 2;
+
+    // Wikidata time when the change was performed.
+    Time time = 3;
+}
+
+message Statement {
+    // Database identifier.
+    int64 id = 1;
+
+    // Entity identifier of the subject, e.g. Q123.
+    string qid = 2;
+
+    // Main property/value pair.
+    PropertyValue main_snak = 3;
+
+    // Qualifiers and sources
+    repeated PropertyValue qualifiers = 4;
+    repeated PropertyValue sources    = 5;
+
+    // A string identifying the dataset the statement belongs to.
+    string dataset = 6;
+
+    // Current state of the statement.
+    ApprovalState approved = 7;
+
+    // State change log, filled from database.
+    repeated LogEntry activities = 8;
+}

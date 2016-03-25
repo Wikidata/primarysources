@@ -9,9 +9,11 @@
 #include <iomanip>
 #include <cppcms/json.h>
 
-#include "Statement.h"
+#include "model/Statement.h"
 
-namespace Serializer {
+namespace wikidata {
+namespace primarysources {
+namespace serializer {
 
     void writeStatementTSV(const Statement& stmt, std::ostream* out);
 
@@ -55,6 +57,7 @@ namespace Serializer {
         result.save(*out, cppcms::json::readable);
     }
 
-
-}  // namespace Serializer
+}  // namespace serializer
+}  // namespace primarysources
+}  // namespace wikidata
 #endif  // HAVE_SERIALIZER_TSV_H_

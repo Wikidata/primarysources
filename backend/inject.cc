@@ -14,8 +14,11 @@
 #include <cppcms/json.h>
 #include <chrono>
 
-#include "Parser.h"
-#include "Persistence.h"
+#include "parser/Parser.h"
+#include "persistence/Persistence.h"
+
+using wikidata::primarysources::Statement;
+using wikidata::primarysources::parser::parseTSV;
 
 void usage(char *cmd) {
     std::cout << "Usage: " << cmd << " [-z] -c config.json -i datafile -d dataset" << std::endl;
@@ -82,20 +85,21 @@ int main(int argc, char **argv) {
 
         clock_t begin = std::clock();
 
-        cppdb::session sql(build_connection(config["database"]));
+        cppdb::session sql(
+                wikidata::primarysources::build_connection(config["database"]));
 
         sql.begin();
-        Persistence p(sql, true);
+        wikidata::primarysources::Persistence p(sql, true);
 
         // get timestamp and use it as upload id
         int64_t upload = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()).count();
 
         int64_t count = 0;
-        Parser::parseTSV(dataset, upload, in, [&sql, &p, &count](Statement st) {
+        parseTSV(dataset, upload, in, [&sql, &p, &count](Statement st) {
             try {
                 p.addStatement(st);
-            } catch (PersistenceException& e) {
+            } catch (wikidata::primarysources::PersistenceException& e) {
                 std::cerr << "Skipping statement because of error: " << e.what() << std::endl;
             }
             count++;

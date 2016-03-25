@@ -10,7 +10,11 @@
 #include <boost/tokenizer.hpp>
 #include <boost/regex.hpp>
 
-Value Parser::parseValue(const std::string& value) {
+namespace wikidata {
+namespace primarysources {
+namespace parser {
+
+Value parseValue(const std::string& value) {
     // regular expressions for the different value formats
 
     // QID of entities, properties, sources
@@ -47,10 +51,10 @@ Value Parser::parseValue(const std::string& value) {
 }
 
 PropertyValue parsePropertyValue(const std::string& property, const std::string& value) {
-    return PropertyValue(property, Parser::parseValue(value));
+    return PropertyValue(property, parseValue(value));
 }
 
-void Parser::parseTSV(const std::string& dataset, int64_t upload,
+void parseTSV(const std::string& dataset, int64_t upload,
                       std::istream &in, std::function<void(Statement)> handler) {
     typedef boost::tokenizer< boost::char_separator<char> > Tokenizer;
     boost::char_separator<char> sep("\t");
@@ -78,3 +82,6 @@ void Parser::parseTSV(const std::string& dataset, int64_t upload,
                           qualifiers, sources, dataset, upload, UNAPPROVED));
     }
 }
+}  // namespace parser
+}  // namespace primarysources
+}  // namespace wikidata

@@ -8,30 +8,19 @@
 #include <cppcms/http_request.h>
 #include <cppcms/url_dispatcher.h>
 #include <cppcms/url_mapper.h>
+#include <status/SystemStatus.h>
+#include <model/status.pb.h>
 
-#include "SerializerTSV.h"
-#include "SerializerJSON.h"
-#include "Persistence.h"
-#include "Membuf.h"
-#include "Version.h"
-#include "Parser.h"
-#include "TimeLogger.h"
-#include "MemStat.h"
+#include "serializer/SerializerTSV.h"
+#include "serializer/SerializerJSON.h"
+#include "persistence/Persistence.h"
+#include "util/Membuf.h"
+#include "parser/Parser.h"
+#include "util/TimeLogger.h"
+#include "util/MemStat.h"
 
-// initialise static counters for status reports
-time_t SourcesToolService::startupTime = std::time(NULL);
-int64_t SourcesToolService::reqGetEntityCount = 0;
-int64_t SourcesToolService::reqGetRandomCount = 0;
-int64_t SourcesToolService::reqGetStatementCount = 0;
-int64_t SourcesToolService::reqUpdateStatementCount = 0;
-int64_t SourcesToolService::reqStatusCount = 0;
-
-// format a time_t using ISO8601 GMT time
-inline std::string formatGMT(time_t* time) {
-    char result[128];
-    std::strftime(result, 128, "%Y-%m-%dT%H:%M:%SZ", gmtime(time));
-    return std::string(result);
-}
+namespace wikidata {
+namespace primarysources {
 
 // initialise service mappings from URLs to methods
 SourcesToolService::SourcesToolService(cppcms::service &srv)
@@ -92,7 +81,7 @@ void SourcesToolService::handleGetPostStatement(std::string stid) {
 }
 
 void SourcesToolService::getEntityByQID(std::string qid) {
-    wikidata::primarysources::TimeLogger timer("GET /entities/" + qid);
+    TimeLogger timer("GET /entities/" + qid);
 
     try {
         // By default only return unapproved statements.
@@ -113,14 +102,14 @@ void SourcesToolService::getEntityByQID(std::string qid) {
             response().status(404, "no statements found for entity " + qid);
         }
 
-        reqGetEntityCount++;
+        status::AddGetEntityRequest();
     } catch(InvalidApprovalState const &e) {
         response().status(400, "Bad Request: invalid state parameter");
     }
 }
 
 void SourcesToolService::getRandomEntity() {
-    wikidata::primarysources::TimeLogger timer("GET /entities/any");
+    TimeLogger timer("GET /entities/any");
 
     addCORSHeaders();
     addVersionHeaders();
@@ -141,11 +130,11 @@ void SourcesToolService::getRandomEntity() {
         response().status(404, "no random unapproved entity found");
     }
 
-    reqGetRandomCount++;
+    status::AddGetRandomRequest();
 }
 
 void SourcesToolService::approveStatement(int64_t stid) {
-    wikidata::primarysources::TimeLogger timer("POST /statements/" + std::to_string(stid));
+    TimeLogger timer("POST /statements/" + std::to_string(stid));
 
     addCORSHeaders();
     addVersionHeaders();
@@ -166,11 +155,11 @@ void SourcesToolService::approveStatement(int64_t stid) {
         response().status(400, "Bad Request: invalid or missing state parameter");
     }
 
-    reqUpdateStatementCount++;
+    status::AddUpdateStatementRequest();
 }
 
 void SourcesToolService::getStatement(int64_t stid) {
-    wikidata::primarysources::TimeLogger timer("GET /statements/" + std::to_string(stid));
+    TimeLogger timer("GET /statements/" + std::to_string(stid));
 
     addCORSHeaders();
     addVersionHeaders();
@@ -184,11 +173,11 @@ void SourcesToolService::getStatement(int64_t stid) {
         response().status(404, "Statement not found");
     }
 
-    reqGetStatementCount++;
+    status::AddGetStatementRequest();
 }
 
 void SourcesToolService::getRandomStatements() {
-    wikidata::primarysources::TimeLogger timer("GET /statements/any");
+    TimeLogger timer("GET /statements/any");
 
     addCORSHeaders();
     addVersionHeaders();
@@ -212,7 +201,7 @@ void SourcesToolService::getRandomStatements() {
 }
 
 void SourcesToolService::getAllStatements() {
-    wikidata::primarysources::TimeLogger timer("GET /statements/all");
+    TimeLogger timer("GET /statements/all");
 
     addCORSHeaders();
     addVersionHeaders();
@@ -234,9 +223,10 @@ void SourcesToolService::getAllStatements() {
             state = stateFromString(request().get("state"));
         }
 
-        std::shared_ptr<Value> value;
+        std::unique_ptr<Value> value;
         if (request().get("value") != "") {
-            value = std::make_shared<Value>(Parser::parseValue(request().get("value")));
+            value = std::unique_ptr<Value>(
+                    new Value(parser::parseValue(request().get("value"))));
         }
 
         std::vector<Statement> statements =
@@ -244,7 +234,7 @@ void SourcesToolService::getAllStatements() {
                                          state,
                                          request().get("dataset"),
                                          request().get("property"),
-                                         value);
+                                         value.get());
         if (statements.size() > 0) {
             serializeStatements(statements);
         } else {
@@ -292,27 +282,27 @@ void SourcesToolService::getStatus() {
     result["topusers"] = topusers;
 
     // system information
-    result["system"]["startup"] = formatGMT(&SourcesToolService::startupTime);
-    result["system"]["version"] = std::string(GIT_SHA1);
-    result["system"]["cache_hits"] = backend.getCacheHits();
-    result["system"]["cache_misses"] = backend.getCacheMisses();
+    model::Status statusng = status::Status();
 
-    wikidata::primarysources::MemStat meminfo;
-    result["system"]["shared_mem"] = meminfo.getSharedMem();
-    result["system"]["private_mem"] = meminfo.getPrivateMem();
-    result["system"]["rss"] = meminfo.getRSS();
+    result["system"]["startup"] = statusng.system().startup();
+    result["system"]["version"] = statusng.system().version();
+    result["system"]["cache_hits"] = statusng.system().cache_hits();
+    result["system"]["cache_misses"] = statusng.system().cache_misses();
+    result["system"]["shared_mem"] = statusng.system().shared_memory();
+    result["system"]["private_mem"] = statusng.system().private_memory();
+    result["system"]["rss"] = statusng.system().resident_set_size();
 
     // request statistics
-    result["requests"]["getentity"] = reqGetEntityCount;
-    result["requests"]["getrandom"] = reqGetRandomCount;
-    result["requests"]["getstatement"] = reqGetStatementCount;
-    result["requests"]["updatestatement"] = reqUpdateStatementCount;
-    result["requests"]["getstatus"] = reqStatusCount;
+    result["requests"]["getentity"] = statusng.requests().get_entity();
+    result["requests"]["getrandom"] = statusng.requests().get_random();
+    result["requests"]["getstatement"] = statusng.requests().get_statement();
+    result["requests"]["updatestatement"] = statusng.requests().update_statement();
+    result["requests"]["getstatus"] = statusng.requests().get_status();
 
     response().content_type("application/json");
     result.save(response().out(), cppcms::json::readable);
 
-    reqStatusCount++;
+    status::AddGetStatusRequest();
 }
 
 void SourcesToolService::serializeStatements(const std::vector<Statement> &statements) {
@@ -320,15 +310,15 @@ void SourcesToolService::serializeStatements(const std::vector<Statement> &state
             || request().http_accept() == "text/tsv") {
         response().content_type("text/vnd.wikidata+tsv");
 
-        Serializer::writeTSV(statements.cbegin(), statements.cend(), &response().out());
+        serializer::writeTSV(statements.cbegin(), statements.cend(), &response().out());
     } else if(request().http_accept() == "application/vnd.wikidata+json") {
         response().content_type("application/vnd.wikidata+json");
 
-        Serializer::writeWikidataJSON(statements.cbegin(), statements.cend(), &response().out());
+        serializer::writeWikidataJSON(statements.cbegin(), statements.cend(), &response().out());
     } else {
         response().content_type("application/vnd.wikidata.envelope+json");
 
-        Serializer::writeEnvelopeJSON(statements.cbegin(), statements.cend(), &response().out());
+        serializer::writeEnvelopeJSON(statements.cbegin(), statements.cend(), &response().out());
     }
 }
 
@@ -336,8 +326,6 @@ void SourcesToolService::importStatements() {
     addVersionHeaders();
 
     if (request().request_method() == "POST") {
-        clock_t begin = std::clock();
-
         // check if token matches
         if (request().get("token") != settings()["token"].str()) {
             response().status(401, "Invalid authorization token");
@@ -412,7 +400,7 @@ void SourcesToolService::deleteStatements() {
             return;
         }
 
-        wikidata::primarysources::TimeLogger timer("POST /delete");
+        TimeLogger timer("POST /delete");
 
         // check if statement exists and update it with new state
         try {
@@ -433,7 +421,8 @@ void SourcesToolService::addCORSHeaders() {
 }
 
 void SourcesToolService::addVersionHeaders() {
-    response().set_header("X-Powered-By", std::string("Wikidata Sources Tool/") + GIT_SHA1);
+    response().set_header("X-Powered-By",
+                          std::string("Wikidata Sources Tool/") + status::Version());
 }
 
 
@@ -479,5 +468,8 @@ void SourcesToolService::getActivityLog() {
     response().content_type("application/json");
     result.save(response().out(), cppcms::json::readable);
 
-    reqStatusCount++;
+    status::AddGetStatusRequest();
 }
+
+}  // namespace primarysources
+}  // namespace wikidata

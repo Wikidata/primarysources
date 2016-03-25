@@ -4,7 +4,7 @@
 #ifndef HAVE_SOURCESTOOL_BACKEND_H_
 #define HAVE_SOURCESTOOL_BACKEND_H_
 
-#include "Statement.h"
+#include "model/Statement.h"
 #include "Status.h"
 #include "Dashboard.h"
 
@@ -14,6 +14,9 @@
 #include <cppcms/cache_interface.h>
 #include <cppcms/json.h>
 #include <cppdb/frontend.h>
+
+namespace wikidata {
+namespace primarysources {
 
 /**
 * Database backend for accessing statements and entities. Manages the
@@ -60,7 +63,7 @@ public:
                                             ApprovalState state = UNAPPROVED,
                                             const std::string& dataset = "",
                                             const std::string& property = "",
-                                            const std::shared_ptr<Value> value = nullptr);
+                                            const Value* value = nullptr);
 
     /**
     * Update the approval state of the statement with the given ID.
@@ -90,22 +93,6 @@ public:
     Status getStatus(cache_t& cache, const std::string& dataset);
 
     /**
-     * Return cache hit count, i.e. number of times an entity or status could
-     * be looked up in the cache instead of hitting the database
-     */
-    int64_t getCacheHits() const {
-        return cacheHits;
-    }
-
-    /**
-     * Return cache miss count, i.e. number of times an entity or status could
-     * NOT be looked up in the cache and was hitting the database
-     */
-    int64_t getCacheMisses() const {
-        return cacheMisses;
-    }
-
-    /**
      * Returns the list of all datasets
      */
     std::vector<std::string> getDatasets(cache_t& cache);
@@ -120,9 +107,9 @@ private:
     // CppDB uses a connection pool internally, so we just remember the
     // connection string
     std::string connstr;
-
-    static int64_t cacheHits, cacheMisses;
 };
 
 
+}  // namespace primarysources
+}  // namespace wikidata
 #endif // HAVE_SOURCESTOOL_BACKEND_H_

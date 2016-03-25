@@ -12,8 +12,8 @@
 #include <cppdb/frontend.h>
 #include <cppcms/json.h>
 
-#include "Parser.h"
-#include "Persistence.h"
+#include "parser/Parser.h"
+#include "persistence/Persistence.h"
 
 
 void usage(char *cmd) {
@@ -59,12 +59,13 @@ int main(int argc, char **argv) {
 
         std::cout << "DEDUPLICATE: open database connection" << std::endl;
 
-        cppdb::session sql(build_connection(config["database"]));
+        cppdb::session sql(
+                wikidata::primarysources::build_connection(config["database"]));
 
         std::cout << "DEDUPLICATE: starting deduplication" << std::endl;
 
         sql.begin();
-        Persistence p(sql, true);
+        wikidata::primarysources::Persistence p(sql, true);
         p.markDuplicates(start_id);
         sql.commit();
 

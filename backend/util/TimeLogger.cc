@@ -1,8 +1,7 @@
-//
-// Created by wastl on 13.02.16.
-//
+// Copyright 2016 Google Inc. All Rights Reserved.
+// Author: Sebastian Schaffert <schaffert@google.com>
 
-#include <booster/log.h>
+#include <glog/logging.h>
 #include <iostream>
 #include "TimeLogger.h"
 
@@ -14,7 +13,7 @@ TimeLogger::TimeLogger(const std::string &message)
         , message_(message) { }
 
 TimeLogger::~TimeLogger() {
-    BOOSTER_NOTICE("sourcestool")
+    LOG(INFO)
         << message_ << " time: "
         << std::chrono::duration <double, std::milli> (
             std::chrono::steady_clock::now() - start_).count()

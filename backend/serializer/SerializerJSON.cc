@@ -3,7 +3,9 @@
 
 #include "SerializerJSON.h"
 
-namespace Serializer {
+namespace wikidata {
+namespace primarysources {
+namespace serializer {
 
 /**
 * Create a Wikidata JSON 'snak', representing a property/value pair with
@@ -130,4 +132,6 @@ void writeStatementWikidataJSON(
     (*entities)[qid]["claims"][prop] = entity;
 }
 
-}  // namespace Serializer
+}  // namespace serializer
+}  // namespace primarysources
+}  // namespace wikidata

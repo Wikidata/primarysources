@@ -7,27 +7,16 @@
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <chrono>
+#include <status/SystemStatus.h>
 
-#include "Parser.h"
+#include "parser/Parser.h"
 
-#include "Persistence.h"
+#include "persistence/Persistence.h"
 
-int64_t SourcesToolBackend::cacheHits = 0;
-int64_t SourcesToolBackend::cacheMisses = 0;
-
-// Create cache key for an entity and dataset; the cache key is used to cache
-// all statements of the given dataset having the entity as subject. If dataset
-// is "", the cache key refers to all statements and the dataset name "all" will
-// be used.
-std::string createCacheKey(const std::string& qid, ApprovalState state, const std::string& dataset) {
-    if (dataset == "") {
-        return "ALL-" + qid + "-" + stateToString(state);
-    } else {
-        return qid + "-" + dataset + "-" + stateToString(state);
-    }
-}
 
 namespace cppcms {
+    using ::wikidata::primarysources::Statement;
+
     template<>
     struct serialization_traits<std::vector<Statement>> {
         ///
@@ -71,7 +60,24 @@ namespace cppcms {
                 serialized_object = a.str();
             }
         };
-} /* cppcms */
+}  // namespace cppcms
+
+
+namespace wikidata {
+namespace primarysources {
+namespace {
+// Create cache key for an entity and dataset; the cache key is used to cache
+// all statements of the given dataset having the entity as subject. If dataset
+// is "", the cache key refers to all statements and the dataset name "all" will
+// be used.
+std::string createCacheKey(const std::string &qid, ApprovalState state, const std::string &dataset) {
+    if (dataset == "") {
+        return "ALL-" + qid + "-" + stateToString(state);
+    } else {
+        return qid + "-" + dataset + "-" + stateToString(state);
+    }
+}
+}  // namespace
 
 SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config) {
     connstr = build_connection(config);
@@ -92,9 +98,9 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
         statements = p.getStatementsByQID(qid, state, dataset);
         cache.store_data(cacheKey, statements, 3600);
 
-        cacheMisses++;
+        wikidata::primarysources::status::AddCacheMiss();
     } else {
-        cacheHits++;
+        wikidata::primarysources::status::AddCacheHit();
     }
 
     return statements;
@@ -113,7 +119,7 @@ std::vector<Statement> SourcesToolBackend::getAllStatements(
         ApprovalState state,
         const std::string& dataset,
         const std::string& property,
-        const std::shared_ptr<Value> value) {
+        const Value* value) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
@@ -178,9 +184,9 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
         statements = p.getStatementsByQID(qid, state, dataset);
         cache.store_data(cacheKey, statements, 3600);
 
-        cacheMisses++;
+        wikidata::primarysources::status::AddCacheMiss();
     } else {
-        cacheHits++;
+        wikidata::primarysources::status::AddCacheHit();
     }
 
     return statements;
@@ -206,7 +212,7 @@ int64_t SourcesToolBackend::importStatements(cache_t& cache, std::istream &_in,
             std::chrono::system_clock::now().time_since_epoch()).count();
 
     int64_t count = 0, first_id = -1, current_id;
-    Parser::parseTSV(dataset, upload, in, [&sql, &p, &count, &first_id, &current_id](Statement st)  {
+    parser::parseTSV(dataset, upload, in, [&sql, &p, &count, &first_id, &current_id](Statement st)  {
         current_id = p.addStatement(st);
 
         // remember the ID of the first statement we add for deduplication
@@ -267,9 +273,9 @@ Status SourcesToolBackend::getStatus(cache_t& cache, const std::string& dataset)
 
         cache.store_data(cacheKey, result, 3600);
 
-        cacheMisses++;
+        wikidata::primarysources::status::AddCacheMiss();
     } else {
-        cacheHits++;
+        wikidata::primarysources::status::AddCacheHit();
     }
     return result;
 }
@@ -286,9 +292,9 @@ Dashboard::ActivityLog SourcesToolBackend::getActivityLog(cache_t& cache) {
 
         cache.store_data("ACTIVITIES", result, 3600);
 
-        cacheMisses++;
+        wikidata::primarysources::status::AddCacheMiss();
     } else {
-        cacheHits++;
+        wikidata::primarysources::status::AddCacheHit();
     }
 
     return result;
@@ -306,10 +312,15 @@ std::vector<std::string> SourcesToolBackend::getDatasets(cache_t& cache) {
         datasets = p.getDatasets();
         cache.store_data("datasets", datasets, 3600);
 
-        cacheMisses++;
+        wikidata::primarysources::status::AddCacheMiss();
     } else {
-        cacheHits++;
+        wikidata::primarysources::status::AddCacheHit();
     }
 
     return datasets;
 }
+
+
+}  // namespace primarysources
+}  // namespace wikidata
+

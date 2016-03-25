@@ -6,9 +6,11 @@
 
 #include <iostream>
 
-#include "Statement.h"
+#include "model/Statement.h"
 
-namespace Parser {
+namespace wikidata {
+namespace primarysources {
+namespace parser {
 
     /**
     * Parse the tab-separated value format for Wikidata statements described
@@ -26,6 +28,7 @@ namespace Parser {
     */
     Value parseValue(const std::string& value);
 
-}  // namespace Parser
-
+}  // namespace parser
+}  // namespace primarysources
+}  // namespace wikidata
 #endif  // HAVE_PARSER_H_

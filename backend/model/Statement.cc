@@ -3,6 +3,9 @@
 
 #include "Statement.h"
 
+namespace wikidata {
+namespace primarysources {
+
 std::string Time::toWikidataString() const {
     std::ostringstream out;
     out << std::setfill('0')
@@ -154,3 +157,6 @@ bool operator==(const Statement& lhs, const Statement& rhs) {
     return true;
 }
 
+
+}  // namespace primarysources
+}  // namespace wikidata

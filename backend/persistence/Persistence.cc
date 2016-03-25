@@ -3,12 +3,17 @@
 
 #include <sys/types.h>
 #include "Persistence.h"
-#include "Statement.h"
+#include "model/Statement.h"
+
+namespace wikidata {
+namespace primarysources {
+
+namespace {
 
 std::string build_mysql_connection(
-        const std::string& db_name,
-        const std::string& db_host, const std::string& db_port,
-        const std::string& db_user, const std::string& db_pass
+        const std::string &db_name,
+        const std::string &db_host, const std::string &db_port,
+        const std::string &db_user, const std::string &db_pass
 ) {
     std::ostringstream out;
     out << "mysql:database=" << db_name;
@@ -27,53 +32,55 @@ std::string build_mysql_connection(
     return out.str();
 }
 
-std::string build_sqlite_connection(const std::string& db_name) {
+std::string build_sqlite_connection(const std::string &db_name) {
     std::ostringstream out;
     out << "sqlite3:db=" << db_name;
     return out.str();
 }
 
-std::string build_connection(const cppcms::json::value& config) {
-    std::string driver = config["driver"].str();
-
-    if (driver == "mysql" ) {
-        return build_mysql_connection(config["name"].str(),
-               config["host"].str(), config["port"].str(),
-               config["user"].str(), config["password"].str());
-    } else if (driver == "sqlite3") {
-        return build_sqlite_connection(config["name"].str());
-    } else {
-        throw PersistenceException("Unknown driver:" + driver);
-    }
-}
-
 inline ApprovalState getApprovalState(int16_t state) {
     switch (state) {
-        case 0: return UNAPPROVED;
-        case 1: return APPROVED;
-        case 2: return OTHERSOURCE;
-        case 3: return WRONG;
-        case 4: return SKIPPED;
-        case 5: return DUPLICATE;
-        case 6: return BLACKLISTED;
-        default: return UNAPPROVED;
+        case 0:
+            return UNAPPROVED;
+        case 1:
+            return APPROVED;
+        case 2:
+            return OTHERSOURCE;
+        case 3:
+            return WRONG;
+        case 4:
+            return SKIPPED;
+        case 5:
+            return DUPLICATE;
+        case 6:
+            return BLACKLISTED;
+        default:
+            return UNAPPROVED;
     }
 }
 
 inline int16_t getSQLState(ApprovalState state) {
     switch (state) {
-        case UNAPPROVED:  return 0;
-        case APPROVED:    return 1;
-        case OTHERSOURCE: return 2;
-        case WRONG:       return 3;
-        case SKIPPED:     return 4;
-        case DUPLICATE:   return 5;
-        case BLACKLISTED: return 6;
-        case ANY:         return -1; // Special query only case.
+        case UNAPPROVED:
+            return 0;
+        case APPROVED:
+            return 1;
+        case OTHERSOURCE:
+            return 2;
+        case WRONG:
+            return 3;
+        case SKIPPED:
+            return 4;
+        case DUPLICATE:
+            return 5;
+        case BLACKLISTED:
+            return 6;
+        case ANY:
+            return -1; // Special query only case.
     }
 }
 
-Time timeFromSql(const std::string& str) {
+Time timeFromSql(const std::string &str) {
     Time time;
 
     if (sscanf(str.c_str(), "%hd-%hhd-%hhd %hhd:%hhd:%hhd",
@@ -86,11 +93,27 @@ Time timeFromSql(const std::string& str) {
     return time;
 }
 
-std::string timeToSql(const Time& time) {
+std::string timeToSql(const Time &time) {
     std::ostringstream stream;
-    stream << (int)time.year << '-' << (int)time.month << '-' << (int)time.day << ' '
-           << (int)time.hour << ':' << (int)time.minute << ':' << (int)time.second;
+    stream << (int) time.year << '-' << (int) time.month << '-' << (int) time.day << ' '
+    << (int) time.hour << ':' << (int) time.minute << ':' << (int) time.second;
     return stream.str();
+}
+
+}  // namespace
+
+std::string build_connection(const cppcms::json::value &config) {
+    std::string driver = config["driver"].str();
+
+    if (driver == "mysql") {
+        return build_mysql_connection(config["name"].str(),
+                                      config["host"].str(), config["port"].str(),
+                                      config["user"].str(), config["password"].str());
+    } else if (driver == "sqlite3") {
+        return build_sqlite_connection(config["name"].str());
+    } else {
+        throw PersistenceException("Unknown driver:" + driver);
+    }
 }
 
 int64_t Persistence::addSnak(const PropertyValue &pv) {
@@ -406,7 +429,7 @@ std::vector<Statement> Persistence::getAllStatements(
         ApprovalState state,
         const std::string& dataset,
         const std::string& property,
-        const std::shared_ptr<Value> value) {
+        const Value* value) {
     if (!managedTransactions)
         sql.begin();
 
@@ -724,4 +747,8 @@ std::vector<std::string> Persistence::getDatasets() {
 const char *PersistenceException::what() const noexcept {
     return message.c_str();
 }
+
+
+}  // namespace primarysources
+}  // namespace wikidata
 

@@ -3,8 +3,9 @@
 
 #include "SerializerTSV.h"
 
-
-namespace Serializer {
+namespace wikidata {
+namespace primarysources {
+namespace serializer {
 
     static void writeValueTSV(const Value& v, std::ostream* out) {
         switch (v.getType()) {
@@ -91,4 +92,6 @@ namespace Serializer {
         }
     }
 
-}  // namespace Serializer
+}  // namespace serializer
+}  // namespace primarysources
+}  // namespace wikidata
