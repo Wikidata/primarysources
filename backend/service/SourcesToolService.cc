@@ -271,6 +271,8 @@ void SourcesToolService::getStatus() {
     result["statements"]["duplicate"] = status.getDuplicate();
     result["statements"]["wrong"] = status.getWrong();
 
+    // users information
+    result["users"] = status.getUsers();
 
     cppcms::json::array topusers;
     for (auto entry : status.getTopUsers()) {
