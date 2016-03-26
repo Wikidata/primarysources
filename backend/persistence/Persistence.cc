@@ -609,6 +609,7 @@ int64_t Persistence::countStatements(const std::string& dataset) {
     return result;
 }
 
+
 int64_t Persistence::countStatements(ApprovalState state, const std::string& dataset) {
     int64_t result = 0;
 
@@ -630,6 +631,28 @@ int64_t Persistence::countStatements(ApprovalState state, const std::string& dat
 
     return result;
 }
+
+
+int32_t Persistence::countUsers() {
+    int32_t result = 0;
+
+    if (!managedTransactions)
+        sql.begin();
+
+    cppdb::result res = (
+            sql << "SELECT count(distinct(user)) FROM userlog"
+    );
+
+    if (!res.empty()) {
+        result = res.get<int32_t>(0);
+    }
+
+    if (!managedTransactions)
+        sql.commit();
+
+    return result;
+}
+
 
 std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t limit) {
     std::vector<std::pair < std::string, int64_t>> result;
