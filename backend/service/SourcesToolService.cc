@@ -258,11 +258,7 @@ void SourcesToolService::getStatus() {
     Status status = backend.getStatus(cache(), dataset);
 
     // show dataset-specific statements count, defaulting to all datasets
-    if (dataset != "") {
-        result["dataset"] = dataset;
-    } else {
-        result["dataset"] = "all";
-    }
+    result["dataset"] = (dataset != "") ? dataset : "all";
 
     result["statements"]["total"] = status.getStatements();
     result["statements"]["approved"] = status.getApproved();
