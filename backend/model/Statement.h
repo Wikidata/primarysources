@@ -124,6 +124,20 @@ std::string toWikidataString(const Time &t);
  */
 std::string toSQLString(const Time &t);
 
+
+inline std::ostream& operator<<(std::ostream& os, const Value& v) {
+    return os << v.DebugString();
+}
+
+inline std::ostream& operator<<(std::ostream& os, const PropertyValue& pv) {
+    return os << pv.DebugString();
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Statement& s) {
+    return os << s.DebugString();
+}
+
+
 }  // namespace model
 }  // namespace primarysources
 }  // namespace wikidata

@@ -3,7 +3,7 @@
 
 #include "Parser.h"
 
-#include <boost/regex.hpp>
+#include <re2/re2.h>
 
 using wikidata::primarysources::model::ApprovalState ;
 using wikidata::primarysources::model::PropertyValue;
@@ -18,6 +18,25 @@ using wikidata::primarysources::model::NewStatement;
 namespace wikidata {
 namespace primarysources {
 namespace parser {
+namespace {
+// regular expressions for the different value formats
+
+// QID of entities, properties, sources
+RE2 re_entity("\\s*([QPS]\\d+)\\s*");
+
+// time format (e.g. +1967-01-17T00:00:00Z/11)
+RE2 re_time("\\s*\\+(\\d+)-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})Z/(\\d{1,2})\\s*");
+
+// numbers (+/-1234.4567)
+RE2 re_num("\\s*(\\+|-)\\d+(\\.\\d+)?\\s*");
+
+// locations (@LAT/LONG)
+RE2 re_loc("\\s*@([+-]?\\d{1,2}(?:\\.\\d+)?)/([+-]?\\d{1,3}(?:\\.\\d+))?\\s*");
+
+// text (en:"He's a jolly good fellow")
+RE2 re_text("\\s*(?:(\\w{2}):)?\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\"\\s*");
+
+}  // namespace
 
 std::vector<std::string> split(const char *str, char c = ' ') {
     std::vector<std::string> result;
@@ -35,36 +54,22 @@ std::vector<std::string> split(const char *str, char c = ' ') {
 }
 
 Value parseValue(const std::string& value) {
-    // regular expressions for the different value formats
 
-    // QID of entities, properties, sources
-    static boost::regex re_entity("\\s*([QPS]\\d+)\\s*");
-
-    // time format (e.g. +1967-01-17T00:00:00Z/11)
-    static boost::regex re_time("\\s*\\+(\\d+)-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})Z/(\\d{1,2})\\s*");
-
-    // numbers (+/-1234.4567)
-    static boost::regex re_num("\\s*(\\+|-)\\d+(\\.\\d+)?\\s*");
-
-    // locations (@LAT/LONG)
-    static boost::regex re_loc("\\s*@([+-]?\\d{1,2}(?:\\.\\d+)?)/([+-]?\\d{1,3}(?:\\.\\d+))?\\s*");
-
-    // text (en:"He's a jolly good fellow")
-    static boost::regex re_text("\\s*(?:(\\w{2}):)?\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\"\\s*");
-
-    boost::smatch sm;
-    if (boost::regex_match(value, sm, re_entity)) {
-        return NewValue(sm[1]);
-    } else if (boost::regex_match(value, re_num)) {
+    std::string s, t;
+    double d, e;
+    int year, month, day, hour, minute, second, precision;
+    if (RE2::FullMatch(value, re_entity, &s)) {
+        return NewValue(s);
+    } else if (RE2::FullMatch(value, re_num)) {
         return NewQuantity(value);
-    } else if (boost::regex_match(value, sm, re_loc)) {
-        return NewValue(std::stod(sm.str(1)), std::stod(sm.str(2)));
-    } else if (boost::regex_match(value, sm, re_text)) {
-        return NewValue(sm.str(2), sm.str(1));
-    } else if (boost::regex_match(value, sm, re_time)) {
-        return NewTime(std::stoi(sm.str(1)), std::stoi(sm.str(2)), std::stoi(sm.str(3)),
-                       std::stoi(sm.str(4)), std::stoi(sm.str(5)), std::stoi(sm.str(6)),
-                       std::stoi(sm.str(7)));
+    } else if (RE2::FullMatch(value, re_loc, &d, &e)) {
+        return NewValue(d, e);
+    } else if (RE2::FullMatch(value, re_text, &s, &t)) {
+        return NewValue(t, s);
+    } else if (RE2::FullMatch(value, re_time,
+                              &year, &month, &day,
+                              &hour, &minute, &second, &precision)) {
+        return NewTime(year, month, day, hour, minute, second, precision);
     } else {
         return NewValue(value);
     }
