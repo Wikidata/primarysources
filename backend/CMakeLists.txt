@@ -19,7 +19,7 @@ ADD_DEFINITIONS(
     -DBOOST_LOG_DYN_LINK
 )
 
-find_package (GFlags REQUIRED)
+#find_package (GFlags REQUIRED)
 find_package (Protobuf 10 REQUIRED)
 find_package (GLog REQUIRED)
 find_package (Threads)
@@ -53,11 +53,11 @@ add_executable(primarysources_service main.cc Status.cc Dashboard.h Dashboard.cc
 target_link_libraries(primarysources_service
         primarysources_backend primarysources_serializer primarysources_persistence
         primarysources_status primarysources_util
-        ${DB_LIBS} ${Tcmalloc_LIBRARIES} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY})
+        ${DB_LIBS} ${Tcmalloc_LIBRARIES} ${GLOG_LIBRARY})
 target_link_libraries(primarysources_inject  primarysources_persistence
-        ${DB_LIBS} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY})
+        ${DB_LIBS} ${GLOG_LIBRARY})
 target_link_libraries(primarysources_deduplicate primarysources_persistence
-        ${DB_LIBS} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY})
+        ${DB_LIBS} ${GLOG_LIBRARY})
 
 install(TARGETS primarysources_inject primarysources_deduplicate primarysources_service
         RUNTIME DESTINATION bin)

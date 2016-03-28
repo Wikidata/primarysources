@@ -19,8 +19,6 @@
 
 using wikidata::primarysources::SourcesToolService;
 
-DEFINE_string(config, "", "path to configuration file");
-
 int main(int argc, char **argv) {
     // Initialize Google's logging library.
     google::InitGoogleLogging(argv[0]);
