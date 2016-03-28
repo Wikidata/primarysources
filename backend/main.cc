@@ -11,7 +11,6 @@
 #include <cppcms/url_dispatcher.h>
 #include <cppcms/url_mapper.h>
 #include <status/SystemStatus.h>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #ifdef DB_SQLITE3
@@ -20,10 +19,11 @@
 
 using wikidata::primarysources::SourcesToolService;
 
+DEFINE_string(config, "", "path to configuration file");
+
 int main(int argc, char **argv) {
     // Initialize Google's logging library.
     google::InitGoogleLogging(argv[0]);
-    google::ParseCommandLineFlags(&argc, &argv, true);
 
     wikidata::primarysources::status::Init();
     try {

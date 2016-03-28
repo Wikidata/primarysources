@@ -13,6 +13,17 @@
 namespace wikidata {
 namespace primarysources {
 
+using wikidata::primarysources::model::ApprovalState;
+using wikidata::primarysources::model::PropertyValue;
+using wikidata::primarysources::model::Statement;
+using wikidata::primarysources::model::Value;
+
+using wikidata::primarysources::model::NewQuantity;
+using wikidata::primarysources::model::NewTime;
+using wikidata::primarysources::model::NewPropertyValue;
+using wikidata::primarysources::model::NewValue;
+
+
 class PersistenceTest : public ::testing::Test {
 
 protected:
@@ -62,15 +73,15 @@ TEST_F(PersistenceTest, SchemaExists) {
 
 TEST_F(PersistenceTest, AddGetSnak) {
     PropertyValue pvs[] = {
-            PropertyValue("P123", Value("Hello, World!", "en")),
-            PropertyValue("P124", Value("Q321")),
-            PropertyValue("P125", Value(42.11, 11.32)),
-            PropertyValue("P126", Value(Time(1901, 1))),
-            PropertyValue("P127", Value(Quantity("-1234.42"))),
+            NewPropertyValue("P123", NewValue("Hello, World!", "en")),
+            NewPropertyValue("P124", NewValue("Q321")),
+            NewPropertyValue("P125", NewValue(42.11, 11.32)),
+            NewPropertyValue("P126", NewTime(1901, 1, 0, 0, 0, 0, 10)),
+            NewPropertyValue("P127", NewQuantity("-1234.42")),
     };
 
     Persistence p(sql, true);
-    for (PropertyValue& pv : pvs) {
+    for (model::PropertyValue& pv : pvs) {
         sql.begin();
         int64_t id1 = p.addSnak(pv);
         int64_t id2 = p.getSnakID(pv);
@@ -78,54 +89,48 @@ TEST_F(PersistenceTest, AddGetSnak) {
         sql.commit();
 
         ASSERT_EQ(id1, id2);
-        ASSERT_EQ(pv.getProperty(), pvt.getProperty());
-        ASSERT_EQ(pv.getValue(), pvt.getValue());
+        ASSERT_EQ(pv.property(), pvt.property());
+        ASSERT_EQ(pv.value(), pvt.value());
     }
 }
 
 TEST_F(PersistenceTest, AddGetStatement) {
-    Statement stmt(-1, "Q123", PropertyValue("P456", Value("Q789")),
-                   Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+    Statement stmt = NewStatement("Q123", NewPropertyValue("P456", NewValue("Q789")));
 
     Persistence p(sql, true);
     sql.begin();
     int64_t id1 = p.addStatement(stmt);
     Statement stmt2 = p.getStatement(id1);
     sql.commit();
-    ASSERT_EQ(stmt.getQID(), stmt2.getQID());
-    ASSERT_EQ(stmt.getProperty(), stmt2.getProperty());
-    ASSERT_EQ(stmt.getValue().getString(), stmt2.getValue().getString());
+    ASSERT_EQ(stmt.qid(), stmt2.qid());
+    ASSERT_EQ(stmt.property_value(), stmt2.property_value());
 
     sql.begin();
-    std::vector<Statement> stmts = p.getStatementsByQID("Q123", ANY);
+    std::vector<Statement> stmts = p.getStatementsByQID("Q123", ApprovalState::ANY);
     sql.commit();
     ASSERT_EQ(stmts.size(), 1);
-    ASSERT_EQ(stmts[0].getQID(), stmt.getQID());
-    ASSERT_EQ(stmts[0].getProperty(), stmt.getProperty());
-    ASSERT_EQ(stmts[0].getValue().getString(), stmt.getValue().getString());
-
+    ASSERT_EQ(stmts[0].qid(), stmt.qid());
+    ASSERT_EQ(stmts[0].property_value(), stmt.property_value());
 }
 
 TEST_F(PersistenceTest, UpdateStatement) {
-    Statement stmt(-1, "Q1231", PropertyValue("P456", Value("Q789")),
-                   Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+    Statement stmt = NewStatement("Q1231", NewPropertyValue("P456", NewValue("Q789")));
 
     Persistence p(sql, true);
     sql.begin();
     int64_t id1 = p.addStatement(stmt);
-    p.updateStatement(id1, APPROVED);
+    p.updateStatement(id1, ApprovalState::APPROVED);
     Statement stmt2 = p.getStatement(id1);
-    int64_t approvedCount = p.countStatements(APPROVED);
+    int64_t approvedCount = p.countStatements(ApprovalState::APPROVED);
     sql.commit();
 
-    ASSERT_EQ(stmt2.getApprovalState(), APPROVED);
+    ASSERT_EQ(stmt2.approval_state(), ApprovalState::APPROVED);
     ASSERT_EQ(approvedCount, 1);
 }
 
 
 TEST_F(PersistenceTest, MarkDuplicates) {
-    Statement stmt(-1, "Q1231", PropertyValue("P456", Value("Q789")),
-                   Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+    Statement stmt = NewStatement("Q1231", NewPropertyValue("P456", NewValue("Q789")));
 
     Persistence p(sql, true);
     sql.begin();
@@ -139,8 +144,8 @@ TEST_F(PersistenceTest, MarkDuplicates) {
     sql.commit();
 
     sql.begin();
-    int64_t unapprovedCount = p.countStatements(UNAPPROVED);
-    int64_t duplicateCount = p.countStatements(DUPLICATE);
+    int64_t unapprovedCount = p.countStatements(ApprovalState::UNAPPROVED);
+    int64_t duplicateCount = p.countStatements(ApprovalState::DUPLICATE);
     sql.commit();
 
     ASSERT_EQ(unapprovedCount, 1);
@@ -149,14 +154,10 @@ TEST_F(PersistenceTest, MarkDuplicates) {
 
 
 TEST_F(PersistenceTest, RandomQID) {
-    Statement stmt1(-1, "Q123", PropertyValue("P456", Value("Q789")),
-                   Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
-    Statement stmt2(-1, "Q124", PropertyValue("P456", Value("Q789")),
-                    Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
-    Statement stmt3(-1, "Q125", PropertyValue("P456", Value("Q789")),
-                    Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
-    Statement stmt4(-1, "Q126", PropertyValue("P456", Value("Q789")),
-                    Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
+    Statement stmt1 = NewStatement("Q123", NewPropertyValue("P456", NewValue("Q789")));
+    Statement stmt2 = NewStatement("Q124", NewPropertyValue("P456", NewValue("Q789")));
+    Statement stmt3 = NewStatement("Q125", NewPropertyValue("P456", NewValue("Q789")));
+    Statement stmt4 = NewStatement("Q126", NewPropertyValue("P456", NewValue("Q789")));
 
     Persistence p(sql, true);
     sql.begin();
@@ -169,33 +170,33 @@ TEST_F(PersistenceTest, RandomQID) {
     std::string qid;
     for(int i=0; i<4; i++) {
         sql.begin();
-        qid = p.getRandomQID(UNAPPROVED);
-        p.updateStatement(id4 - i, APPROVED);
+        qid = p.getRandomQID(ApprovalState::UNAPPROVED);
+        p.updateStatement(id4 - i, ApprovalState::APPROVED);
         sql.commit();
         ASSERT_NE(qid, "");
     }
 
     // nothing left, expect exception
-    ASSERT_THROW(p.getRandomQID(UNAPPROVED), PersistenceException);
+    ASSERT_THROW(p.getRandomQID(ApprovalState::UNAPPROVED), PersistenceException);
 }
 
 
 TEST_F(PersistenceTest, AllStatements) {
-    Statement stmt1(-1, "Q123", PropertyValue("P234", Value("Q789")),
-                   Statement::extensions_t(), Statement::extensions_t(),
-                   "foo", 0, UNAPPROVED);
-    Statement stmt2(-1, "Q124", PropertyValue("P234", Value("Q789")),
-                    Statement::extensions_t(), Statement::extensions_t(),
-                    "foo", 0, UNAPPROVED);
-    Statement stmt3(-1, "Q125", PropertyValue("P457", Value("Q789")),
-                    Statement::extensions_t(), Statement::extensions_t(),
-                    "foo", 0, UNAPPROVED);
-    Statement stmt4(-1, "Q127", PropertyValue("P234", Value("Q789")),
-                    Statement::extensions_t(), Statement::extensions_t(),
-                    "bar", 0, UNAPPROVED);
-    Statement stmt5(-1, "Q124", PropertyValue("P234", Value("Q790")),
-                    Statement::extensions_t(), Statement::extensions_t(),
-                    "foo", 0, UNAPPROVED);
+    Statement stmt1 = NewStatement(
+            -1, "Q123", NewPropertyValue("P234", NewValue("Q789")),
+            {}, {}, "foo", 0, ApprovalState::UNAPPROVED);
+    Statement stmt2 = NewStatement(
+            -1, "Q124", NewPropertyValue("P234", NewValue("Q789")),
+            {}, {}, "foo", 0, ApprovalState::UNAPPROVED);
+    Statement stmt3 = NewStatement(
+            -1, "Q125", NewPropertyValue("P457", NewValue("Q789")),
+            {}, {}, "foo", 0, ApprovalState::UNAPPROVED);
+    Statement stmt4 = NewStatement(
+            -1, "Q127", NewPropertyValue("P234", NewValue("Q789")),
+            {}, {}, "bar", 0, ApprovalState::UNAPPROVED);
+    Statement stmt5 = NewStatement(
+            -1, "Q124", NewPropertyValue("P234", NewValue("Q790")),
+            {}, {}, "foo", 0, ApprovalState::UNAPPROVED);
 
     Persistence p(sql, true);
     sql.begin();
@@ -207,8 +208,8 @@ TEST_F(PersistenceTest, AllStatements) {
     sql.commit();
 
     sql.begin();
-    std::unique_ptr<Value> value(new Value("Q789"));
-    std::vector<Statement> statements = p.getAllStatements(0, 10, ANY, "foo", "P234", value.get());
+    Value value = NewValue("Q789");
+    std::vector<Statement> statements = p.getAllStatements(0, 10, ApprovalState::ANY, "foo", "P234", &value);
     sql.commit();
 
     ASSERT_EQ(statements.size(), 2);
@@ -219,9 +220,7 @@ TEST_F(PersistenceTest, DeleteStatements) {
     Persistence p(sql, true);
     sql.begin();
     for(int i=0; i<10; i++) {
-        Statement stmt(-1, "Q1231", PropertyValue("P456", Value("Q789-" + i)),
-                       Statement::extensions_t(), Statement::extensions_t(), UNAPPROVED);
-
+        Statement stmt = NewStatement("Q1231", NewPropertyValue("P456", NewValue("Q789-" + i)));
         p.addStatement(stmt);
     }
     sql.commit();
@@ -230,25 +229,25 @@ TEST_F(PersistenceTest, DeleteStatements) {
 
     // SQLLite database IDs start at 1
     for(int64_t i=1; i<6; i++) {
-        p.updateStatement(i, APPROVED);
+        p.updateStatement(i, ApprovalState::APPROVED);
     }
     sql.commit();
 
     sql.begin();
-    int64_t unapprovedCount = p.countStatements(UNAPPROVED);
-    int64_t approvedCount = p.countStatements(APPROVED);
+    int64_t unapprovedCount = p.countStatements(ApprovalState::UNAPPROVED);
+    int64_t approvedCount = p.countStatements(ApprovalState::APPROVED);
     sql.commit();
 
     ASSERT_EQ(unapprovedCount, 5);
     ASSERT_EQ(approvedCount, 5);
 
     sql.begin();
-    p.deleteStatements(UNAPPROVED);
+    p.deleteStatements(ApprovalState::UNAPPROVED);
     sql.commit();
 
     sql.begin();
-    unapprovedCount = p.countStatements(UNAPPROVED);
-    approvedCount = p.countStatements(APPROVED);
+    unapprovedCount = p.countStatements(ApprovalState::UNAPPROVED);
+    approvedCount = p.countStatements(ApprovalState::APPROVED);
     sql.commit();
 
     ASSERT_EQ(unapprovedCount, 0);
@@ -259,9 +258,9 @@ TEST_F(PersistenceTest, Datasets) {
     Persistence p(sql, true);
     sql.begin();
     for (int i = 0; i < 10; i++) {
-        Statement stmt(-1, "Q1231", PropertyValue("P456", Value("Q789-" + i)),
-                       Statement::extensions_t(), Statement::extensions_t(),
-                       "dataset-" + std::to_string(i), i, UNAPPROVED);
+        Statement stmt = NewStatement(
+                -1, "Q1231", NewPropertyValue("P456", NewValue("Q789-" + i)),
+                {}, {}, "dataset-" + std::to_string(i), i, ApprovalState::UNAPPROVED);
 
         p.addStatement(stmt);
     }
@@ -285,9 +284,9 @@ TEST_F(PersistenceTest, Datasets) {
 }
 
 TEST_F(PersistenceTest, Activities) {
-    Statement stmt1(-1, "Q123", PropertyValue("P234", Value("Q789")),
-                    Statement::extensions_t(), Statement::extensions_t(),
-                    "foo", 0, UNAPPROVED);
+    Statement stmt1 = NewStatement(
+            -1, "Q123", NewPropertyValue("P234", NewValue("Q789")),
+            {}, {}, "foo", 0, ApprovalState::UNAPPROVED);
 
     Persistence p(sql, true);
     sql.begin();
@@ -295,26 +294,26 @@ TEST_F(PersistenceTest, Activities) {
     sql.commit();
 
     sql.begin();
-    std::vector<Statement> stmts = p.getRandomStatements(1, ANY);
+    std::vector<Statement> stmts = p.getRandomStatements(1, ApprovalState::ANY);
     sql.commit();
 
     ASSERT_EQ(stmts.size(), 1);
 
-    int64_t id = stmts[0].getID();
+    int64_t id = stmts[0].id();
 
     sql.begin();
-    p.updateStatement(id, WRONG);
-    p.addUserlog("foouser", id, WRONG);
+    p.updateStatement(id, ApprovalState::WRONG);
+    p.addUserlog("foouser", id, ApprovalState::WRONG);
 
-    p.updateStatement(id, APPROVED);
-    p.addUserlog("baruser", id, APPROVED);
+    p.updateStatement(id, ApprovalState::APPROVED);
+    p.addUserlog("baruser", id, ApprovalState::APPROVED);
     sql.commit();
 
     sql.begin();
     Statement stmt2 = p.getStatement(id);
     sql.commit();
 
-    ASSERT_EQ(stmt2.getActivities().size(), 2);
+    ASSERT_EQ(stmt2.activities().size(), 2);
 }
 }  // namespace primarysources
 }  // namespace wikidata

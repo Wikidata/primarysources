@@ -17,7 +17,7 @@
 #include "parser/Parser.h"
 #include "persistence/Persistence.h"
 
-using wikidata::primarysources::Statement;
+using wikidata::primarysources::model::Statement;
 using wikidata::primarysources::parser::parseTSV;
 
 void usage(char *cmd) {

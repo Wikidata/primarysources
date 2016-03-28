@@ -40,6 +40,7 @@ Value NewValue(double lat, double lng);
 
 // Create a new decimal quantity value.
 Value NewQuantity(const std::string& decimal);
+Value NewQuantity(long double decimal);
 
 // Create a new time value.
 Value NewTime(Time&& time);
@@ -51,6 +52,7 @@ PropertyValue NewPropertyValue(const std::string& property, Value&& v);
 LogEntry NewLogEntry(
         const std::string& user, ApprovalState state, Time&& time);
 
+Statement NewStatement(std::string qid, PropertyValue&& propertyValue);
 Statement NewStatement(
         int64_t id, std::string qid, PropertyValue&& propertyValue,
         std::vector<PropertyValue> qualifiers, std::vector<PropertyValue> sources,

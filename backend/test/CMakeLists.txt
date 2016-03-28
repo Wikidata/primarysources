@@ -11,11 +11,17 @@ target_link_libraries(model_tests gtest primarysources_persistence ${CPPDB_SQLIT
 add_executable(parser_tests ParserTest.cc main.cc)
 target_link_libraries(parser_tests gtest primarysources_persistence ${CPPDB_SQLITE_BACKEND})
 
+add_executable(cache_tests CacheTest.cc main.cc)
+target_link_libraries(cache_tests gtest primarysources_model ${CPPDB_SQLITE_BACKEND})
+
 add_test(NAME ModelTest
          COMMAND model_tests)
 
 add_test(NAME ParserTest
          COMMAND parser_tests)
+
+add_test(NAME CacheTest
+        COMMAND cache_tests)
 
 add_test(NAME PersistenceTest
          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

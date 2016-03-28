@@ -6,14 +6,16 @@
 #define PRIMARYSOURCES_STATEMENTCACHING_H
 
 #include <cppcms/cache_interface.h>
-
-#include <model/statement.pb.h>
+#include <model/Statement.h>
 
 namespace cppcms {
 
 using ::wikidata::primarysources::model::PropertyValue;
 using ::wikidata::primarysources::model::Statement;
 using ::wikidata::primarysources::model::Value;
+
+using ::wikidata::primarysources::model::Statements;
+using ::wikidata::primarysources::model::Strings;
 
 template<>
 struct serialization_traits<Value> {
@@ -55,15 +57,19 @@ template<>
 struct serialization_traits<std::vector<Statement>> {
 
     static void load(const std::string& serialized_object,std::vector<Statement> &real_object) {
-        archive a;
-        a.str(serialized_object);
-        cppcms::details::archive_load_container<std::vector<Statement>>(real_object, a);
+        Statements stmts;
+        stmts.ParseFromString(serialized_object);
+        for (auto& s : stmts.statements()) {
+            real_object.emplace_back(std::move(s));
+        }
     }
 
     static void save(const std::vector<Statement>& real_object,std::string &serialized_object) {
-        archive a;
-        cppcms::details::archive_save_container<std::vector<Statement>>(real_object, a);
-        serialized_object = a.str();
+        Statements stmts;
+        for (const auto& s : real_object) {
+            *stmts.add_statements() = s;
+        }
+        stmts.SerializeToString(&serialized_object);
     }
 };
 
@@ -71,15 +77,19 @@ template<>
 struct serialization_traits<std::vector<std::string>> {
 
     static void load(const std::string& serialized_object, std::vector<std::string> &real_object) {
-        archive a;
-        a.str(serialized_object);
-        cppcms::details::archive_load_container<std::vector<std::string>>(real_object, a);
+        Strings stmts;
+        stmts.ParseFromString(serialized_object);
+        for (auto& s : stmts.strings()) {
+            real_object.emplace_back(std::move(s));
+        }
     }
 
     static void save(const std::vector<std::string>& real_object, std::string &serialized_object) {
-        archive a;
-        cppcms::details::archive_save_container<std::vector<std::string>>(real_object, a);
-        serialized_object = a.str();
+        Strings stmts;
+        for (const auto& s : real_object) {
+            *stmts.add_strings() = s;
+        }
+        stmts.SerializeToString(&serialized_object);
     }
 };
 }  // namespace cppcms

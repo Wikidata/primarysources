@@ -157,3 +157,11 @@ message Statement {
     // State change log, filled from database.
     repeated LogEntry activities = 9;
 }
+
+message Statements {
+    repeated Statement statements = 1;
+}
+
+message Strings {
+    repeated string strings = 1;
+}

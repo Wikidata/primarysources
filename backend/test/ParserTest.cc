@@ -2,10 +2,14 @@
 // Author: Sebastian Schaffert <schaffert@google.com>
 #include "gtest.h"
 
-#include <sstream>
-
 #include "model/Statement.h"
 #include "parser/Parser.h"
+
+using wikidata::primarysources::model::Statement;
+
+using wikidata::primarysources::model::NewQuantity;
+using wikidata::primarysources::model::NewTime;
+using wikidata::primarysources::model::NewValue;
 
 namespace wikidata {
 namespace primarysources {
@@ -28,63 +32,63 @@ TEST(ParserTest, ParseEntity) {
     std::vector<Statement> result = parseString("Q123\tP123\tQ321\n");
 
     ASSERT_EQ(result.size(), 1);
-    ASSERT_EQ(result[0].getQID(), "Q123");
-    ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value("Q321"));
+    ASSERT_EQ(result[0].qid(), "Q123");
+    ASSERT_EQ(result[0].property_value().property(), "P123");
+    ASSERT_EQ(result[0].property_value().value(), NewValue("Q321"));
 }
 
 TEST(ParserTest, ParseString) {
     std::vector<Statement> result = parseString("Q123\tP123\t\"Q321\"\n");
 
     ASSERT_EQ(result.size(), 1);
-    ASSERT_EQ(result[0].getQID(), "Q123");
-    ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value("Q321", ""));
+    ASSERT_EQ(result[0].qid(), "Q123");
+    ASSERT_EQ(result[0].property_value().property(), "P123");
+    ASSERT_EQ(result[0].property_value().value(), NewValue("Q321", ""));
 }
 
 TEST(ParserTest, ParseLangString) {
     std::vector<Statement> result = parseString("Q123\tP123\ten:\"Q321\"\n");
 
     ASSERT_EQ(result.size(), 1);
-    ASSERT_EQ(result[0].getQID(), "Q123");
-    ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value("Q321", "en"));
+    ASSERT_EQ(result[0].qid(), "Q123");
+    ASSERT_EQ(result[0].property_value().property(), "P123");
+    ASSERT_EQ(result[0].property_value().value(), NewValue("Q321", "en"));
 }
 
 TEST(ParserTest, ParseLocation) {
     std::vector<Statement> result = parseString("Q123\tP123\t@47.11/-10.09\n");
 
     ASSERT_EQ(result.size(), 1);
-    ASSERT_EQ(result[0].getQID(), "Q123");
-    ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value(47.11, -10.09));
+    ASSERT_EQ(result[0].qid(), "Q123");
+    ASSERT_EQ(result[0].property_value().property(), "P123");
+    ASSERT_EQ(result[0].property_value().value(), NewValue(47.11, -10.09));
 }
 
 TEST(ParserTest, ParseTime) {
     std::vector<Statement> result = parseString("Q123\tP123\t+00000001967-01-17T00:00:00Z/11\n");
 
     ASSERT_EQ(result.size(), 1);
-    ASSERT_EQ(result[0].getQID(), "Q123");
-    ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue().getTime(), Time(1967, 1, 17));
+    ASSERT_EQ(result[0].qid(), "Q123");
+    ASSERT_EQ(result[0].property_value().property(), "P123");
+    ASSERT_EQ(result[0].property_value().value(), NewTime(1967, 1, 17, 0, 0, 0, 11));
 }
 
 TEST(ParserTest, ParseTimeYear) {
     std::vector<Statement> result = parseString("Q123\tP123\t+00000001967-00-00T00:00:00Z/9\n");
 
     ASSERT_EQ(result.size(), 1);
-    ASSERT_EQ(result[0].getQID(), "Q123");
-    ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue().getTime(), Time(1967));
+    ASSERT_EQ(result[0].qid(), "Q123");
+    ASSERT_EQ(result[0].property_value().property(), "P123");
+    ASSERT_EQ(result[0].property_value().value(), NewTime(1967, 0, 0, 0, 0, 0, 9));
 }
 
 TEST(ParserTest, ParseQuantity) {
     std::vector<Statement> result = parseString("Q123\tP123\t+123.21\n");
 
     ASSERT_EQ(result.size(), 1);
-    ASSERT_EQ(result[0].getQID(), "Q123");
-    ASSERT_EQ(result[0].getProperty(), "P123");
-    ASSERT_EQ(result[0].getValue(), Value(Quantity("123.21")));
+    ASSERT_EQ(result[0].qid(), "Q123");
+    ASSERT_EQ(result[0].property_value().property(), "P123");
+    ASSERT_EQ(result[0].property_value().value(), NewQuantity("123.21"));
 }
 
 

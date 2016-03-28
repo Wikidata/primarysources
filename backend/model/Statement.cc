@@ -29,10 +29,35 @@ Value NewValue(double lat, double lng) {
 }
 
 Value NewQuantity(const std::string& decimal) {
+    std::string string = decimal;
+
+    // Add sign if there is none.
+    if (string[0] != '+' && string[0] != '-') {
+        string.insert(string.begin(), '+');
+    }
+
     Value v;
-    v.mutable_quantity()->set_decimal(decimal);
+    v.mutable_quantity()->set_decimal(string);
     return std::move(v);
 }
+
+Value NewQuantity(long double decimal) {
+    std::ostringstream stream;
+    stream.precision(100);
+    stream << std::showpos << std::fixed << decimal;
+
+    std::string string = stream.str();
+    // Removes trailing zeros
+    string.erase(string.find_last_not_of('0') + 1, std::string::npos);
+
+    // Removes the '.' if needed
+    if(string.back() == '.') {
+        string.pop_back();
+    }
+
+    return NewQuantity(string);
+}
+
 
 Value NewTime(Time&& time) {
     Value v;
@@ -57,7 +82,7 @@ PropertyValue NewPropertyValue(
         const std::string& property, Value&& v) {
     PropertyValue pv;
     pv.set_property(property);
-    *pv.mutable_value() = std::move(v);
+    pv.mutable_value()->Swap(&v);
     return std::move(pv);
 }
 
@@ -66,8 +91,19 @@ LogEntry NewLogEntry(
     LogEntry l;
     l.set_user(user);
     l.set_state(state);
-    *l.mutable_time() = std::move(time);
+    l.mutable_time()->Swap(&time);
     return std::move(l);
+}
+
+Statement NewStatement(std::string qid, PropertyValue&& propertyValue) {
+    Statement st;
+    st.set_id(-1);
+    st.set_qid(qid);
+    st.set_approval_state(ApprovalState::UNAPPROVED);
+
+    st.mutable_property_value()->Swap(&propertyValue);
+
+    return st;
 }
 
 Statement NewStatement(
@@ -82,7 +118,7 @@ Statement NewStatement(
     st.set_upload(upload);
     st.set_approval_state(approved);
 
-    *st.mutable_property_value() = std::move(propertyValue);
+    st.mutable_property_value()->Swap(&propertyValue);
 
     for (const auto& pv : qualifiers) {
         *st.add_qualifiers() = pv;
