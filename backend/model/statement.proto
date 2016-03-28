@@ -5,8 +5,6 @@ syntax = "proto3";
 
 package wikidata.primarysources.model;
 
-import "google/protobuf/wrappers.proto";
-
 enum ApprovalState {
     // Statement is a new import and has not yet been approved for Wikidata.
     UNAPPROVED = 0;
