@@ -3,10 +3,6 @@
 
 #include "Parser.h"
 
-#include <string>
-#include <algorithm>    // copy
-#include <utility>
-
 #include <boost/tokenizer.hpp>
 #include <boost/regex.hpp>
 
@@ -14,12 +10,11 @@ using wikidata::primarysources::model::ApprovalState ;
 using wikidata::primarysources::model::PropertyValue;
 using wikidata::primarysources::model::Statement;
 using wikidata::primarysources::model::Value;
-using wikidata::primarysources::model::Time;
-using wikidata::primarysources::model::Quantity;
 
 using wikidata::primarysources::model::NewQuantity;
 using wikidata::primarysources::model::NewValue;
 using wikidata::primarysources::model::NewTime;
+using wikidata::primarysources::model::NewStatement;
 
 namespace wikidata {
 namespace primarysources {
