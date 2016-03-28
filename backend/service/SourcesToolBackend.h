@@ -90,7 +90,7 @@ public:
      * Return status information about the database, e.g. number of approved/
      * unapproved statements, top users, etc.
      */
-    Status getStatus(cache_t& cache);
+    Status getStatus(cache_t& cache, const std::string& dataset);
 
     /**
      * Returns the list of all datasets

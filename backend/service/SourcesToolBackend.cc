@@ -250,26 +250,28 @@ void SourcesToolBackend::deleteStatements(cache_t& cache, ApprovalState state) {
     cache.clear();
 }
 
-Status SourcesToolBackend::getStatus(cache_t& cache) {
+Status SourcesToolBackend::getStatus(cache_t& cache, const std::string& dataset) {
     Status result;
+    // dataset-specific cache key, defaults to "STATUS-all" when no dataset is given
+    std::string cacheKey = (dataset == "") ? "STATUS-all" : "STATUS-" + dataset;
 
-    if(!cache.fetch_data("STATUS", result)) {
+    if(!cache.fetch_data(cacheKey, result)) {
         cppdb::session sql(connstr); // released when sql is destroyed
 
         Persistence p(sql, true);
         sql.begin();
 
-        result.setStatements(p.countStatements());
-        result.setApproved(p.countStatements(APPROVED));
-        result.setUnapproved(p.countStatements(UNAPPROVED));
-        result.setDuplicate(p.countStatements(DUPLICATE));
-        result.setBlacklisted(p.countStatements(BLACKLISTED));
-        result.setWrong(p.countStatements(WRONG));
+        result.setStatements(p.countStatements(dataset));
+        result.setApproved(p.countStatements(APPROVED, dataset));
+        result.setUnapproved(p.countStatements(UNAPPROVED, dataset));
+        result.setDuplicate(p.countStatements(DUPLICATE, dataset));
+        result.setBlacklisted(p.countStatements(BLACKLISTED, dataset));
+        result.setWrong(p.countStatements(WRONG, dataset));
         result.setTopUsers(p.getTopUsers(10));
 
         sql.commit();
 
-        cache.store_data("STATUS", result, 3600);
+        cache.store_data(cacheKey, result, 3600);
 
         wikidata::primarysources::status::AddCacheMiss();
     } else {
