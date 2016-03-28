@@ -135,6 +135,11 @@ class Persistence {
     int64_t countStatements(ApprovalState state, const std::string& dataset = "");
 
     /**
+     * Return the total number of users in the database
+     */
+    int32_t countUsers();
+
+    /**
      * Return the top users with respect to the number of approved/rejected
      * statements, ordered by descending number of activities.
      */

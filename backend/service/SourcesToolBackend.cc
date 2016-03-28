@@ -267,6 +267,7 @@ Status SourcesToolBackend::getStatus(cache_t& cache, const std::string& dataset)
         result.setDuplicate(p.countStatements(DUPLICATE, dataset));
         result.setBlacklisted(p.countStatements(BLACKLISTED, dataset));
         result.setWrong(p.countStatements(WRONG, dataset));
+        result.setUsers(p.countUsers());
         result.setTopUsers(p.getTopUsers(10));
 
         sql.commit();
