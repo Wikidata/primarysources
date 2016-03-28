@@ -32,43 +32,49 @@ public:
     /**
     * Return a statement by ID. Throws PersistenceException if not found.
     */
-    Statement getStatementByID(cache_t& cache, int64_t id);
+    model::Statement getStatementByID(cache_t& cache, int64_t id);
 
     /**
     * Return a list of statements for the given entity ID. If unapprovedOnly
     * is set, return only statements with state "unapproved". If dataset
     * is set return only statements in this dataset
     */
-    std::vector<Statement> getStatementsByQID(cache_t &cache, const std::string &qid,
-                                              ApprovalState state, const std::string &dataset = "");
+    std::vector<model::Statement> getStatementsByQID(
+            cache_t &cache, const std::string &qid,
+            model::ApprovalState state = model::ApprovalState::UNAPPROVED,
+            const std::string &dataset = "");
 
     /**
     * Return a list of statements for a randomly selected entity ID. If unapprovedOnly
     * is set, return only statements with state "unapproved".
     */
-    std::vector<Statement> getStatementsByRandomQID(cache_t& cache,
-                                                    ApprovalState state = UNAPPROVED,
-                                                    const std::string& dataset = "");
+    std::vector<model::Statement> getStatementsByRandomQID(
+            cache_t& cache,
+            model::ApprovalState state = model::ApprovalState::UNAPPROVED,
+            const std::string& dataset = "");
 
     /**
     * Return a list of count random statements.
     */
-    std::vector<Statement> getRandomStatements(cache_t &cache, int count,
-                                               ApprovalState state = UNAPPROVED);
+    std::vector<model::Statement> getRandomStatements(
+            cache_t &cache, int count,
+            model::ApprovalState state = model::ApprovalState::UNAPPROVED);
 
     /**
     * Return all statements.
     */
-    std::vector<Statement> getAllStatements(cache_t& cache, int offset = 0, int limit = 10,
-                                            ApprovalState state = UNAPPROVED,
-                                            const std::string& dataset = "",
-                                            const std::string& property = "",
-                                            const Value* value = nullptr);
+    std::vector<model::Statement> getAllStatements(
+            cache_t& cache, int offset = 0, int limit = 10,
+            model::ApprovalState state = model::ApprovalState::UNAPPROVED,
+            const std::string& dataset = "",
+            const std::string& property = "",
+            const model::Value* value = nullptr);
 
     /**
     * Update the approval state of the statement with the given ID.
     */
-    void updateStatement(cache_t& cache, int64_t id, ApprovalState state, const std::string& user);
+    void updateStatement(
+            cache_t& cache, int64_t id, model::ApprovalState state, const std::string& user);
 
     /**
     * Import a (possibly large) list of statements in Wikidata TSV format
@@ -83,7 +89,7 @@ public:
     /**
      * Delete statements with the given approval state.
      */
-    void deleteStatements(cache_t& cache, ApprovalState state);
+    void deleteStatements(cache_t& cache, model::ApprovalState state);
 
 
     /**

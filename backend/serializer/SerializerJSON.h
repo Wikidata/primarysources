@@ -24,7 +24,7 @@ namespace serializer {
     * Each statement is represented as a "claim" in the Wikidata terminology.
     */
     void writeStatementWikidataJSON(
-            const Statement& stmt, cppcms::json::value* result);
+            const model::Statement& stmt, cppcms::json::value* result);
 
 
     /**

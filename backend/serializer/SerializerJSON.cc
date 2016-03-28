@@ -12,120 +12,110 @@ namespace serializer {
 * metadata. Takes as argument an internal PropertyValue structure and
 * returns a CppCMS JSON value for further use.
 */
-static cppcms::json::value createWikidataSnak(const PropertyValue& pv) {
-    const Value& v = pv.getValue();
+static cppcms::json::value createWikidataSnak(const model::PropertyValue& pv) {
+    const model::Value& v = pv.value();
 
     cppcms::json::value snak;
     snak["snaktype"] = "value";
-    snak["property"] = pv.getProperty();
-    switch (v.getType()) {
-        case ENTITY: {
-            const std::string &qid = v.getString();
-            snak["datavalue"]["type"] = "wikibase-entityid";
-            switch (qid[0]) {
-                case 'Q':
-                    snak["datavalue"]["value"]["entity-type"] = "item";
-                    break;
-                case 'P':
-                    snak["datavalue"]["value"]["entity-type"] = "property";
-                    break;
-                default:
-                    snak["datavalue"]["value"]["entity-type"] = "unknown";
-                    break;
-            }
-            snak["datavalue"]["value"]["numeric-id"] =
-                    atol(qid.c_str() + 1);
+    snak["property"] = pv.property();
+    if (v.has_entity()) {
+        const std::string &qid = v.entity().qid();
+        snak["datavalue"]["type"] = "wikibase-entityid";
+        switch (qid[0]) {
+            case 'Q':
+                snak["datavalue"]["value"]["entity-type"] = "item";
+                break;
+            case 'P':
+                snak["datavalue"]["value"]["entity-type"] = "property";
+                break;
+            default:
+                snak["datavalue"]["value"]["entity-type"] = "unknown";
+                break;
         }
-            break;
-        case STRING:
-            if (v.getLanguage() == "") {
-                snak["datavalue"]["type"] = "string";
-                snak["datavalue"]["value"] = v.getString();
-            } else {
-                snak["datavalue"]["type"] = "monolingualtext";
-                snak["datavalue"]["value"]["language"] = v.getLanguage();
-                snak["datavalue"]["value"]["text"] = v.getString();
-            }
-            break;
-        case LOCATION:
-            snak["datavalue"]["type"] = "globecoordinate";
-            snak["datavalue"]["value"]["latitude"] = v.getLocation().first;
-            snak["datavalue"]["value"]["longitude"] = v.getLocation().second;
-            snak["datavalue"]["value"]["globe"] = "http://www.wikidata.org/entity/Q2";
-            break;
-        case TIME: {
-            std::ostringstream fmt;
-            Time time = v.getTime();
-            fmt << std::setfill('0')
-                    << "+" << std::setw(4) << time.year
-                    << "-" << std::setw(2) << time.month
-                    << "-" << std::setw(2) << time.day
-                    << "T" << std::setw(2) << time.hour
-                    << ":" << std::setw(2) << time.minute
-                    << ":" << std::setw(2) << time.second
-                    << "Z";
-            snak["datavalue"]["type"] = "time";
-            snak["datavalue"]["value"]["time"] = fmt.str();
-            snak["datavalue"]["value"]["timezone"] = 0;
-            snak["datavalue"]["value"]["before"] = 0;
-            snak["datavalue"]["value"]["after"] = 0;
-            snak["datavalue"]["value"]["precision"] = time.precision;
-            snak["datavalue"]["value"]["calendarmodel"] = "http://www.wikidata.org/entity/Q1985727";
+        snak["datavalue"]["value"]["numeric-id"] = atol(qid.c_str() + 1);
+    } else if (v.has_literal()) {
+        if (v.literal().language() == "") {
+            snak["datavalue"]["type"] = "string";
+            snak["datavalue"]["value"] = v.literal().content();
+        } else {
+            snak["datavalue"]["type"] = "monolingualtext";
+            snak["datavalue"]["value"]["language"] = v.literal().language();
+            snak["datavalue"]["value"]["text"] = v.literal().content();
         }
-            break;
-        case QUANTITY: {
-            const std::string& amount = v.getQuantityAsString();
-            snak["datavalue"]["type"] = "quantity";
-            snak["datavalue"]["value"]["amount"] = amount;
-            snak["datavalue"]["value"]["unit"] = "1";
-            snak["datavalue"]["value"]["upperBound"] = amount;
-            snak["datavalue"]["value"]["lowerBound"] = amount;
-        }
-            break;
+    } else if (v.has_location()) {
+        snak["datavalue"]["type"] = "globecoordinate";
+        snak["datavalue"]["value"]["latitude"] = v.location().latitude();
+        snak["datavalue"]["value"]["longitude"] = v.location().longitude();
+        snak["datavalue"]["value"]["globe"] = "http://www.wikidata.org/entity/Q2";
+    } else if (v.has_time()) {
+        std::ostringstream fmt;
+        model::Time time = v.time();
+        fmt << std::setfill('0')
+            << "+" << std::setw(4) << time.year()
+            << "-" << std::setw(2) << time.month()
+            << "-" << std::setw(2) << time.day()
+            << "T" << std::setw(2) << time.hour()
+            << ":" << std::setw(2) << time.minute()
+            << ":" << std::setw(2) << time.second()
+            << "Z";
+        snak["datavalue"]["type"] = "time";
+        snak["datavalue"]["value"]["time"] = fmt.str();
+        snak["datavalue"]["value"]["timezone"] = 0;
+        snak["datavalue"]["value"]["before"] = 0;
+        snak["datavalue"]["value"]["after"] = 0;
+        snak["datavalue"]["value"]["precision"] = time.precision();
+        snak["datavalue"]["value"]["calendarmodel"] = "http://www.wikidata.org/entity/Q1985727";
+    } else if (v.has_quantity()) {
+        const std::string& amount = v.quantity().decimal();
+        snak["datavalue"]["type"] = "quantity";
+        snak["datavalue"]["value"]["amount"] = amount;
+        snak["datavalue"]["value"]["unit"] = "1";
+        snak["datavalue"]["value"]["upperBound"] = amount;
+        snak["datavalue"]["value"]["lowerBound"] = amount;
     }
     return snak;
 }
 
 
 void writeStatementWikidataJSON(
-        const Statement& stmt, cppcms::json::value* entities) {
-    const std::string& prop = stmt.getProperty();
-    const std::string& qid  = stmt.getQID();
+        const model::Statement& stmt, cppcms::json::value* entities) {
+    const std::string& prop = stmt.property_value().property();
+    const std::string& qid  = stmt.qid();
 
     cppcms::json::value entity;
 
-    entity["id"] = stmt.getID();
+    entity["id"] = stmt.id();
     entity["type"] = "claim";
     entity["rank"] = "normal";
-    entity["mainsnak"] = createWikidataSnak(stmt.getPropertyValue());
+    entity["mainsnak"] = createWikidataSnak(stmt.property_value());
 
     std::map<std::string, int> qcount;
-    for (const PropertyValue& pv : stmt.getQualifiers()) {
+    for (const model::PropertyValue& pv : stmt.qualifiers()) {
         int c = 0;
 
-        auto it = qcount.find(pv.getProperty());
+        auto it = qcount.find(pv.property());
         if (it != qcount.end()) {
             c = it->second;
         }
 
-        entity["qualifiers"][pv.getProperty()][c] = createWikidataSnak(pv);
+        entity["qualifiers"][pv.property()][c] = createWikidataSnak(pv);
 
-        qcount[pv.getProperty()] = ++c;
+        qcount[pv.property()] = ++c;
     }
 
     std::map<std::string, int> scount;
-    for (const PropertyValue& pv : stmt.getSources()) {
+    for (const model::PropertyValue& pv : stmt.sources()) {
         int c = 0;
 
-        auto it = scount.find(pv.getProperty());
+        auto it = scount.find(pv.property());
         if (it != scount.end()) {
             c = it->second;
         }
 
-        entity["references"][0]["snaks"][pv.getProperty()][c] =
+        entity["references"][0]["snaks"][pv.property()][c] =
                 createWikidataSnak(pv);
 
-        scount[pv.getProperty()] = ++c;
+        scount[pv.property()] = ++c;
     }
 
 

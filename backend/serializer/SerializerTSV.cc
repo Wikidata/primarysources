@@ -7,88 +7,82 @@ namespace wikidata {
 namespace primarysources {
 namespace serializer {
 
-    static void writeValueTSV(const Value& v, std::ostream* out) {
-        switch (v.getType()) {
-            case ENTITY:
-                *out << v.getString();
-                break;
-            case LOCATION:
-                *out << "@" << v.getLocation().first
-                     << "/" << v.getLocation().second;
-                break;
-            case QUANTITY:
-                *out << v.getQuantityAsString();
-                break;
-            case STRING:
-                if (v.getLanguage() != "") {
-                    *out << v.getLanguage() << ":";
+    static void writeValueTSV(const model::Value& v, std::ostream* out) {
+        if (v.has_entity()) {
+            *out << v.entity().qid();
+        } else if (v.has_location()) {
+            *out << "@" << v.location().latitude()
+                 << "/" << v.location().longitude();
+        } else if (v.has_quantity()) {
+            *out << v.quantity().decimal();
+        } else if (v.has_literal()) {
+            if (v.literal().language() != "") {
+                *out << v.literal().language() << ":";
+            }
+            out->put('"');
+            for (char c : v.literal().content()) {
+                if (c == '\\' || c == '"') {
+                    out->put('\\');
                 }
-                out->put('"');
-                for (char c : v.getString()) {
-                    if (c == '\\' || c == '"') {
-                        out->put('\\');
-                    }
-                    out->put(c);
-                }
-                out->put('"');
-                break;
-            case TIME:
-                *out << v.getTime().toWikidataString();
-                break;
+                out->put(c);
+            }
+            out->put('"');
+        } else if (v.has_time()) {
+            *out << model::toWikidataString(v.time());
         }
     }
 
 
-    void writeStatementTSV(const Statement& stmt, std::ostream* out) {
-        *out << stmt.getQID() << "\t"
-             << stmt.getProperty() << "\t";
-        writeValueTSV(stmt.getValue(), out);
+    void writeStatementTSV(const model::Statement& stmt, std::ostream* out) {
+        *out << stmt.qid() << "\t"
+             << stmt.property_value().property() << "\t";
+        writeValueTSV(stmt.property_value().value(), out);
 
-        for (const PropertyValue& pv : stmt.getQualifiers()) {
-            *out << "\t" << pv.getProperty() << "\t";
-            writeValueTSV(pv.getValue(), out);
+        for (const auto& pv : stmt.qualifiers()) {
+            *out << "\t" << pv.property() << "\t";
+            writeValueTSV(pv.value(), out);
         }
 
-        for (const PropertyValue& pv : stmt.getSources()) {
-            *out << "\t" << pv.getProperty() << "\t";
-            writeValueTSV(pv.getValue(), out);
+        for (const auto& pv : stmt.sources()) {
+            *out << "\t" << pv.property() << "\t";
+            writeValueTSV(pv.value(), out);
         }
         *out << std::endl;
     }
 
     void writeStatementEnvelopeJSON(
-            const Statement& stmt, cppcms::json::value* out) {
+            const model::Statement& stmt, cppcms::json::value* out) {
         cppcms::json::value entity;
 
         // write statement as TSV to a string value
         std::ostringstream sout;
 
-        sout << stmt.getQID() << "\t"
-             << stmt.getProperty() << "\t";
-        writeValueTSV(stmt.getValue(), &sout);
+        sout << stmt.qid() << "\t"
+             << stmt.property_value().property() << "\t";
+        writeValueTSV(stmt.property_value().value(), &sout);
 
-        for (const PropertyValue& pv : stmt.getQualifiers()) {
-            sout << "\t" << pv.getProperty() << "\t";
-            writeValueTSV(pv.getValue(), &sout);
+        for (const auto& pv : stmt.qualifiers()) {
+            sout << "\t" << pv.property() << "\t";
+            writeValueTSV(pv.value(), &sout);
         }
 
-        for (const PropertyValue& pv : stmt.getSources()) {
-            sout << "\t" << pv.getProperty() << "\t";
-            writeValueTSV(pv.getValue(), &sout);
+        for (const auto& pv : stmt.sources()) {
+            sout << "\t" << pv.property() << "\t";
+            writeValueTSV(pv.value(), &sout);
         }
 
         (*out)["statement"] = sout.str();
-        (*out)["id"] = stmt.getID();
-        (*out)["format"] = "v1";
-        (*out)["dataset"] = stmt.getDataset();
-        (*out)["upload"] = stmt.getUpload();
-        (*out)["state"] = stateToString(stmt.getApprovalState());
+        (*out)["id"] = stmt.id();
+        (*out)["format"] = std::string("v1");
+        (*out)["dataset"] = stmt.dataset();
+        (*out)["upload"] = stmt.upload();
+        (*out)["state"] = model::stateToString(stmt.approval_state());
 
-        for (int i=0; i< stmt.getActivities().size(); i++) {
-            const LogEntry& entry = stmt.getActivities().at(i);
-            (*out)["activities"][i]["user"] = entry.getUser();
-            (*out)["activities"][i]["state"] = stateToString(entry.getState());
-            (*out)["activities"][i]["timestamp"] = entry.getTime().toWikidataString();
+        for (int i=0; i< stmt.activities().size(); i++) {
+            const auto& entry = stmt.activities(i);
+            (*out)["activities"][i]["user"] = entry.user();
+            (*out)["activities"][i]["state"] = model::stateToString(entry.state());
+            (*out)["activities"][i]["timestamp"] = model::toWikidataString(entry.time());
         }
     }
 

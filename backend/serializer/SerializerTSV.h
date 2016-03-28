@@ -15,10 +15,10 @@ namespace wikidata {
 namespace primarysources {
 namespace serializer {
 
-    void writeStatementTSV(const Statement& stmt, std::ostream* out);
+    void writeStatementTSV(const model::Statement& stmt, std::ostream* out);
 
     void writeStatementEnvelopeJSON(
-            const Statement& stmt, cppcms::json::value* out);
+            const model::Statement& stmt, cppcms::json::value* out);
 
     /**
     * Write a sequence of statements to the output stream using the TSV format

@@ -5,9 +5,24 @@
 #include "Persistence.h"
 #include "model/Statement.h"
 
+using wikidata::primarysources::model::Location;
+using wikidata::primarysources::model::Quantity;
+using wikidata::primarysources::model::Time;
+using wikidata::primarysources::model::Literal;
+
+using wikidata::primarysources::model::ApprovalState;
+using wikidata::primarysources::model::LogEntry;
+using wikidata::primarysources::model::PropertyValue;
+using wikidata::primarysources::model::Statement;
+using wikidata::primarysources::model::Value;
+
+using wikidata::primarysources::model::NewQuantity;
+using wikidata::primarysources::model::NewTime;
+using wikidata::primarysources::model::NewValue;
+using wikidata::primarysources::model::NewPropertyValue;
+
 namespace wikidata {
 namespace primarysources {
-
 namespace {
 
 std::string build_mysql_connection(
@@ -41,41 +56,41 @@ std::string build_sqlite_connection(const std::string &db_name) {
 inline ApprovalState getApprovalState(int16_t state) {
     switch (state) {
         case 0:
-            return UNAPPROVED;
+            return ApprovalState::UNAPPROVED;
         case 1:
-            return APPROVED;
+            return ApprovalState::APPROVED;
         case 2:
-            return OTHERSOURCE;
+            return ApprovalState::OTHERSOURCE;
         case 3:
-            return WRONG;
+            return ApprovalState::WRONG;
         case 4:
-            return SKIPPED;
+            return ApprovalState::SKIPPED;
         case 5:
-            return DUPLICATE;
+            return ApprovalState::DUPLICATE;
         case 6:
-            return BLACKLISTED;
+            return ApprovalState::BLACKLISTED;
         default:
-            return UNAPPROVED;
+            return ApprovalState::UNAPPROVED;
     }
 }
 
 inline int16_t getSQLState(ApprovalState state) {
     switch (state) {
-        case UNAPPROVED:
+        case ApprovalState::UNAPPROVED:
             return 0;
-        case APPROVED:
+        case ApprovalState::APPROVED:
             return 1;
-        case OTHERSOURCE:
+        case ApprovalState::OTHERSOURCE:
             return 2;
-        case WRONG:
+        case ApprovalState::WRONG:
             return 3;
-        case SKIPPED:
+        case ApprovalState::SKIPPED:
             return 4;
-        case DUPLICATE:
+        case ApprovalState::DUPLICATE:
             return 5;
-        case BLACKLISTED:
+        case ApprovalState::BLACKLISTED:
             return 6;
-        case ANY:
+        case ApprovalState::ANY:
             return -1; // Special query only case.
     }
 }
@@ -83,21 +98,21 @@ inline int16_t getSQLState(ApprovalState state) {
 Time timeFromSql(const std::string &str) {
     Time time;
 
+    short year;
+    char month, day, hour, minute, second;
     if (sscanf(str.c_str(), "%hd-%hhd-%hhd %hhd:%hhd:%hhd",
-               &time.year, &time.month, &time.day,
-               &time.hour, &time.minute, &time.second) != 6) {
+               &year, &month, &day, &hour, &minute, &second) != 6) {
         throw PersistenceException("Invalid time: " + str);
     }
-    time.precision = 14;
+    time.set_year(year);
+    time.set_month(month);
+    time.set_day(day);
+    time.set_hour(hour);
+    time.set_minute(minute);
+    time.set_second(second);
+    time.set_precision(14);
 
     return time;
-}
-
-std::string timeToSql(const Time &time) {
-    std::ostringstream stream;
-    stream << (int) time.year << '-' << (int) time.month << '-' << (int) time.day << ' '
-    << (int) time.hour << ':' << (int) time.minute << ':' << (int) time.second;
-    return stream.str();
 }
 
 }  // namespace
@@ -116,40 +131,39 @@ std::string build_connection(const cppcms::json::value &config) {
     }
 }
 
-int64_t Persistence::addSnak(const PropertyValue &pv) {
-    switch (pv.getValue().getType()) {
-        case ENTITY:
-            return (sql << "INSERT INTO snak(property,svalue,vtype) "
-                           "VALUES (?,?,'item')"
-                        << pv.getProperty() << pv.getValue().getString()
-                        << cppdb::exec).last_insert_id();
-        case STRING:
-            return (sql << "INSERT INTO snak(property,svalue,lang,vtype) "
-                           "VALUES (?,?,?,'string')"
-                        << pv.getProperty() << pv.getValue().getString()
-                        << pv.getValue().getLanguage() << cppdb::exec)
+long double Persistence::addSnak(const PropertyValue &pv) {
+    if (pv.value().has_entity()) {
+        return (sql << "INSERT INTO snak(property,svalue,vtype) "
+                       "VALUES (?,?,'item')"
+                    << pv.property() << pv.value().entity().qid()
+                    << cppdb::exec).last_insert_id();
+    } else if (pv.value().has_literal()) {
+        return (sql << "INSERT INTO snak(property,svalue,lang,vtype) "
+                       "VALUES (?,?,?,'string')"
+                    << pv.property() << pv.value().literal().content()
+                    << pv.value().literal().language() << cppdb::exec)
                     .last_insert_id();
-        case QUANTITY:
-            return (sql << "INSERT INTO snak(property,dvalue,vtype) "
-                           "VALUES (?,?,'quantity')"
-                        << pv.getProperty()
-                        << static_cast<long double>(pv.getValue().getQuantity())
-                        << cppdb::exec).last_insert_id();
-        case TIME:
-            if(pv.getValue().getTime().year < 1000) {
-                throw PersistenceException("Time values before year 1000 are not supported");
-            }
-            return (sql << "INSERT INTO snak(property,tvalue,`precision`,vtype) "
-                        "VALUES (?,?,?,'time')"
-                        << pv.getProperty() << timeToSql(pv.getValue().getTime())
-                        << pv.getValue().getTime().precision << cppdb::exec)
-                        .last_insert_id();
-        case LOCATION:
-            return (sql << "INSERT INTO snak(property,lat,lng,vtype) "
-                           "VALUES (?,?,?,'location')"
-                        << pv.getProperty() << pv.getValue().getLocation().first
-                        << pv.getValue().getLocation().second << cppdb::exec)
+    } else if (pv.value().has_quantity()) {
+        return (sql << "INSERT INTO snak(property,dvalue,vtype) "
+                       "VALUES (?,?,'quantity')"
+                    << pv.property()
+                    << std::stold(pv.value().quantity().decimal())
+                    << cppdb::exec).last_insert_id();
+    } else if (pv.value().has_time()) {
+        if (pv.value().time().year() < 1000) {
+            throw PersistenceException("Time values before year 1000 are not supported");
+        }
+        return (sql << "INSERT INTO snak(property,tvalue,`precision`,vtype) "
+                       "VALUES (?,?,?,'time')"
+                    << pv.property() << model::toSQLString(pv.value().time())
+                    << pv.value().time().precision() << cppdb::exec)
                     .last_insert_id();
+    } else if (pv.value().has_location()) {
+        return (sql << "INSERT INTO snak(property,lat,lng,vtype) "
+                       "VALUES (?,?,?,'location')"
+                    << pv.property() << pv.value().location().latitude()
+                    << pv.value().location().longitude() << cppdb::exec)
+                .last_insert_id();
     }
 
     return -1;
@@ -157,41 +171,35 @@ int64_t Persistence::addSnak(const PropertyValue &pv) {
 
 int64_t Persistence::getSnakID(const PropertyValue &pv) {
     cppdb::result r;
-    switch (pv.getValue().getType()) {
-        case ENTITY:
-            r = (sql << "SELECT id FROM snak "
-                        "WHERE property=? AND svalue=? AND vtype='item'"
-                     << pv.getProperty() << pv.getValue().getString()
-                     << cppdb::row);
-            break;
-        case STRING:
-            r = (sql << "SELECT id FROM snak "
-                        "WHERE property=? AND svalue=? AND lang=? "
-                        "AND vtype='string'"
-                    << pv.getProperty() << pv.getValue().getString()
-                    << pv.getValue().getLanguage() << cppdb::row);
-            break;
-        case QUANTITY:
-            r= (sql << "SELECT id FROM snak "
-                       "WHERE property=? AND dvalue=? AND vtype='quantity'"
-                    << pv.getProperty()
-                    << static_cast<long double>(pv.getValue().getQuantity())
-                    << cppdb::row);
-            break;
-        case TIME:
-            r = (sql << "SELECT id FROM snak "
-                        "WHERE property=? AND tvalue=? AND `precision`=? "
-                        "AND vtype='time'"
-                    << pv.getProperty() << timeToSql(pv.getValue().getTime())
-                    << pv.getValue().getTime().precision << cppdb::row);
-            break;
-        case LOCATION:
-            r = (sql << "SELECT id FROM snak "
-                        "WHERE property=? AND lat=? AND lng=? "
-                        "AND vtype='location' "
-                    << pv.getProperty() << pv.getValue().getLocation().first
-                    << pv.getValue().getLocation().second << cppdb::row);
-            break;
+    if (pv.value().has_entity()) {
+        r = (sql << "SELECT id FROM snak "
+                    "WHERE property=? AND svalue=? AND vtype='item'"
+                 << pv.property() << pv.value().entity().qid()
+                 << cppdb::row);
+    } else if (pv.value().has_literal()) {
+        r = (sql << "SELECT id FROM snak "
+                    "WHERE property=? AND svalue=? AND lang=? "
+                    "AND vtype='string'"
+                 << pv.property() << pv.value().literal().content()
+                 << pv.value().literal().language() << cppdb::row);
+    } else if (pv.value().has_quantity()) {
+        r= (sql << "SELECT id FROM snak "
+                   "WHERE property=? AND dvalue=? AND vtype='quantity'"
+                << pv.property()
+                << std::stold(pv.value().quantity().decimal())
+                << cppdb::row);
+    } else if (pv.value().has_time()) {
+        r = (sql << "SELECT id FROM snak "
+                    "WHERE property=? AND tvalue=? AND `precision`=? "
+                    "AND vtype='time'"
+                 << pv.property() << model::toSQLString(pv.value().time())
+                 << pv.value().time().precision() << cppdb::row);
+    } else if (pv.value().has_location()) {
+        r = (sql << "SELECT id FROM snak "
+                    "WHERE property=? AND lat=? AND lng=? "
+                    "AND vtype='location' "
+                 << pv.property() << pv.value().location().latitude()
+                 << pv.value().location().longitude() << cppdb::row);
     }
 
     if (!r.empty()) {
@@ -213,22 +221,22 @@ PropertyValue Persistence::getSnak(int64_t snakid) {
         std::string prop  = res.get<std::string>("property");
         if (vtype == "item") {
             std::string svalue = res.get<std::string>("svalue");
-            return PropertyValue(prop, Value(svalue));
+            return NewPropertyValue(prop, NewValue(svalue));
         } else if (vtype == "string") {
             std::string svalue = res.get<std::string>("svalue");
             std::string lang = res.get<std::string>("lang");
-            return PropertyValue(prop, Value(svalue, lang));
+            return NewPropertyValue(prop, NewValue(svalue, lang));
         } else if (vtype == "time") {
             Time tvalue = timeFromSql(res.get<std::string>("tvalue"));
-            tvalue.precision = res.get<int>("precision");
-            return PropertyValue(prop, Value(tvalue));
+            tvalue.set_precision(res.get<int>("precision"));
+            return NewPropertyValue(prop, NewTime(std::move(tvalue)));
         } else if (vtype == "location") {
             double lat = res.get<double>("lat");
             double lng = res.get<double>("lng");
-            return PropertyValue(prop, Value(lat, lng));
+            return NewPropertyValue(prop, NewValue(lat, lng));
         } else if (vtype == "quantity") {
             std::string dvalue = res.get<std::string>("dvalue");
-            return PropertyValue(prop, Value(Quantity(dvalue)));
+            return NewPropertyValue(prop, NewQuantity(dvalue));
         } else {
             // no result found
             throw PersistenceException("snak has unknown type");
@@ -249,7 +257,7 @@ std::vector<LogEntry> Persistence::getLogEntries(int64_t stmtid) {
                 << stmtid);
 
     while (res.next()) {
-        result.push_back(LogEntry(
+        result.push_back(NewLogEntry(
                 res.get<std::string>("user"),
                 getApprovalState(res.get<int16_t>("state")),
                 timeFromSql(res.get<std::string>("changed"))
@@ -263,7 +271,7 @@ std::vector<LogEntry> Persistence::getLogEntries(int64_t stmtid) {
 Statement Persistence::buildStatement(int64_t id, const std::string& qid,
                                       int64_t snak, const std::string& dataset,
                                       int64_t upload, int16_t state) {
-    Statement::extensions_t qualifiers, sources;
+    std::vector<PropertyValue> qualifiers, sources;
 
     // qualifiers
     cppdb::result qres =
@@ -281,7 +289,7 @@ Statement Persistence::buildStatement(int64_t id, const std::string& qid,
         qualifiers.push_back(getSnak(snakid));
     }
 
-    return Statement(id, qid, getSnak(snak),
+    return NewStatement(id, qid, getSnak(snak),
                      qualifiers, sources,
                      dataset, upload,
                      getApprovalState(state),
@@ -309,23 +317,23 @@ int64_t Persistence::addStatement(const Statement& st, bool check_duplicates) {
     if (!managedTransactions)
         sql.begin();
 
-    int64_t snakid = getOrAddSnak(st.getPropertyValue(), check_duplicates);
+    int64_t snakid = getOrAddSnak(st.property_value(), check_duplicates);
 
     int64_t stmtid = (
             sql << "INSERT INTO statement(subject,mainsnak, dataset, upload) "
                    "VALUES (?,?,?,?)"
-                << st.getQID() << snakid
-                << st.getDataset() << st.getUpload() << cppdb::exec
+                << st.qid() << snakid
+                << st.dataset() << st.upload() << cppdb::exec
     ).last_insert_id();
 
-    for (const PropertyValue& pv : st.getQualifiers()) {
+    for (const PropertyValue& pv : st.qualifiers()) {
         int64_t qualid = getOrAddSnak(pv, check_duplicates);
 
         sql << "INSERT INTO qualifier(stmt,snak) VALUES (?,?)"
             << stmtid << qualid << cppdb::exec;
     }
 
-    for (const PropertyValue& pv : st.getSources()) {
+    for (const PropertyValue& pv : st.sources()) {
         int64_t qualid = getOrAddSnak(pv, check_duplicates);
 
         sql << "INSERT INTO source(stmt,snak) VALUES (?,?)"
@@ -339,7 +347,7 @@ int64_t Persistence::addStatement(const Statement& st, bool check_duplicates) {
 }
 
 void Persistence::updateStatement(const Statement &st) {
-    updateStatement(st.getID(), st.getApprovalState());
+    updateStatement(st.id(), st.approval_state());
 }
 
 void Persistence::updateStatement(int64_t id, ApprovalState state) {
@@ -437,24 +445,18 @@ std::vector<Statement> Persistence::getAllStatements(
 
     std::string valueSelector = "";
     if (value != nullptr) {
-        switch (value->getType()) {
-            case ENTITY:
-                valueSelector = "AND snak.svalue = ?";
-                break;
-            case STRING:
-                valueSelector = "AND snak.svalue = ? AND snak.lang = ?";
-                break;
-            case QUANTITY:
-                valueSelector = "AND snak.dvalue = ?";
-                break;
-            case TIME:
-                valueSelector = "AND snak.tvalue = ?";
-                break;
-            case LOCATION:
-                valueSelector = "AND snak.lat = ? AND snak.lng = ?";
-                break;
-            default:
-                throw PersistenceException("Value search for this type is not supported");
+        if (value->has_entity()) {
+            valueSelector = "AND snak.svalue = ?";
+        } else if (value->has_literal()) {
+            valueSelector = "AND snak.svalue = ? AND snak.lang = ?";
+        } else if (value->has_quantity()) {
+            valueSelector = "AND snak.dvalue = ?";
+        } else if (value->has_time()) {
+            valueSelector = "AND snak.tvalue = ?";
+        } else if (value->has_location()) {
+            valueSelector = "AND snak.lat = ? AND snak.lng = ?";
+        } else {
+            throw PersistenceException("Value search for this type is not supported");
         }
     }
 
@@ -470,24 +472,18 @@ std::vector<Statement> Persistence::getAllStatements(
                 << property << (property == ""));
 
     if (value != nullptr) {
-        switch (value->getType()) {
-            case ENTITY:
-                statement = (statement << value->getString());
-                break;
-            case STRING:
-                statement = (statement << value->getString() << value->getLanguage());
-                break;
-            case QUANTITY:
-                statement = (statement << static_cast<long double>(value->getQuantity()));
-                break;
-            case TIME:
-                statement = (statement << timeToSql(value->getTime()));
-                break;
-            case LOCATION:
-                statement = (statement << value->getLocation().first << value->getLocation().second);
-                break;
-            }
+        if (value->has_entity()) {
+            statement = (statement << value->entity().qid());
+        } else if (value->has_literal()) {
+            statement = (statement << value->literal().content() << value->literal().language());
+        } else if (value->has_quantity()) {
+            statement = (statement << std::stold(value->quantity().decimal()));
+        } else if (value->has_time()) {
+            statement = (statement << model::toSQLString(value->time()));
+        } else if (value->has_location()) {
+            statement = (statement << value->location().latitude() << value->location().longitude());
         }
+    }
 
     cppdb::result res = (statement << limit << offset);
 
@@ -704,15 +700,15 @@ void Persistence::markDuplicates(int64_t start_id) {
     std::vector<Statement> statements;
     while (r_entities.next()) {
         qid = r_entities.get<std::string>("subject");
-        statements = getStatementsByQID(qid, ANY);
+        statements = getStatementsByQID(qid, ApprovalState::ANY);
 
         if (statements.size() > 1) {
             for (auto it1 = statements.begin(); it1 != statements.end(); it1++) {
                 Statement s1 = *it1;
                 for (auto it2 = it1 + 1; it2 != statements.end(); it2++) {
                     Statement s2 = *it2;
-                    if (s1 == s2 && s2.getApprovalState() == UNAPPROVED) {
-                        s2.setApprovalState(DUPLICATE);
+                    if (s1 == s2 && s2.approval_state() == ApprovalState::UNAPPROVED) {
+                        s2.set_approval_state(ApprovalState::DUPLICATE);
                         updateStatement(s2);
                         stmts_marked++;
                     }

@@ -102,16 +102,20 @@ message Value {
     }
 }
 
-// A PropertyValue is a relating a value with an entity using a property ID.
-// PropertyValues can occur in a statement as main snak, as qualifiers, and as
-// sources.
+// Property-value pair, also called 'snak' in Wikidata terminology. Used to
+// represent the primary property and value, as well as qualifiers and sources.
+//
+// All value types are represented internally using the string representation
+// described at http://tools.wmflabs.org/wikidata-todo/quick_statements.php
 message PropertyValue {
     // A property identifier, e.g. P123
     string property = 1;
     Value  value    = 2;
 }
 
-// Represents state changes of a statement by given users.
+// Representation of an activity entry for a statement. Each activity
+// is carried out by a user, changes the statement state to a new state,
+// and happened at a specific timepoint.
 message LogEntry {
     // Name of the user who did the state change.
     string user = 1;
@@ -123,6 +127,10 @@ message LogEntry {
     Time time = 3;
 }
 
+// Representation of a Freebase/Wikidata statement to be approved by users.
+// Similar to RDF triples, but a simplified model without blank nodes. For each
+// statement we also store an internal (database) ID that allows to uniquely
+// identify the statement, and the current state of approval.
 message Statement {
     // Database identifier.
     int64 id = 1;
@@ -131,7 +139,7 @@ message Statement {
     string qid = 2;
 
     // Main property/value pair.
-    PropertyValue main_snak = 3;
+    PropertyValue property_value = 3;
 
     // Qualifiers and sources
     repeated PropertyValue qualifiers = 4;
@@ -140,9 +148,12 @@ message Statement {
     // A string identifying the dataset the statement belongs to.
     string dataset = 6;
 
+    // ID of the upload batch this statement was part of.
+    int64 upload = 7;
+
     // Current state of the statement.
-    ApprovalState approved = 7;
+    ApprovalState approval_state = 8;
 
     // State change log, filled from database.
-    repeated LogEntry activities = 8;
+    repeated LogEntry activities = 9;
 }

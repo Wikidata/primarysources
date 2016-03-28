@@ -7,61 +7,15 @@
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <chrono>
+
+#include <model/Statement.h>
+#include <parser/Parser.h>
+#include <persistence/Persistence.h>
 #include <status/SystemStatus.h>
+#include <service/StatementCaching.h>
 
-#include "parser/Parser.h"
-
-#include "persistence/Persistence.h"
-
-
-namespace cppcms {
-    using ::wikidata::primarysources::Statement;
-
-    template<>
-    struct serialization_traits<std::vector<Statement>> {
-        ///
-        /// Convert string to object
-        ///
-        static void load(std::string const &serialized_object,std::vector<Statement> &real_object)
-        {
-            archive a;
-            a.str(serialized_object);
-            cppcms::details::archive_load_container<std::vector<Statement>>(real_object, a);
-        }
-        ///
-        /// Convert object to string
-        ///
-        static void save(std::vector<Statement> const &real_object,std::string &serialized_object)
-        {
-            archive a;
-            cppcms::details::archive_save_container<std::vector<Statement>>(real_object, a);
-            serialized_object = a.str();
-        }
-    };
-
-    template<>
-        struct serialization_traits<std::vector<std::string>> {
-            ///
-            /// Convert string to object
-            ///
-            static void load(std::string const &serialized_object,std::vector<std::string> &real_object)
-            {
-                archive a;
-                a.str(serialized_object);
-                cppcms::details::archive_load_container<std::vector<std::string>>(real_object, a);
-            }
-            ///
-            /// Convert object to string
-            ///
-            static void save(std::vector<std::string> const &real_object,std::string &serialized_object)
-            {
-                archive a;
-                cppcms::details::archive_save_container<std::vector<std::string>>(real_object, a);
-                serialized_object = a.str();
-            }
-        };
-}  // namespace cppcms
-
+using wikidata::primarysources::model::ApprovalState;
+using wikidata::primarysources::model::Statement;
 
 namespace wikidata {
 namespace primarysources {
@@ -72,9 +26,9 @@ namespace {
 // be used.
 std::string createCacheKey(const std::string &qid, ApprovalState state, const std::string &dataset) {
     if (dataset == "") {
-        return "ALL-" + qid + "-" + stateToString(state);
+        return "ALL-" + qid + "-" + model::stateToString(state);
     } else {
-        return qid + "-" + dataset + "-" + stateToString(state);
+        return qid + "-" + dataset + "-" + model::stateToString(state);
     }
 }
 }  // namespace
@@ -119,7 +73,7 @@ std::vector<Statement> SourcesToolBackend::getAllStatements(
         ApprovalState state,
         const std::string& dataset,
         const std::string& property,
-        const Value* value) {
+        const model::Value* value) {
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
@@ -145,16 +99,18 @@ void SourcesToolBackend::updateStatement(
         Statement st = p.getStatement(id);
 
         p.updateStatement(id, state);
-        if (state != DUPLICATE && state != BLACKLISTED) {
+        if (state != ApprovalState::DUPLICATE && state != ApprovalState::BLACKLISTED) {
             p.addUserlog(user, id, state);
         }
 
         sql.commit();
 
         // update cache
-        for (ApprovalState state : { APPROVED, UNAPPROVED, WRONG, DUPLICATE, BLACKLISTED }) {
-            cache.rise(createCacheKey(st.getQID(), state, st.getDataset()));
-            cache.rise(createCacheKey(st.getQID(), state, ""));
+        for (ApprovalState state : { ApprovalState::APPROVED, ApprovalState::UNAPPROVED,
+                                     ApprovalState::WRONG, ApprovalState::DUPLICATE,
+                                     ApprovalState::BLACKLISTED }) {
+            cache.rise(createCacheKey(st.qid(), state, st.dataset()));
+            cache.rise(createCacheKey(st.qid(), state, ""));
         }
         cache.rise("STATUS");
         cache.rise("ACTIVITIES");
@@ -262,11 +218,11 @@ Status SourcesToolBackend::getStatus(cache_t& cache, const std::string& dataset)
         sql.begin();
 
         result.setStatements(p.countStatements(dataset));
-        result.setApproved(p.countStatements(APPROVED, dataset));
-        result.setUnapproved(p.countStatements(UNAPPROVED, dataset));
-        result.setDuplicate(p.countStatements(DUPLICATE, dataset));
-        result.setBlacklisted(p.countStatements(BLACKLISTED, dataset));
-        result.setWrong(p.countStatements(WRONG, dataset));
+        result.setApproved(p.countStatements(ApprovalState::APPROVED, dataset));
+        result.setUnapproved(p.countStatements(ApprovalState::UNAPPROVED, dataset));
+        result.setDuplicate(p.countStatements(ApprovalState::DUPLICATE, dataset));
+        result.setBlacklisted(p.countStatements(ApprovalState::BLACKLISTED, dataset));
+        result.setWrong(p.countStatements(ApprovalState::WRONG, dataset));
         result.setUsers(p.countUsers());
         result.setTopUsers(p.getTopUsers(10));
 

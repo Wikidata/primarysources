@@ -19,6 +19,16 @@
 #include "util/TimeLogger.h"
 #include "util/MemStat.h"
 
+using wikidata::primarysources::model::ApprovalState;
+using wikidata::primarysources::model::PropertyValue;
+using wikidata::primarysources::model::Statement;
+using wikidata::primarysources::model::Value;
+
+using wikidata::primarysources::model::InvalidApprovalState;
+
+using wikidata::primarysources::model::stateFromString;
+
+
 namespace wikidata {
 namespace primarysources {
 
@@ -85,9 +95,9 @@ void SourcesToolService::getEntityByQID(std::string qid) {
 
     try {
         // By default only return unapproved statements.
-        ApprovalState state = UNAPPROVED;
+        ApprovalState state = ApprovalState::UNAPPROVED;
         if (request().get("state") != "") {
-            state = stateFromString(request().get("state"));
+            state = model::stateFromString(request().get("state"));
         }
 
         std::vector<Statement> statements = backend
@@ -116,7 +126,7 @@ void SourcesToolService::getRandomEntity() {
 
     try {
         // By default only return unapproved statements.
-        ApprovalState state = UNAPPROVED;
+        ApprovalState state = ApprovalState::UNAPPROVED;
         if (request().get("state") != "") {
             state = stateFromString(request().get("state"));
         }
@@ -189,7 +199,7 @@ void SourcesToolService::getRandomStatements() {
         }
 
         // By default only return unapproved statements.
-        ApprovalState state = UNAPPROVED;
+        ApprovalState state = ApprovalState::UNAPPROVED;
         if (request().get("state") != "") {
             state = stateFromString(request().get("state"));
         }
@@ -218,7 +228,7 @@ void SourcesToolService::getAllStatements() {
         }
 
         // By default return only unapproved statements.
-        ApprovalState state = UNAPPROVED;
+        ApprovalState state = ApprovalState::UNAPPROVED;
         if (request().get("state") != "") {
             state = stateFromString(request().get("state"));
         }

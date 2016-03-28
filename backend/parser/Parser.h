@@ -21,12 +21,12 @@ namespace parser {
     * handler function given as argument.
     */
     void parseTSV(const std::string& dataset, int64_t upload,
-                  std::istream &in, std::function<void(Statement)> handler);
+                  std::istream &in, std::function<void(model::Statement)> handler);
 
     /**
     * A value formatted in TSV.
     */
-    Value parseValue(const std::string& value);
+    model::Value parseValue(const std::string& value);
 
 }  // namespace parser
 }  // namespace primarysources

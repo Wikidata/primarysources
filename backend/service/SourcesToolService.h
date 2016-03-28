@@ -197,7 +197,7 @@ class SourcesToolService : public cppcms::application {
     void handleGetPostStatement(std::string);
 
     // serialize list of statements according to content negotiation
-    void serializeStatements(const std::vector<Statement>& stmts);
+    void serializeStatements(const std::vector<model::Statement>& stmts);
 
     // add the CORS headers to the response
     void addCORSHeaders();
