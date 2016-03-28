@@ -1,1 +1,1 @@
-add_library(primarysources_util STATIC TimeLogger.cc MemStat.cc)
+add_library(primarysources_util STATIC TimeLogger.cc MemStat.cc HttpStatus.cc HttpStatus.h)

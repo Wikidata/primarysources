@@ -10,6 +10,8 @@
 #include <cppcms/url_mapper.h>
 #include <status/SystemStatus.h>
 #include <model/status.pb.h>
+#include <glog/logging.h>
+#include <util/HttpStatus.h>
 
 #include "serializer/SerializerTSV.h"
 #include "serializer/SerializerJSON.h"
@@ -109,12 +111,12 @@ void SourcesToolService::getEntityByQID(std::string qid) {
         if (statements.size() > 0) {
             serializeStatements(statements);
         } else {
-            response().status(404, "no statements found for entity " + qid);
+            RESPONSE(NOT_FOUND) << "No statements found for entity " << qid;
         }
 
         status::AddGetEntityRequest();
     } catch(InvalidApprovalState const &e) {
-        response().status(400, "Bad Request: invalid state parameter");
+        RESPONSE(BAD_REQUEST) << "Invalid state parameter '" << request().get("state") << "'";
     }
 }
 
@@ -135,9 +137,9 @@ void SourcesToolService::getRandomEntity() {
                 backend.getStatementsByRandomQID(cache(), state, request().get("dataset"));
         serializeStatements(statements);
     } catch(InvalidApprovalState const &e) {
-        response().status(400, "Bad Request: invalid state parameter");
+        RESPONSE(BAD_REQUEST) << "invalid state parameter";
     } catch(PersistenceException const &e) {
-        response().status(404, "no random unapproved entity found");
+        RESPONSE(NOT_FOUND) << "no random unapproved entity found";
     }
 
     status::AddGetRandomRequest();
@@ -152,7 +154,7 @@ void SourcesToolService::approveStatement(int64_t stid) {
     // return 403 forbidden when there is no user given or the username is too
     // long for the database
     if (request().get("user") == "" || request().get("user").length() > 64) {
-        response().status(403, "Forbidden: invalid or missing user");
+        RESPONSE(FORBIDDEN) << "invalid or missing user";
         return;
     }
 
@@ -160,9 +162,9 @@ void SourcesToolService::approveStatement(int64_t stid) {
     try {
         backend.updateStatement(cache(), stid, stateFromString(request().get("state")), request().get("user"));
     } catch(PersistenceException const &e) {
-        response().status(404, "Statement not found");
+        RESPONSE(NOT_FOUND) << "Statement " << stid  << " not found";
     } catch(InvalidApprovalState const &e) {
-        response().status(400, "Bad Request: invalid or missing state parameter");
+        RESPONSE(BAD_REQUEST) << "Invalid or missing state parameter";
     }
 
     status::AddUpdateStatementRequest();
@@ -179,8 +181,7 @@ void SourcesToolService::getStatement(int64_t stid) {
         std::vector<Statement> statements = { backend.getStatementByID(cache(), stid) };
         serializeStatements(statements);
     } catch(PersistenceException const &e) {
-        std::cerr << "error: " << e.what() << std::endl;
-        response().status(404, "Statement not found");
+        RESPONSE(NOT_FOUND) << "Statement " << stid  << " not found";
     }
 
     status::AddGetStatementRequest();
@@ -206,7 +207,7 @@ void SourcesToolService::getRandomStatements() {
 
         serializeStatements(backend.getRandomStatements(cache(), count, state));
     } catch(InvalidApprovalState const &e) {
-        response().status(400, "Bad Request: invalid state parameter");
+        RESPONSE(BAD_REQUEST) << "Invalid or missing state parameter";
     }
 }
 
@@ -248,10 +249,10 @@ void SourcesToolService::getAllStatements() {
         if (statements.size() > 0) {
             serializeStatements(statements);
         } else {
-            response().status(404, "no statements found");
+            RESPONSE(NOT_FOUND) << "No statements found";
         }
     } catch(InvalidApprovalState const &e) {
-        response().status(400, "Bad Request: invalid or missing state parameter");
+        RESPONSE(BAD_REQUEST) << "Invalid or missing state parameter";
     }
 }
 
@@ -336,13 +337,13 @@ void SourcesToolService::importStatements() {
     if (request().request_method() == "POST") {
         // check if token matches
         if (request().get("token") != settings()["token"].str()) {
-            response().status(401, "Invalid authorization token");
+            RESPONSE(UNAUTHORIZED) << "Invalid authorization token";
             return;
         }
 
         std::string dataset = request().get("dataset");
         if (dataset == "") {
-            response().status(400, "Missing argument: dataset");
+            RESPONSE(BAD_REQUEST) << "Missing argument: dataset";
             return;
         }
 
@@ -377,7 +378,7 @@ void SourcesToolService::importStatements() {
             result.save(response().out(), cppcms::json::readable);
         }
     } else {
-        response().status(405, "Method not allowed");
+        RESPONSE(METHOD_NOT_ALLOWED) << request().request_method();
         response().set_header("Allow", "POST");
     }
 }
@@ -404,7 +405,7 @@ void SourcesToolService::deleteStatements() {
 
         // check if token matches
         if (request().get("token") != settings()["token"].str()) {
-            response().status(401, "Invalid authorization token");
+            RESPONSE(UNAUTHORIZED) <<  "Invalid authorization token '" << request().get("token") << "'";
             return;
         }
 
@@ -414,12 +415,12 @@ void SourcesToolService::deleteStatements() {
         try {
             backend.deleteStatements(cache(), stateFromString(request().get("state")));
         } catch(PersistenceException const &e) {
-            response().status(404, "Could not delete statements");
+            RESPONSE(NOT_FOUND) << "Could not delete statements";
         } catch(InvalidApprovalState const &e) {
-            response().status(400, "Bad Request: invalid or missing state parameter");
+            RESPONSE(BAD_REQUEST) << "Invalid or missing state parameter";
         }
     } else {
-        response().status(405, "Method not allowed");
+        RESPONSE(METHOD_NOT_ALLOWED) << request().request_method();
         response().set_header("Allow", "POST");
     }
 }
