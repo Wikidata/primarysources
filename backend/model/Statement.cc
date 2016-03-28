@@ -1,7 +1,10 @@
 // Copyright 2015 Google Inc. All Rights Reserved.
 // Author: Sebastian Schaffert <schaffert@google.com>
 
+
 #include <iomanip>
+#include <sstream>
+
 #include "Statement.h"
 
 namespace wikidata {

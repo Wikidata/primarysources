@@ -1,6 +1,7 @@
 // Copyright 2015 Google Inc. All Rights Reserved.
 // Author: Sebastian Schaffert <schaffert@google.com>
 
+#include <sstream>
 #include <sys/types.h>
 #include "Persistence.h"
 #include "model/Statement.h"

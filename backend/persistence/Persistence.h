@@ -5,6 +5,7 @@
 #define HAVE_PERSISTENCE_H_
 
 #include <cppdb/frontend.h>
+#include <cppcms/json.h>
 #include <exception>
 
 #include "model/Statement.h"
