@@ -20,7 +20,7 @@ ADD_DEFINITIONS(
 )
 
 find_package (GFlags REQUIRED)
-find_package (Protobuf REQUIRED)
+find_package (Protobuf 10 REQUIRED)
 find_package (GLog REQUIRED)
 find_package (Threads)
 find_package (CPPCMS REQUIRED)
