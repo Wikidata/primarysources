@@ -3,7 +3,6 @@
 
 #include "Parser.h"
 
-#include <boost/tokenizer.hpp>
 #include <boost/regex.hpp>
 
 using wikidata::primarysources::model::ApprovalState ;
@@ -19,6 +18,21 @@ using wikidata::primarysources::model::NewStatement;
 namespace wikidata {
 namespace primarysources {
 namespace parser {
+
+std::vector<std::string> split(const char *str, char c = ' ') {
+    std::vector<std::string> result;
+
+    do {
+        const char *begin = str;
+
+        while (*str != c && *str)
+            str++;
+
+        result.push_back(std::string(begin, str));
+    } while (0 != *str++);
+
+    return result;
+}
 
 Value parseValue(const std::string& value) {
     // regular expressions for the different value formats
@@ -62,15 +76,11 @@ PropertyValue parsePropertyValue(const std::string& property, const std::string&
 
 void parseTSV(const std::string& dataset, int64_t upload,
                       std::istream &in, std::function<void(Statement)> handler) {
-    typedef boost::tokenizer< boost::char_separator<char> > Tokenizer;
-    boost::char_separator<char> sep("\t");
-
     std::vector< std::string > vec;
     std::string line;
 
     while (std::getline(in, line)) {
-        Tokenizer tok(line, sep);
-        vec.assign(tok.begin(), tok.end());
+        vec = split(line.c_str(), '\t');
 
         std::vector<PropertyValue> qualifiers, sources;
 
