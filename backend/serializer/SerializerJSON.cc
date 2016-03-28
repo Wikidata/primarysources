@@ -3,6 +3,9 @@
 
 #include "SerializerJSON.h"
 
+#include <sstream>
+#include <iomanip>
+
 namespace wikidata {
 namespace primarysources {
 namespace serializer {

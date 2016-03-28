@@ -5,10 +5,6 @@
 #define HAVE_SERIALIZERJSON_H_
 
 #include <iostream>
-#include <vector>
-#include <sstream>
-#include <iomanip>
-
 #include <cppcms/json.h>
 
 #include "model/Statement.h"

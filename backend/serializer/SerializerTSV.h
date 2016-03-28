@@ -4,9 +4,6 @@
 #ifndef HAVE_SERIALIZER_TSV_H_
 #define HAVE_SERIALIZER_TSV_H_
 
-#include <sstream>
-#include <string>
-#include <iomanip>
 #include <cppcms/json.h>
 
 #include "model/Statement.h"
