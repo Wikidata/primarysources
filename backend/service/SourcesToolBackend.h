@@ -5,8 +5,8 @@
 #define HAVE_SOURCESTOOL_BACKEND_H_
 
 #include "model/Statement.h"
-#include "Status.h"
 #include "Dashboard.h"
+#include <status/SystemStatus.h>
 
 #include <vector>
 #include <string>
@@ -96,7 +96,7 @@ public:
      * Return status information about the database, e.g. number of approved/
      * unapproved statements, top users, etc.
      */
-    Status getStatus(cache_t& cache, const std::string& dataset);
+    model::Status getStatus(cache_t& cache, const std::string& dataset);
 
     /**
      * Returns the list of all datasets
@@ -108,11 +108,19 @@ public:
      */
     Dashboard::ActivityLog getActivityLog(cache_t& cache);
 
+    /**
+     * Return a reference to the status service.
+     */
+    status::StatusService& StatusService() {
+        return status_service_;
+    };
 private:
 
     // CppDB uses a connection pool internally, so we just remember the
     // connection string
     std::string connstr;
+
+    status::StatusService status_service_;
 };
 
 

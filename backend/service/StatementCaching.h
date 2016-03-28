@@ -7,6 +7,7 @@
 
 #include <cppcms/cache_interface.h>
 #include <model/Statement.h>
+#include <model/Status.h>
 
 namespace cppcms {
 
@@ -16,6 +17,8 @@ using ::wikidata::primarysources::model::Value;
 
 using ::wikidata::primarysources::model::Statements;
 using ::wikidata::primarysources::model::Strings;
+
+using ::wikidata::primarysources::model::Status;
 
 template<>
 struct serialization_traits<Value> {
@@ -92,6 +95,20 @@ struct serialization_traits<std::vector<std::string>> {
         stmts.SerializeToString(&serialized_object);
     }
 };
+
+template<>
+struct serialization_traits<Status> {
+
+    static void load(const std::string& serialized_object, Status &real_object) {
+        real_object.ParseFromString(serialized_object);
+    }
+
+    static void save(const Status& real_object, std::string& serialized_object) {
+        real_object.SerializeToString(&serialized_object);
+    }
+};
+
+
 }  // namespace cppcms
 
 #endif //PRIMARYSOURCES_STATEMENTCACHING_H

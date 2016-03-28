@@ -23,7 +23,6 @@ int main(int argc, char **argv) {
     // Initialize Google's logging library.
     google::InitGoogleLogging(argv[0]);
 
-    wikidata::primarysources::status::Init();
     try {
 
 #ifdef DB_SQLITE3

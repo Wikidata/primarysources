@@ -114,7 +114,7 @@ void SourcesToolService::getEntityByQID(std::string qid) {
             RESPONSE(NOT_FOUND) << "No statements found for entity " << qid;
         }
 
-        status::AddGetEntityRequest();
+        backend.StatusService().AddGetEntityRequest();
     } catch(InvalidApprovalState const &e) {
         RESPONSE(BAD_REQUEST) << "Invalid state parameter '" << request().get("state") << "'";
     }
@@ -142,7 +142,7 @@ void SourcesToolService::getRandomEntity() {
         RESPONSE(NOT_FOUND) << "no random unapproved entity found";
     }
 
-    status::AddGetRandomRequest();
+    backend.StatusService().AddGetRandomRequest();
 }
 
 void SourcesToolService::approveStatement(int64_t stid) {
@@ -167,7 +167,7 @@ void SourcesToolService::approveStatement(int64_t stid) {
         RESPONSE(BAD_REQUEST) << "Invalid or missing state parameter";
     }
 
-    status::AddUpdateStatementRequest();
+    backend.StatusService().AddUpdateStatementRequest();
 }
 
 void SourcesToolService::getStatement(int64_t stid) {
@@ -184,7 +184,7 @@ void SourcesToolService::getStatement(int64_t stid) {
         RESPONSE(NOT_FOUND) << "Statement " << stid  << " not found";
     }
 
-    status::AddGetStatementRequest();
+    backend.StatusService().AddGetStatementRequest();
 }
 
 void SourcesToolService::getRandomStatements() {
@@ -266,52 +266,50 @@ void SourcesToolService::getStatus() {
     cppcms::json::value result;
 
     std::string dataset = request().get("dataset");
-    Status status = backend.getStatus(cache(), dataset);
+    model::Status status = backend.getStatus(cache(), dataset);
 
     // show dataset-specific statements count, defaulting to all datasets
     result["dataset"] = (dataset != "") ? dataset : "all";
 
-    result["statements"]["total"] = status.getStatements();
-    result["statements"]["approved"] = status.getApproved();
-    result["statements"]["unapproved"] = status.getUnapproved();
-    result["statements"]["blacklisted"] = status.getBlacklisted();
-    result["statements"]["duplicate"] = status.getDuplicate();
-    result["statements"]["wrong"] = status.getWrong();
+    result["statements"]["total"] = status.statements().statements();
+    result["statements"]["approved"] = status.statements().approved();
+    result["statements"]["unapproved"] = status.statements().unapproved();
+    result["statements"]["blacklisted"] = status.statements().blacklisted();
+    result["statements"]["duplicate"] = status.statements().duplicate();
+    result["statements"]["wrong"] = status.statements().wrong();
 
     // users information
-    result["users"] = status.getUsers();
+    result["users"] = status.total_users();
 
     cppcms::json::array topusers;
-    for (auto entry : status.getTopUsers()) {
+    for (const auto& entry : status.top_users()) {
         cppcms::json::value v;
-        v["name"] = entry.first;
-        v["activities"] = entry.second;
+        v["name"] = entry.name();
+        v["activities"] = entry.activities();
         topusers.push_back(v);
     }
     result["topusers"] = topusers;
 
     // system information
-    model::Status statusng = status::Status();
-
-    result["system"]["startup"] = statusng.system().startup();
-    result["system"]["version"] = statusng.system().version();
-    result["system"]["cache_hits"] = statusng.system().cache_hits();
-    result["system"]["cache_misses"] = statusng.system().cache_misses();
-    result["system"]["shared_mem"] = statusng.system().shared_memory();
-    result["system"]["private_mem"] = statusng.system().private_memory();
-    result["system"]["rss"] = statusng.system().resident_set_size();
+    result["system"]["startup"] = status.system().startup();
+    result["system"]["version"] = status.system().version();
+    result["system"]["cache_hits"] = status.system().cache_hits();
+    result["system"]["cache_misses"] = status.system().cache_misses();
+    result["system"]["shared_mem"] = status.system().shared_memory();
+    result["system"]["private_mem"] = status.system().private_memory();
+    result["system"]["rss"] = status.system().resident_set_size();
 
     // request statistics
-    result["requests"]["getentity"] = statusng.requests().get_entity();
-    result["requests"]["getrandom"] = statusng.requests().get_random();
-    result["requests"]["getstatement"] = statusng.requests().get_statement();
-    result["requests"]["updatestatement"] = statusng.requests().update_statement();
-    result["requests"]["getstatus"] = statusng.requests().get_status();
+    result["requests"]["getentity"] = status.requests().get_entity();
+    result["requests"]["getrandom"] = status.requests().get_random();
+    result["requests"]["getstatement"] = status.requests().get_statement();
+    result["requests"]["updatestatement"] = status.requests().update_statement();
+    result["requests"]["getstatus"] = status.requests().get_status();
 
     response().content_type("application/json");
     result.save(response().out(), cppcms::json::readable);
 
-    status::AddGetStatusRequest();
+    backend.StatusService().AddGetStatusRequest();
 }
 
 void SourcesToolService::serializeStatements(const std::vector<Statement> &statements) {
@@ -431,7 +429,7 @@ void SourcesToolService::addCORSHeaders() {
 
 void SourcesToolService::addVersionHeaders() {
     response().set_header("X-Powered-By",
-                          std::string("Wikidata Sources Tool/") + status::Version());
+                          std::string("Wikidata Sources Tool/") + backend.StatusService().Version());
 }
 
 
@@ -477,7 +475,7 @@ void SourcesToolService::getActivityLog() {
     response().content_type("application/json");
     result.save(response().out(), cppcms::json::readable);
 
-    status::AddGetStatusRequest();
+    backend.StatusService().AddGetStatusRequest();
 }
 
 }  // namespace primarysources

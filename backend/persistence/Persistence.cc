@@ -649,8 +649,8 @@ int32_t Persistence::countUsers() {
 }
 
 
-std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t limit) {
-    std::vector<std::pair < std::string, int64_t>> result;
+std::vector<model::UserStatus> Persistence::getTopUsers(int32_t limit) {
+    std::vector<model::UserStatus> result;
 
     if (!managedTransactions)
         sql.begin();
@@ -665,7 +665,7 @@ std::vector<std::pair<std::string, int64_t>> Persistence::getTopUsers(int32_t li
     while(res.next()) {
         std::string user = res.get<std::string>(0);
         int64_t activities = res.get<int64_t>(1);
-        result.push_back(std::pair<std::string, int64_t>(user, activities));
+        result.push_back(model::NewUserStatus(user, activities));
     }
 
     if (!managedTransactions)

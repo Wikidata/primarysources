@@ -33,9 +33,8 @@ std::string createCacheKey(const std::string &qid, ApprovalState state, const st
 }
 }  // namespace
 
-SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config) {
-    connstr = build_connection(config);
-}
+SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
+    : connstr(build_connection(config)), status_service_(connstr) { }
 
 
 std::vector<Statement> SourcesToolBackend::getStatementsByQID(
@@ -52,9 +51,9 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
         statements = p.getStatementsByQID(qid, state, dataset);
         cache.store_data(cacheKey, statements, 3600);
 
-        wikidata::primarysources::status::AddCacheMiss();
+        status_service_.AddCacheMiss();
     } else {
-        wikidata::primarysources::status::AddCacheHit();
+        status_service_.AddCacheHit();
     }
 
     return statements;
@@ -112,8 +111,8 @@ void SourcesToolBackend::updateStatement(
             cache.rise(createCacheKey(st.qid(), state, st.dataset()));
             cache.rise(createCacheKey(st.qid(), state, ""));
         }
-        cache.rise("STATUS");
         cache.rise("ACTIVITIES");
+        status_service_.SetDirty();
     } catch (PersistenceException const &e) {
         sql.rollback();
 
@@ -140,9 +139,9 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
         statements = p.getStatementsByQID(qid, state, dataset);
         cache.store_data(cacheKey, statements, 3600);
 
-        wikidata::primarysources::status::AddCacheMiss();
+        status_service_.AddCacheMiss();
     } else {
-        wikidata::primarysources::status::AddCacheHit();
+        status_service_.AddCacheHit();
     }
 
     return statements;
@@ -206,35 +205,8 @@ void SourcesToolBackend::deleteStatements(cache_t& cache, ApprovalState state) {
     cache.clear();
 }
 
-Status SourcesToolBackend::getStatus(cache_t& cache, const std::string& dataset) {
-    Status result;
-    // dataset-specific cache key, defaults to "STATUS-all" when no dataset is given
-    std::string cacheKey = (dataset == "") ? "STATUS-all" : "STATUS-" + dataset;
-
-    if(!cache.fetch_data(cacheKey, result)) {
-        cppdb::session sql(connstr); // released when sql is destroyed
-
-        Persistence p(sql, true);
-        sql.begin();
-
-        result.setStatements(p.countStatements(dataset));
-        result.setApproved(p.countStatements(ApprovalState::APPROVED, dataset));
-        result.setUnapproved(p.countStatements(ApprovalState::UNAPPROVED, dataset));
-        result.setDuplicate(p.countStatements(ApprovalState::DUPLICATE, dataset));
-        result.setBlacklisted(p.countStatements(ApprovalState::BLACKLISTED, dataset));
-        result.setWrong(p.countStatements(ApprovalState::WRONG, dataset));
-        result.setUsers(p.countUsers());
-        result.setTopUsers(p.getTopUsers(10));
-
-        sql.commit();
-
-        cache.store_data(cacheKey, result, 3600);
-
-        wikidata::primarysources::status::AddCacheMiss();
-    } else {
-        wikidata::primarysources::status::AddCacheHit();
-    }
-    return result;
+model::Status SourcesToolBackend::getStatus(cache_t& cache, const std::string& dataset) {
+    return status_service_.Status(dataset);
 }
 
 
@@ -249,9 +221,9 @@ Dashboard::ActivityLog SourcesToolBackend::getActivityLog(cache_t& cache) {
 
         cache.store_data("ACTIVITIES", result, 3600);
 
-        wikidata::primarysources::status::AddCacheMiss();
+        status_service_.AddCacheMiss();
     } else {
-        wikidata::primarysources::status::AddCacheHit();
+        status_service_.AddCacheHit();
     }
 
     return result;
@@ -269,9 +241,9 @@ std::vector<std::string> SourcesToolBackend::getDatasets(cache_t& cache) {
         datasets = p.getDatasets();
         cache.store_data("datasets", datasets, 3600);
 
-        wikidata::primarysources::status::AddCacheMiss();
+        status_service_.AddCacheMiss();
     } else {
-        wikidata::primarysources::status::AddCacheHit();
+        status_service_.AddCacheHit();
     }
 
     return datasets;

@@ -90,5 +90,8 @@ message Status {
 
     // User statistics for the top N users.
     repeated UserStatus top_users = 4;
+
+    // Total number of users.
+    int64 total_users = 5;
 }
 

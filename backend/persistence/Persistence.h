@@ -8,6 +8,7 @@
 #include <cppcms/json.h>
 #include <exception>
 
+#include <model/Status.h>
 #include "model/Statement.h"
 
 namespace wikidata {
@@ -147,7 +148,7 @@ class Persistence {
      * Return the top users with respect to the number of approved/rejected
      * statements, ordered by descending number of activities.
      */
-    std::vector<std::pair<std::string,int64_t>> getTopUsers(int32_t limit=10);
+    std::vector<model::UserStatus> getTopUsers(int32_t limit=10);
 
     /**
      * Iterate over all entities in the database, and mark all duplicate
