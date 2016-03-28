@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <model/statement.pb.h>
-#include <cppcms/serialization.h>
 
 namespace wikidata {
 namespace primarysources {
