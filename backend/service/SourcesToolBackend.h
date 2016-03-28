@@ -4,8 +4,8 @@
 #ifndef HAVE_SOURCESTOOL_BACKEND_H_
 #define HAVE_SOURCESTOOL_BACKEND_H_
 
-#include "model/Statement.h"
-#include "Dashboard.h"
+#include <model/Statement.h>
+#include <service/DashboardService.h>
 #include <status/SystemStatus.h>
 
 #include <vector>

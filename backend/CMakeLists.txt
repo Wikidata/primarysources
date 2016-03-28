@@ -49,7 +49,7 @@ include_directories()
 
 add_executable(primarysources_inject inject.cc)
 add_executable(primarysources_deduplicate deduplicate.cc)
-add_executable(primarysources_service main.cc Dashboard.h Dashboard.cc)
+add_executable(primarysources_service main.cc)
 
 target_link_libraries(primarysources_service
         primarysources_backend primarysources_serializer primarysources_persistence

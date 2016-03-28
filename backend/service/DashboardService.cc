@@ -3,7 +3,7 @@
 //
 #include <ctime>
 
-#include "Dashboard.h"
+#include "DashboardService.h"
 #include "model/Statement.h"
 
 #include <iostream>
