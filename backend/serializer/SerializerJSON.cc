@@ -15,10 +15,10 @@ namespace serializer {
 * metadata. Takes as argument an internal PropertyValue structure and
 * returns a CppCMS JSON value for further use.
 */
-static cppcms::json::value createWikidataSnak(const model::PropertyValue& pv) {
+static Json::Value createWikidataSnak(const model::PropertyValue& pv) {
     const model::Value& v = pv.value();
 
-    cppcms::json::value snak;
+    Json::Value snak;
     snak["snaktype"] = "value";
     snak["property"] = pv.property();
     if (v.has_entity()) {
@@ -35,7 +35,7 @@ static cppcms::json::value createWikidataSnak(const model::PropertyValue& pv) {
                 snak["datavalue"]["value"]["entity-type"] = "unknown";
                 break;
         }
-        snak["datavalue"]["value"]["numeric-id"] = atol(qid.c_str() + 1);
+        snak["datavalue"]["value"]["numeric-id"] = (Json::Int64)atol(qid.c_str() + 1);
     } else if (v.has_literal()) {
         if (v.literal().language() == "") {
             snak["datavalue"]["type"] = "string";
@@ -81,11 +81,11 @@ static cppcms::json::value createWikidataSnak(const model::PropertyValue& pv) {
 
 
 void writeStatementWikidataJSON(
-        const model::Statement& stmt, cppcms::json::value* entities) {
+        const model::Statement& stmt, Json::Value* entities) {
     const std::string& prop = stmt.property_value().property();
     const std::string& qid  = stmt.qid();
 
-    cppcms::json::value entity;
+    Json::Value entity;
 
     entity["id"] = stmt.id();
     entity["type"] = "claim";

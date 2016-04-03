@@ -4,7 +4,7 @@
 #ifndef HAVE_SERIALIZER_TSV_H_
 #define HAVE_SERIALIZER_TSV_H_
 
-#include <cppcms/json.h>
+#include <util/json/json.h>
 
 #include "model/Statement.h"
 
@@ -15,7 +15,7 @@ namespace serializer {
     void writeStatementTSV(const model::Statement& stmt, std::ostream* out);
 
     void writeStatementEnvelopeJSON(
-            const model::Statement& stmt, cppcms::json::value* out);
+            const model::Statement& stmt, Json::Value* out);
 
     /**
     * Write a sequence of statements to the output stream using the TSV format
@@ -41,17 +41,15 @@ namespace serializer {
     */
     template<typename Iterator>
     void writeEnvelopeJSON(Iterator begin, Iterator end, std::ostream* out) {
-        cppcms::json::value result;
-
         // Force type to array so we get an empty list in case the iterator
         // is empty.
-        result.array({});
+        Json::Value result(Json::arrayValue);
 
         for (int count = 0; begin != end; ++begin, ++count) {
             writeStatementEnvelopeJSON(*begin, &result[count]);
         }
 
-        result.save(*out, cppcms::json::readable);
+        *out << result;
     }
 
 }  // namespace serializer

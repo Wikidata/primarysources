@@ -54,8 +54,8 @@ namespace serializer {
     }
 
     void writeStatementEnvelopeJSON(
-            const model::Statement& stmt, cppcms::json::value* out) {
-        cppcms::json::value entity;
+            const model::Statement& stmt, Json::Value* out) {
+        Json::Value entity;
 
         // write statement as TSV to a string value
         std::ostringstream sout;

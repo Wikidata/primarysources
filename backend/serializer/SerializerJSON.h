@@ -5,7 +5,7 @@
 #define HAVE_SERIALIZERJSON_H_
 
 #include <iostream>
-#include <cppcms/json.h>
+#include <util/json/json.h>
 
 #include "model/Statement.h"
 
@@ -20,7 +20,7 @@ namespace serializer {
     * Each statement is represented as a "claim" in the Wikidata terminology.
     */
     void writeStatementWikidataJSON(
-            const model::Statement& stmt, cppcms::json::value* result);
+            const model::Statement& stmt, Json::Value* result);
 
 
     /**
@@ -31,15 +31,15 @@ namespace serializer {
     */
     template<typename Iterator>
     void writeWikidataJSON(Iterator begin, Iterator end, std::ostream* out) {
-        cppcms::json::value entities;
+        Json::Value entities;
 
         for (; begin != end; ++begin) {
             writeStatementWikidataJSON(*begin, &entities);
         }
 
-        cppcms::json::value result;
+        Json::Value result;
         result["entities"] = entities;
-        result.save(*out, cppcms::json::readable);
+        *out << result;
     }
 
 }  // namespace serializer

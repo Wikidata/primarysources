@@ -12,6 +12,7 @@
 #include <model/status.pb.h>
 #include <glog/logging.h>
 #include <util/HttpStatus.h>
+#include <util/json/json.h>
 
 #include "serializer/SerializerTSV.h"
 #include "serializer/SerializerJSON.h"
@@ -263,7 +264,7 @@ void SourcesToolService::getStatus() {
     addCORSHeaders();
     addVersionHeaders();
 
-    cppcms::json::value result;
+    Json::Value result;
 
     std::string dataset = request().get("dataset");
     model::Status status = backend.getStatus(cache(), dataset);
@@ -281,12 +282,12 @@ void SourcesToolService::getStatus() {
     // users information
     result["users"] = status.total_users();
 
-    cppcms::json::array topusers;
+    Json::Value topusers(Json::arrayValue);
     for (const auto& entry : status.top_users()) {
-        cppcms::json::value v;
+        Json::Value v;
         v["name"] = entry.name();
         v["activities"] = entry.activities();
-        topusers.push_back(v);
+        topusers.append(v);
     }
     result["topusers"] = topusers;
 
@@ -307,7 +308,7 @@ void SourcesToolService::getStatus() {
     result["requests"]["getstatus"] = status.requests().get_status();
 
     response().content_type("application/json");
-    result.save(response().out(), cppcms::json::readable);
+    response().out() << result;
 
     backend.StatusService().AddGetStatusRequest();
 }
