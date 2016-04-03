@@ -1,4 +1,4 @@
-include_directories(..)
+include_directories(. ..)
 
 add_library(gtest STATIC gtest/gtest.h gmock/gmock.h gmock-gtest-all.cc)
 

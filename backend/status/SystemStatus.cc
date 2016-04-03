@@ -93,6 +93,17 @@ model::Status StatusService::Status(const std::string& dataset) {
     std::lock_guard<std::mutex> lock(status_mutex_);
 
     MemStat memstat;
+
+    LOG_IF(INFO, memstat.getSharedMem() > status_.system().shared_memory())
+        << "Increase of shared memory from " << status_.system().shared_memory()
+        << " to " << memstat.getSharedMem();
+    LOG_IF(INFO, memstat.getPrivateMem() > status_.system().private_memory())
+        << "Increase of private memory from " << status_.system().private_memory()
+        << " to " << memstat.getPrivateMem();
+    LOG_IF(INFO, memstat.getRSS() > status_.system().resident_set_size())
+        << "Increase of resident memory from " << status_.system().resident_set_size()
+        << " to " << memstat.getRSS();
+
     status_.mutable_system()->set_shared_memory(memstat.getSharedMem());
     status_.mutable_system()->set_private_memory(memstat.getPrivateMem());
     status_.mutable_system()->set_resident_set_size(memstat.getRSS());
