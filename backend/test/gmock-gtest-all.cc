@@ -36,7 +36,7 @@
 
 // This line ensures that gtest.h can be compiled on its own, even
 // when it's fused.
-#include "gtest.h"
+#include "gtest/gtest.h"
 
 // The following lines pull in the real gtest *.cc files.
 // Copyright 2005, Google Inc.
@@ -316,6 +316,8 @@ class GTEST_API_ SingleFailureChecker {
 #include <algorithm>
 #include <iomanip>
 #include <limits>
+#include <list>
+#include <map>
 #include <ostream>  // NOLINT
 #include <sstream>
 #include <vector>
@@ -350,6 +352,7 @@ class GTEST_API_ SingleFailureChecker {
 #elif GTEST_OS_WINDOWS_MOBILE  // We are on Windows CE.
 
 # include <windows.h>  // NOLINT
+# undef min
 
 #elif GTEST_OS_WINDOWS  // We are on Windows proper.
 
@@ -372,6 +375,7 @@ class GTEST_API_ SingleFailureChecker {
 // cpplint thinks that the header is already included, so we want to
 // silence it.
 # include <windows.h>  // NOLINT
+# undef min
 
 #else
 
@@ -394,6 +398,8 @@ class GTEST_API_ SingleFailureChecker {
 #if GTEST_CAN_STREAM_RESULTS_
 # include <arpa/inet.h>  // NOLINT
 # include <netdb.h>  // NOLINT
+# include <sys/socket.h>  // NOLINT
+# include <sys/types.h>  // NOLINT
 #endif
 
 // Indicates that this translation unit is part of Google Test's
@@ -444,7 +450,7 @@ class GTEST_API_ SingleFailureChecker {
 // GTEST_IMPLEMENTATION_ is defined to 1 iff the current translation unit is
 // part of Google Test's implementation; otherwise it's undefined.
 #if !GTEST_IMPLEMENTATION_
-// A user is trying to include this from his code - just say no.
+// If this file is included from the user's code, just say no.
 # error "gtest-internal-inl.h is part of Google Test's internal implementation."
 # error "It must not be included except by Google Test itself."
 #endif  // GTEST_IMPLEMENTATION_
@@ -501,6 +507,7 @@ const char kShuffleFlag[] = "shuffle";
 const char kStackTraceDepthFlag[] = "stack_trace_depth";
 const char kStreamResultToFlag[] = "stream_result_to";
 const char kThrowOnFailureFlag[] = "throw_on_failure";
+const char kFlagfileFlag[] = "flagfile";
 
 // A valid random seed must be in [1, kMaxRandomSeed].
 const int kMaxRandomSeed = 99999;
@@ -833,6 +840,10 @@ class OsStackTraceGetterInterface {
   // CurrentStackTrace() will use to find and hide Google Test stack frames.
   virtual void UponLeavingGTest() = 0;
 
+  // This string is inserted in place of stack frames that are part of
+  // Google Test's implementation.
+  static const char* const kElidedFramesMarker;
+
  private:
   GTEST_DISALLOW_COPY_AND_ASSIGN_(OsStackTraceGetterInterface);
 };
@@ -840,26 +851,12 @@ class OsStackTraceGetterInterface {
 // A working implementation of the OsStackTraceGetterInterface interface.
 class OsStackTraceGetter : public OsStackTraceGetterInterface {
  public:
-  OsStackTraceGetter() : caller_frame_(NULL) {}
+  OsStackTraceGetter() {}
 
-  virtual string CurrentStackTrace(int max_depth, int skip_count)
-      GTEST_LOCK_EXCLUDED_(mutex_);
-
-  virtual void UponLeavingGTest() GTEST_LOCK_EXCLUDED_(mutex_);
-
-  // This string is inserted in place of stack frames that are part of
-  // Google Test's implementation.
-  static const char* const kElidedFramesMarker;
+  virtual string CurrentStackTrace(int max_depth, int skip_count);
+  virtual void UponLeavingGTest();
 
  private:
-  Mutex mutex_;  // protects all internal state
-
-  // We save the stack frame below the frame that calls user code.
-  // We do this because the address of the frame immediately below
-  // the user code changes between the call to UponLeavingGTest()
-  // and any calls to CurrentStackTrace() from within the user code.
-  void* caller_frame_;
-
   GTEST_DISALLOW_COPY_AND_ASSIGN_(OsStackTraceGetter);
 };
 
@@ -1369,32 +1366,6 @@ GTEST_API_ void ParseGoogleTestFlagsOnly(int* argc, wchar_t** argv);
 // platform.
 GTEST_API_ std::string GetLastErrnoDescription();
 
-# if GTEST_OS_WINDOWS
-// Provides leak-safe Windows kernel handle ownership.
-class AutoHandle {
- public:
-  AutoHandle() : handle_(INVALID_HANDLE_VALUE) {}
-  explicit AutoHandle(HANDLE handle) : handle_(handle) {}
-
-  ~AutoHandle() { Reset(); }
-
-  HANDLE Get() const { return handle_; }
-  void Reset() { Reset(INVALID_HANDLE_VALUE); }
-  void Reset(HANDLE handle) {
-    if (handle != handle_) {
-      if (handle_ != INVALID_HANDLE_VALUE)
-        ::CloseHandle(handle_);
-      handle_ = handle;
-    }
-  }
-
- private:
-  HANDLE handle_;
-
-  GTEST_DISALLOW_COPY_AND_ASSIGN_(AutoHandle);
-};
-# endif  // GTEST_OS_WINDOWS
-
 // Attempts to parse a string into a positive integer pointed to by the
 // number parameter.  Returns true if that is possible.
 // GTEST_HAS_DEATH_TEST implies that we have ::std::string, so we can use
@@ -1468,7 +1439,7 @@ class TestResultAccessor {
 #if GTEST_CAN_STREAM_RESULTS_
 
 // Streams test results to the given port on the given host machine.
-class StreamingListener : public EmptyTestEventListener {
+class GTEST_API_ StreamingListener : public EmptyTestEventListener {
  public:
   // Abstract base class for writing strings to a socket.
   class AbstractSocketWriter {
@@ -1667,6 +1638,12 @@ bool g_help_flag = false;
 }  // namespace internal
 
 static const char* GetDefaultFilter() {
+#ifdef GTEST_TEST_FILTER_ENV_VAR_
+  const char* const testbridge_test_only = getenv(GTEST_TEST_FILTER_ENV_VAR_);
+  if (testbridge_test_only != NULL) {
+    return testbridge_test_only;
+  }
+#endif  // GTEST_TEST_FILTER_ENV_VAR_
   return kUniversalFilter;
 }
 
@@ -1767,6 +1744,13 @@ GTEST_DEFINE_bool_(
     "if exceptions are enabled or exit the program with a non-zero code "
     "otherwise.");
 
+#if GTEST_USE_OWN_FLAGFILE_FLAG_
+GTEST_DEFINE_string_(
+    flagfile,
+    internal::StringFromGTestEnv("flagfile", ""),
+    "This flag specifies the flagfile to read command-line flags from.");
+#endif  // GTEST_USE_OWN_FLAGFILE_FLAG_
+
 namespace internal {
 
 // Generates a random number from [0, range), using a Linear
@@ -1791,13 +1775,7 @@ UInt32 Random::Generate(UInt32 range) {
 // GTestIsInitialized() returns true iff the user has initialized
 // Google Test.  Useful for catching the user mistake of not initializing
 // Google Test before calling RUN_ALL_TESTS().
-//
-// A user must call testing::InitGoogleTest() to initialize Google
-// Test.  g_init_gtest_count is set to the number of times
-// InitGoogleTest() has been called.  We don't protect this variable
-// under a mutex as it is only accessed in the main thread.
-GTEST_API_ int g_init_gtest_count = 0;
-static bool GTestIsInitialized() { return g_init_gtest_count != 0; }
+static bool GTestIsInitialized() { return GetArgvs().size() > 0; }
 
 // Iterates over a vector of TestCases, keeping a running sum of the
 // results of calling a given int-returning method on each.
@@ -1853,8 +1831,16 @@ void AssertHelper::operator=(const Message& message) const {
 // Mutex for linked pointers.
 GTEST_API_ GTEST_DEFINE_STATIC_MUTEX_(g_linked_ptr_mutex);
 
-// Application pathname gotten in InitGoogleTest.
-std::string g_executable_path;
+// A copy of all command line arguments.  Set by InitGoogleTest().
+::std::vector<testing::internal::string> g_argvs;
+
+const ::std::vector<testing::internal::string>& GetArgvs() {
+#if defined(GTEST_CUSTOM_GET_ARGVS_)
+  return GTEST_CUSTOM_GET_ARGVS_();
+#else  // defined(GTEST_CUSTOM_GET_ARGVS_)
+  return g_argvs;
+#endif  // defined(GTEST_CUSTOM_GET_ARGVS_)
+}
 
 // Returns the current application's name, removing directory path if that
 // is present.
@@ -1862,9 +1848,9 @@ FilePath GetCurrentExecutableName() {
   FilePath result;
 
 #if GTEST_OS_WINDOWS
-  result.Set(FilePath(g_executable_path).RemoveExtension("exe"));
+  result.Set(FilePath(GetArgvs()[0]).RemoveExtension("exe"));
 #else
-  result.Set(FilePath(g_executable_path));
+  result.Set(FilePath(GetArgvs()[0]));
 #endif  // GTEST_OS_WINDOWS
 
   return result.RemoveDirectoryName();
@@ -2256,8 +2242,12 @@ int UnitTestImpl::test_to_run_count() const {
 // CurrentOsStackTraceExceptTop(1), Foo() will be included in the
 // trace but Bar() and CurrentOsStackTraceExceptTop() won't.
 std::string UnitTestImpl::CurrentOsStackTraceExceptTop(int skip_count) {
-  (void)skip_count;
-  return "";
+  return os_stack_trace_getter()->CurrentStackTrace(
+      static_cast<int>(GTEST_FLAG(stack_trace_depth)),
+      skip_count + 1
+      // Skips the user-specified number of frames plus this function
+      // itself.
+      );  // NOLINT
 }
 
 // Returns the current time in milliseconds.
@@ -2286,21 +2276,13 @@ TimeInMillis GetTimeInMillis() {
 #elif GTEST_OS_WINDOWS && !GTEST_HAS_GETTIMEOFDAY_
   __timeb64 now;
 
-# ifdef _MSC_VER
-
   // MSVC 8 deprecates _ftime64(), so we want to suppress warning 4996
   // (deprecated function) there.
   // TODO(kenton@google.com): Use GetTickCount()?  Or use
   //   SystemTimeToFileTime()
-#  pragma warning(push)          // Saves the current warning state.
-#  pragma warning(disable:4996)  // Temporarily disables warning 4996.
+  GTEST_DISABLE_MSC_WARNINGS_PUSH_(4996)
   _ftime64(&now);
-#  pragma warning(pop)           // Restores the warning state.
-# else
-
-  _ftime64(&now);
-
-# endif  // _MSC_VER
+  GTEST_DISABLE_MSC_WARNINGS_POP_()
 
   return static_cast<TimeInMillis>(now.time) * 1000 + now.millitm;
 #elif GTEST_HAS_GETTIMEOFDAY_
@@ -2385,6 +2367,23 @@ static void StreamWideCharsToMessage(const wchar_t* wstr, size_t length,
 
 #endif  // GTEST_HAS_STD_WSTRING || GTEST_HAS_GLOBAL_WSTRING
 
+void SplitString(const ::std::string& str, char delimiter,
+                 ::std::vector< ::std::string>* dest) {
+  ::std::vector< ::std::string> parsed;
+  ::std::string::size_type pos = 0;
+  while (::testing::internal::AlwaysTrue()) {
+    const ::std::string::size_type colon = str.find(delimiter, pos);
+    if (colon == ::std::string::npos) {
+      parsed.push_back(str.substr(pos));
+      break;
+    } else {
+      parsed.push_back(str.substr(pos, colon - pos));
+      pos = colon + 1;
+    }
+  }
+  dest->swap(parsed);
+}
+
 }  // namespace internal
 
 // Constructs an empty Message.
@@ -2440,6 +2439,13 @@ AssertionResult::AssertionResult(const AssertionResult& other)
                static_cast< ::std::string*>(NULL)) {
 }
 
+// Swaps two AssertionResults.
+void AssertionResult::swap(AssertionResult& other) {
+  using std::swap;
+  swap(success_, other.success_);
+  swap(message_, other.message_);
+}
+
 // Returns the assertion's negation. Used with EXPECT/ASSERT_FALSE.
 AssertionResult AssertionResult::operator!() const {
   AssertionResult negation(!success_);
@@ -2465,6 +2471,276 @@ AssertionResult AssertionFailure(const Message& message) {
 }
 
 namespace internal {
+
+namespace edit_distance {
+std::vector<EditType> CalculateOptimalEdits(const std::vector<size_t>& left,
+                                            const std::vector<size_t>& right) {
+  std::vector<std::vector<double> > costs(
+      left.size() + 1, std::vector<double>(right.size() + 1));
+  std::vector<std::vector<EditType> > best_move(
+      left.size() + 1, std::vector<EditType>(right.size() + 1));
+
+  // Populate for empty right.
+  for (size_t l_i = 0; l_i < costs.size(); ++l_i) {
+    costs[l_i][0] = static_cast<double>(l_i);
+    best_move[l_i][0] = kRemove;
+  }
+  // Populate for empty left.
+  for (size_t r_i = 1; r_i < costs[0].size(); ++r_i) {
+    costs[0][r_i] = static_cast<double>(r_i);
+    best_move[0][r_i] = kAdd;
+  }
+
+  for (size_t l_i = 0; l_i < left.size(); ++l_i) {
+    for (size_t r_i = 0; r_i < right.size(); ++r_i) {
+      if (left[l_i] == right[r_i]) {
+        // Found a match. Consume it.
+        costs[l_i + 1][r_i + 1] = costs[l_i][r_i];
+        best_move[l_i + 1][r_i + 1] = kMatch;
+        continue;
+      }
+
+      const double add = costs[l_i + 1][r_i];
+      const double remove = costs[l_i][r_i + 1];
+      const double replace = costs[l_i][r_i];
+      if (add < remove && add < replace) {
+        costs[l_i + 1][r_i + 1] = add + 1;
+        best_move[l_i + 1][r_i + 1] = kAdd;
+      } else if (remove < add && remove < replace) {
+        costs[l_i + 1][r_i + 1] = remove + 1;
+        best_move[l_i + 1][r_i + 1] = kRemove;
+      } else {
+        // We make replace a little more expensive than add/remove to lower
+        // their priority.
+        costs[l_i + 1][r_i + 1] = replace + 1.00001;
+        best_move[l_i + 1][r_i + 1] = kReplace;
+      }
+    }
+  }
+
+  // Reconstruct the best path. We do it in reverse order.
+  std::vector<EditType> best_path;
+  for (size_t l_i = left.size(), r_i = right.size(); l_i > 0 || r_i > 0;) {
+    EditType move = best_move[l_i][r_i];
+    best_path.push_back(move);
+    l_i -= move != kAdd;
+    r_i -= move != kRemove;
+  }
+  std::reverse(best_path.begin(), best_path.end());
+  return best_path;
+}
+
+namespace {
+
+// Helper class to convert string into ids with deduplication.
+class InternalStrings {
+ public:
+  size_t GetId(const std::string& str) {
+    IdMap::iterator it = ids_.find(str);
+    if (it != ids_.end()) return it->second;
+    size_t id = ids_.size();
+    return ids_[str] = id;
+  }
+
+ private:
+  typedef std::map<std::string, size_t> IdMap;
+  IdMap ids_;
+};
+
+}  // namespace
+
+std::vector<EditType> CalculateOptimalEdits(
+    const std::vector<std::string>& left,
+    const std::vector<std::string>& right) {
+  std::vector<size_t> left_ids, right_ids;
+  {
+    InternalStrings intern_table;
+    for (size_t i = 0; i < left.size(); ++i) {
+      left_ids.push_back(intern_table.GetId(left[i]));
+    }
+    for (size_t i = 0; i < right.size(); ++i) {
+      right_ids.push_back(intern_table.GetId(right[i]));
+    }
+  }
+  return CalculateOptimalEdits(left_ids, right_ids);
+}
+
+namespace {
+
+// Helper class that holds the state for one hunk and prints it out to the
+// stream.
+// It reorders adds/removes when possible to group all removes before all
+// adds. It also adds the hunk header before printint into the stream.
+class Hunk {
+ public:
+  Hunk(size_t left_start, size_t right_start)
+      : left_start_(left_start),
+        right_start_(right_start),
+        adds_(),
+        removes_(),
+        common_() {}
+
+  void PushLine(char edit, const char* line) {
+    switch (edit) {
+      case ' ':
+        ++common_;
+        FlushEdits();
+        hunk_.push_back(std::make_pair(' ', line));
+        break;
+      case '-':
+        ++removes_;
+        hunk_removes_.push_back(std::make_pair('-', line));
+        break;
+      case '+':
+        ++adds_;
+        hunk_adds_.push_back(std::make_pair('+', line));
+        break;
+    }
+  }
+
+  void PrintTo(std::ostream* os) {
+    PrintHeader(os);
+    FlushEdits();
+    for (std::list<std::pair<char, const char*> >::const_iterator it =
+             hunk_.begin();
+         it != hunk_.end(); ++it) {
+      *os << it->first << it->second << "\n";
+    }
+  }
+
+  bool has_edits() const { return adds_ || removes_; }
+
+ private:
+  void FlushEdits() {
+    hunk_.splice(hunk_.end(), hunk_removes_);
+    hunk_.splice(hunk_.end(), hunk_adds_);
+  }
+
+  // Print a unified diff header for one hunk.
+  // The format is
+  //   "@@ -<left_start>,<left_length> +<right_start>,<right_length> @@"
+  // where the left/right parts are ommitted if unnecessary.
+  void PrintHeader(std::ostream* ss) const {
+    *ss << "@@ ";
+    if (removes_) {
+      *ss << "-" << left_start_ << "," << (removes_ + common_);
+    }
+    if (removes_ && adds_) {
+      *ss << " ";
+    }
+    if (adds_) {
+      *ss << "+" << right_start_ << "," << (adds_ + common_);
+    }
+    *ss << " @@\n";
+  }
+
+  size_t left_start_, right_start_;
+  size_t adds_, removes_, common_;
+  std::list<std::pair<char, const char*> > hunk_, hunk_adds_, hunk_removes_;
+};
+
+}  // namespace
+
+// Create a list of diff hunks in Unified diff format.
+// Each hunk has a header generated by PrintHeader above plus a body with
+// lines prefixed with ' ' for no change, '-' for deletion and '+' for
+// addition.
+// 'context' represents the desired unchanged prefix/suffix around the diff.
+// If two hunks are close enough that their contexts overlap, then they are
+// joined into one hunk.
+std::string CreateUnifiedDiff(const std::vector<std::string>& left,
+                              const std::vector<std::string>& right,
+                              size_t context) {
+  const std::vector<EditType> edits = CalculateOptimalEdits(left, right);
+
+  size_t l_i = 0, r_i = 0, edit_i = 0;
+  std::stringstream ss;
+  while (edit_i < edits.size()) {
+    // Find first edit.
+    while (edit_i < edits.size() && edits[edit_i] == kMatch) {
+      ++l_i;
+      ++r_i;
+      ++edit_i;
+    }
+
+    // Find the first line to include in the hunk.
+    const size_t prefix_context = std::min(l_i, context);
+    Hunk hunk(l_i - prefix_context + 1, r_i - prefix_context + 1);
+    for (size_t i = prefix_context; i > 0; --i) {
+      hunk.PushLine(' ', left[l_i - i].c_str());
+    }
+
+    // Iterate the edits until we found enough suffix for the hunk or the input
+    // is over.
+    size_t n_suffix = 0;
+    for (; edit_i < edits.size(); ++edit_i) {
+      if (n_suffix >= context) {
+        // Continue only if the next hunk is very close.
+        std::vector<EditType>::const_iterator it = edits.begin() + edit_i;
+        while (it != edits.end() && *it == kMatch) ++it;
+        if (it == edits.end() || (it - edits.begin()) - edit_i >= context) {
+          // There is no next edit or it is too far away.
+          break;
+        }
+      }
+
+      EditType edit = edits[edit_i];
+      // Reset count when a non match is found.
+      n_suffix = edit == kMatch ? n_suffix + 1 : 0;
+
+      if (edit == kMatch || edit == kRemove || edit == kReplace) {
+        hunk.PushLine(edit == kMatch ? ' ' : '-', left[l_i].c_str());
+      }
+      if (edit == kAdd || edit == kReplace) {
+        hunk.PushLine('+', right[r_i].c_str());
+      }
+
+      // Advance indices, depending on edit type.
+      l_i += edit != kAdd;
+      r_i += edit != kRemove;
+    }
+
+    if (!hunk.has_edits()) {
+      // We are done. We don't want this hunk.
+      break;
+    }
+
+    hunk.PrintTo(&ss);
+  }
+  return ss.str();
+}
+
+}  // namespace edit_distance
+
+namespace {
+
+// The string representation of the values received in EqFailure() are already
+// escaped. Split them on escaped '\n' boundaries. Leave all other escaped
+// characters the same.
+std::vector<std::string> SplitEscapedString(const std::string& str) {
+  std::vector<std::string> lines;
+  size_t start = 0, end = str.size();
+  if (end > 2 && str[0] == '"' && str[end - 1] == '"') {
+    ++start;
+    --end;
+  }
+  bool escaped = false;
+  for (size_t i = start; i + 1 < end; ++i) {
+    if (escaped) {
+      escaped = false;
+      if (str[i] == 'n') {
+        lines.push_back(str.substr(start, i - start - 1));
+        start = i + 1;
+      }
+    } else {
+      escaped = str[i] == '\\';
+    }
+  }
+  lines.push_back(str.substr(start, end - start));
+  return lines;
+}
+
+}  // namespace
 
 // Constructs and returns the message for an equality assertion
 // (e.g. ASSERT_EQ, EXPECT_STREQ, etc) failure.
@@ -2498,6 +2774,17 @@ AssertionResult EqFailure(const char* expected_expression,
   }
   if (expected_value != expected_expression) {
     msg << "\nWhich is: " << expected_value;
+  }
+
+  if (!expected_value.empty() && !actual_value.empty()) {
+    const std::vector<std::string> expected_lines =
+        SplitEscapedString(expected_value);
+    const std::vector<std::string> actual_lines =
+        SplitEscapedString(actual_value);
+    if (expected_lines.size() > 1 || actual_lines.size() > 1) {
+      msg << "\nWith diff:\n"
+          << edit_distance::CreateUnifiedDiff(expected_lines, actual_lines);
+    }
   }
 
   return AssertionFailure() << msg;
@@ -3371,14 +3658,15 @@ int TestResult::test_property_count() const {
 
 // Creates a Test object.
 
-// The c'tor saves the values of all Google Test flags.
+// The c'tor saves the states of all flags.
 Test::Test()
-    : gtest_flag_saver_(new internal::GTestFlagSaver) {
+    : gtest_flag_saver_(new GTEST_FLAG_SAVER_) {
 }
 
-// The d'tor restores the values of all Google Test flags.
+// The d'tor restores the states of all flags.  The actual work is
+// done by the d'tor of the gtest_flag_saver_ field, and thus not
+// visible here.
 Test::~Test() {
-  delete gtest_flag_saver_;
 }
 
 // Sets up the test fixture.
@@ -3447,8 +3735,8 @@ bool Test::HasSameFixtureClass() {
     const bool this_is_TEST = this_fixture_id == internal::GetTestTypeId();
 
     if (first_is_TEST || this_is_TEST) {
-      // The user mixed TEST and TEST_F in this test case - we'll tell
-      // him/her how to fix it.
+      // Both TEST and TEST_F appear in same test case, which is incorrect.
+      // Tell the user how to fix this.
 
       // Gets the name of the TEST and the name of the TEST_F.  Note
       // that first_is_TEST and this_is_TEST cannot both be true, as
@@ -3468,8 +3756,8 @@ bool Test::HasSameFixtureClass() {
           << "want to change the TEST to TEST_F or move it to another test\n"
           << "case.";
     } else {
-      // The user defined two fixture classes with the same name in
-      // two namespaces - we'll tell him/her how to fix it.
+      // Two fixture classes with the same name appear in two different
+      // namespaces, which is not allowed. Tell the user how to fix this.
       ADD_FAILURE()
           << "All tests in the same test case must use the same test fixture\n"
           << "class.  However, in test case "
@@ -3662,12 +3950,14 @@ TestInfo::TestInfo(const std::string& a_test_case_name,
                    const std::string& a_name,
                    const char* a_type_param,
                    const char* a_value_param,
+                   internal::CodeLocation a_code_location,
                    internal::TypeId fixture_class_id,
                    internal::TestFactoryBase* factory)
     : test_case_name_(a_test_case_name),
       name_(a_name),
       type_param_(a_type_param ? new std::string(a_type_param) : NULL),
       value_param_(a_value_param ? new std::string(a_value_param) : NULL),
+      location_(a_code_location),
       fixture_class_id_(fixture_class_id),
       should_run_(false),
       is_disabled_(false),
@@ -3691,6 +3981,7 @@ namespace internal {
 //                     this is not a typed or a type-parameterized test.
 //   value_param:      text representation of the test's value parameter,
 //                     or NULL if this is not a value-parameterized test.
+//   code_location:    code location where the test is defined
 //   fixture_class_id: ID of the test fixture class
 //   set_up_tc:        pointer to the function that sets up the test case
 //   tear_down_tc:     pointer to the function that tears down the test case
@@ -3702,20 +3993,21 @@ TestInfo* MakeAndRegisterTestInfo(
     const char* name,
     const char* type_param,
     const char* value_param,
+    CodeLocation code_location,
     TypeId fixture_class_id,
     SetUpTestCaseFunc set_up_tc,
     TearDownTestCaseFunc tear_down_tc,
     TestFactoryBase* factory) {
   TestInfo* const test_info =
       new TestInfo(test_case_name, name, type_param, value_param,
-                   fixture_class_id, factory);
+                   code_location, fixture_class_id, factory);
   GetUnitTestImpl()->AddTestInfo(set_up_tc, tear_down_tc, test_info);
   return test_info;
 }
 
 #if GTEST_HAS_PARAM_TEST
 void ReportInvalidTestCaseType(const char* test_case_name,
-                               const char* file, int line) {
+                               CodeLocation code_location) {
   Message errors;
   errors
       << "Attempted redefinition of test case " << test_case_name << ".\n"
@@ -3727,7 +4019,9 @@ void ReportInvalidTestCaseType(const char* test_case_name,
       << "probably rename one of the classes to put the tests into different\n"
       << "test cases.";
 
-  fprintf(stderr, "%s %s", FormatFileLocation(file, line).c_str(),
+  fprintf(stderr, "%s %s",
+          FormatFileLocation(code_location.file.c_str(),
+                             code_location.line).c_str(),
           errors.GetString().c_str());
 }
 #endif  // GTEST_HAS_PARAM_TEST
@@ -4038,7 +4332,8 @@ enum GTestColor {
   COLOR_YELLOW
 };
 
-#if GTEST_OS_WINDOWS && !GTEST_OS_WINDOWS_MOBILE
+#if GTEST_OS_WINDOWS && !GTEST_OS_WINDOWS_MOBILE && \
+    !GTEST_OS_WINDOWS_PHONE && !GTEST_OS_WINDOWS_RT
 
 // Returns the character attribute for the given color.
 WORD GetColorAttribute(GTestColor color) {
@@ -4083,6 +4378,8 @@ bool ShouldUseColor(bool stdout_is_tty) {
         String::CStringEquals(term, "xterm-256color") ||
         String::CStringEquals(term, "screen") ||
         String::CStringEquals(term, "screen-256color") ||
+        String::CStringEquals(term, "rxvt-unicode") ||
+        String::CStringEquals(term, "rxvt-unicode-256color") ||
         String::CStringEquals(term, "linux") ||
         String::CStringEquals(term, "cygwin");
     return stdout_is_tty && term_supports_color;
@@ -4106,8 +4403,9 @@ void ColoredPrintf(GTestColor color, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
 
-#if GTEST_OS_WINDOWS_MOBILE || GTEST_OS_SYMBIAN || GTEST_OS_ZOS || GTEST_OS_IOS
-  const bool use_color = false;
+#if GTEST_OS_WINDOWS_MOBILE || GTEST_OS_SYMBIAN || GTEST_OS_ZOS || \
+    GTEST_OS_IOS || GTEST_OS_WINDOWS_PHONE || GTEST_OS_WINDOWS_RT
+  const bool use_color = AlwaysFalse();
 #else
   static const bool in_color_mode =
       ShouldUseColor(posix::IsATTY(posix::FileNo(stdout)) != 0);
@@ -4121,7 +4419,8 @@ void ColoredPrintf(GTestColor color, const char* fmt, ...) {
     return;
   }
 
-#if GTEST_OS_WINDOWS && !GTEST_OS_WINDOWS_MOBILE
+#if GTEST_OS_WINDOWS && !GTEST_OS_WINDOWS_MOBILE && \
+    !GTEST_OS_WINDOWS_PHONE && !GTEST_OS_WINDOWS_RT
   const HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
   // Gets the current text color.
@@ -4696,34 +4995,39 @@ std::string XmlUnitTestResultPrinter::RemoveInvalidXmlCharacters(
 // Formats the given time in milliseconds as seconds.
 std::string FormatTimeInMillisAsSeconds(TimeInMillis ms) {
   ::std::stringstream ss;
-  ss << ms/1000.0;
+  ss << (static_cast<double>(ms) * 1e-3);
   return ss.str();
+}
+
+static bool PortableLocaltime(time_t seconds, struct tm* out) {
+#if defined(_MSC_VER)
+  return localtime_s(out, &seconds) == 0;
+#elif defined(__MINGW32__) || defined(__MINGW64__)
+  // MINGW <time.h> provides neither localtime_r nor localtime_s, but uses
+  // Windows' localtime(), which has a thread-local tm buffer.
+  struct tm* tm_ptr = localtime(&seconds);  // NOLINT
+  if (tm_ptr == NULL)
+    return false;
+  *out = *tm_ptr;
+  return true;
+#else
+  return localtime_r(&seconds, out) != NULL;
+#endif
 }
 
 // Converts the given epoch time in milliseconds to a date string in the ISO
 // 8601 format, without the timezone information.
 std::string FormatEpochTimeInMillisAsIso8601(TimeInMillis ms) {
-  // Using non-reentrant version as localtime_r is not portable.
-  time_t seconds = static_cast<time_t>(ms / 1000);
-#ifdef _MSC_VER
-# pragma warning(push)          // Saves the current warning state.
-# pragma warning(disable:4996)  // Temporarily disables warning 4996
-                                // (function or variable may be unsafe).
-  const struct tm* const time_struct = localtime(&seconds);  // NOLINT
-# pragma warning(pop)           // Restores the warning state again.
-#else
-  const struct tm* const time_struct = localtime(&seconds);  // NOLINT
-#endif
-  if (time_struct == NULL)
-    return "";  // Invalid ms value
-
+  struct tm time_struct;
+  if (!PortableLocaltime(static_cast<time_t>(ms / 1000), &time_struct))
+    return "";
   // YYYY-MM-DDThh:mm:ss
-  return StreamableToString(time_struct->tm_year + 1900) + "-" +
-      String::FormatIntWidth2(time_struct->tm_mon + 1) + "-" +
-      String::FormatIntWidth2(time_struct->tm_mday) + "T" +
-      String::FormatIntWidth2(time_struct->tm_hour) + ":" +
-      String::FormatIntWidth2(time_struct->tm_min) + ":" +
-      String::FormatIntWidth2(time_struct->tm_sec);
+  return StreamableToString(time_struct.tm_year + 1900) + "-" +
+      String::FormatIntWidth2(time_struct.tm_mon + 1) + "-" +
+      String::FormatIntWidth2(time_struct.tm_mday) + "T" +
+      String::FormatIntWidth2(time_struct.tm_hour) + ":" +
+      String::FormatIntWidth2(time_struct.tm_min) + ":" +
+      String::FormatIntWidth2(time_struct.tm_sec);
 }
 
 // Streams an XML CDATA section, escaping invalid CDATA sequences as needed.
@@ -4986,26 +5290,15 @@ ScopedTrace::~ScopedTrace()
 
 // class OsStackTraceGetter
 
-// Returns the current OS stack trace as an std::string.  Parameters:
-//
-//   max_depth  - the maximum number of stack frames to be included
-//                in the trace.
-//   skip_count - the number of top frames to be skipped; doesn't count
-//                against max_depth.
-//
-string OsStackTraceGetter::CurrentStackTrace(int /* max_depth */,
-                                             int /* skip_count */)
-    GTEST_LOCK_EXCLUDED_(mutex_) {
+const char* const OsStackTraceGetterInterface::kElidedFramesMarker =
+    "... " GTEST_NAME_ " internal frames ...";
+
+string OsStackTraceGetter::CurrentStackTrace(int /*max_depth*/,
+                                             int /*skip_count*/) {
   return "";
 }
 
-void OsStackTraceGetter::UponLeavingGTest()
-    GTEST_LOCK_EXCLUDED_(mutex_) {
-}
-
-const char* const
-OsStackTraceGetter::kElidedFramesMarker =
-    "... " GTEST_NAME_ " internal frames ...";
+void OsStackTraceGetter::UponLeavingGTest() {}
 
 // A helper class that creates the premature-exit file in its
 // constructor and deletes the file in its destructor.
@@ -5296,7 +5589,7 @@ void UnitTest::AddTestPartResult(
     // with another testing framework) and specify the former on the
     // command line for debugging.
     if (GTEST_FLAG(break_on_failure)) {
-#if GTEST_OS_WINDOWS
+#if GTEST_OS_WINDOWS && !GTEST_OS_WINDOWS_PHONE && !GTEST_OS_WINDOWS_RT
       // Using DebugBreak on Windows allows gtest to still break into a debugger
       // when a failure happens and both the --gtest_break_on_failure and
       // the --gtest_catch_exceptions flags are specified.
@@ -5374,7 +5667,7 @@ int UnitTest::Run() {
   // process. In either case the user does not want to see pop-up dialogs
   // about crashes - they are expected.
   if (impl()->catch_exceptions() || in_death_test_child_process) {
-# if !GTEST_OS_WINDOWS_MOBILE
+# if !GTEST_OS_WINDOWS_MOBILE && !GTEST_OS_WINDOWS_PHONE && !GTEST_OS_WINDOWS_RT
     // SetErrorMode doesn't exist on CE.
     SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOALIGNMENTFAULTEXCEPT |
                  SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
@@ -5477,17 +5770,10 @@ namespace internal {
 
 UnitTestImpl::UnitTestImpl(UnitTest* parent)
     : parent_(parent),
-#ifdef _MSC_VER
-# pragma warning(push)                    // Saves the current warning state.
-# pragma warning(disable:4355)            // Temporarily disables warning 4355
-                                         // (using this in initializer).
+      GTEST_DISABLE_MSC_WARNINGS_PUSH_(4355 /* using this in initializer */)
       default_global_test_part_result_reporter_(this),
       default_per_thread_test_part_result_reporter_(this),
-# pragma warning(pop)                     // Restores the warning state again.
-#else
-      default_global_test_part_result_reporter_(this),
-      default_per_thread_test_part_result_reporter_(this),
-#endif  // _MSC_VER
+      GTEST_DISABLE_MSC_WARNINGS_POP_()
       global_test_part_result_repoter_(
           &default_global_test_part_result_reporter_),
       per_thread_test_part_result_reporter_(
@@ -5597,6 +5883,11 @@ void UnitTestImpl::PostFlagParsingInit() {
   // Ensures that this function does not execute more than once.
   if (!post_flag_parse_init_performed_) {
     post_flag_parse_init_performed_ = true;
+
+#if defined(GTEST_CUSTOM_TEST_EVENT_LISTENER_)
+    // Register to send notifications about key process state changes.
+    listeners()->Append(new GTEST_CUSTOM_TEST_EVENT_LISTENER_());
+#endif  // defined(GTEST_CUSTOM_TEST_EVENT_LISTENER_)
 
 #if GTEST_HAS_DEATH_TEST
     InitDeathTestSubprocessControlInfo();
@@ -5731,6 +6022,11 @@ bool UnitTestImpl::RunAllTests() {
 
 #if GTEST_HAS_DEATH_TEST
   in_subprocess_for_death_test = (internal_run_death_test_flag_.get() != NULL);
+# if defined(GTEST_EXTRA_DEATH_TEST_CHILD_SETUP_)
+  if (in_subprocess_for_death_test) {
+    GTEST_EXTRA_DEATH_TEST_CHILD_SETUP_();
+  }
+# endif  // defined(GTEST_EXTRA_DEATH_TEST_CHILD_SETUP_)
 #endif  // GTEST_HAS_DEATH_TEST
 
   const bool should_shard = ShouldShard(kTestTotalShards, kTestShardIndex,
@@ -6067,7 +6363,11 @@ void UnitTestImpl::set_os_stack_trace_getter(
 // getter, and returns it.
 OsStackTraceGetterInterface* UnitTestImpl::os_stack_trace_getter() {
   if (os_stack_trace_getter_ == NULL) {
+#ifdef GTEST_OS_STACK_TRACE_GETTER_
+    os_stack_trace_getter_ = new GTEST_OS_STACK_TRACE_GETTER_;
+#else
     os_stack_trace_getter_ = new OsStackTraceGetter;
+#endif  // GTEST_OS_STACK_TRACE_GETTER_
   }
 
   return os_stack_trace_getter_;
@@ -6366,6 +6666,58 @@ static const char kColorEncodedHelpMessage[] =
 "(not one in your own code or tests), please report it to\n"
 "@G<" GTEST_DEV_EMAIL_ ">@D.\n";
 
+bool ParseGoogleTestFlag(const char* const arg) {
+  return ParseBoolFlag(arg, kAlsoRunDisabledTestsFlag,
+                       &GTEST_FLAG(also_run_disabled_tests)) ||
+      ParseBoolFlag(arg, kBreakOnFailureFlag,
+                    &GTEST_FLAG(break_on_failure)) ||
+      ParseBoolFlag(arg, kCatchExceptionsFlag,
+                    &GTEST_FLAG(catch_exceptions)) ||
+      ParseStringFlag(arg, kColorFlag, &GTEST_FLAG(color)) ||
+      ParseStringFlag(arg, kDeathTestStyleFlag,
+                      &GTEST_FLAG(death_test_style)) ||
+      ParseBoolFlag(arg, kDeathTestUseFork,
+                    &GTEST_FLAG(death_test_use_fork)) ||
+      ParseStringFlag(arg, kFilterFlag, &GTEST_FLAG(filter)) ||
+      ParseStringFlag(arg, kInternalRunDeathTestFlag,
+                      &GTEST_FLAG(internal_run_death_test)) ||
+      ParseBoolFlag(arg, kListTestsFlag, &GTEST_FLAG(list_tests)) ||
+      ParseStringFlag(arg, kOutputFlag, &GTEST_FLAG(output)) ||
+      ParseBoolFlag(arg, kPrintTimeFlag, &GTEST_FLAG(print_time)) ||
+      ParseInt32Flag(arg, kRandomSeedFlag, &GTEST_FLAG(random_seed)) ||
+      ParseInt32Flag(arg, kRepeatFlag, &GTEST_FLAG(repeat)) ||
+      ParseBoolFlag(arg, kShuffleFlag, &GTEST_FLAG(shuffle)) ||
+      ParseInt32Flag(arg, kStackTraceDepthFlag,
+                     &GTEST_FLAG(stack_trace_depth)) ||
+      ParseStringFlag(arg, kStreamResultToFlag,
+                      &GTEST_FLAG(stream_result_to)) ||
+      ParseBoolFlag(arg, kThrowOnFailureFlag,
+                    &GTEST_FLAG(throw_on_failure));
+}
+
+#if GTEST_USE_OWN_FLAGFILE_FLAG_
+void LoadFlagsFromFile(const std::string& path) {
+  FILE* flagfile = posix::FOpen(path.c_str(), "r");
+  if (!flagfile) {
+    fprintf(stderr,
+            "Unable to open file \"%s\"\n",
+            GTEST_FLAG(flagfile).c_str());
+    fflush(stderr);
+    exit(EXIT_FAILURE);
+  }
+  std::string contents(ReadEntireFile(flagfile));
+  posix::FClose(flagfile);
+  std::vector<std::string> lines;
+  SplitString(contents, '\n', &lines);
+  for (size_t i = 0; i < lines.size(); ++i) {
+    if (lines[i].empty())
+      continue;
+    if (!ParseGoogleTestFlag(lines[i].c_str()))
+      g_help_flag = true;
+  }
+}
+#endif  // GTEST_USE_OWN_FLAGFILE_FLAG_
+
 // Parses the command line for Google Test flags, without initializing
 // other parts of Google Test.  The type parameter CharType can be
 // instantiated to either char or wchar_t.
@@ -6379,35 +6731,24 @@ void ParseGoogleTestFlagsOnlyImpl(int* argc, CharType** argv) {
     using internal::ParseInt32Flag;
     using internal::ParseStringFlag;
 
-    // Do we see a Google Test flag?
-    if (ParseBoolFlag(arg, kAlsoRunDisabledTestsFlag,
-                      &GTEST_FLAG(also_run_disabled_tests)) ||
-        ParseBoolFlag(arg, kBreakOnFailureFlag,
-                      &GTEST_FLAG(break_on_failure)) ||
-        ParseBoolFlag(arg, kCatchExceptionsFlag,
-                      &GTEST_FLAG(catch_exceptions)) ||
-        ParseStringFlag(arg, kColorFlag, &GTEST_FLAG(color)) ||
-        ParseStringFlag(arg, kDeathTestStyleFlag,
-                        &GTEST_FLAG(death_test_style)) ||
-        ParseBoolFlag(arg, kDeathTestUseFork,
-                      &GTEST_FLAG(death_test_use_fork)) ||
-        ParseStringFlag(arg, kFilterFlag, &GTEST_FLAG(filter)) ||
-        ParseStringFlag(arg, kInternalRunDeathTestFlag,
-                        &GTEST_FLAG(internal_run_death_test)) ||
-        ParseBoolFlag(arg, kListTestsFlag, &GTEST_FLAG(list_tests)) ||
-        ParseStringFlag(arg, kOutputFlag, &GTEST_FLAG(output)) ||
-        ParseBoolFlag(arg, kPrintTimeFlag, &GTEST_FLAG(print_time)) ||
-        ParseInt32Flag(arg, kRandomSeedFlag, &GTEST_FLAG(random_seed)) ||
-        ParseInt32Flag(arg, kRepeatFlag, &GTEST_FLAG(repeat)) ||
-        ParseBoolFlag(arg, kShuffleFlag, &GTEST_FLAG(shuffle)) ||
-        ParseInt32Flag(arg, kStackTraceDepthFlag,
-                       &GTEST_FLAG(stack_trace_depth)) ||
-        ParseStringFlag(arg, kStreamResultToFlag,
-                        &GTEST_FLAG(stream_result_to)) ||
-        ParseBoolFlag(arg, kThrowOnFailureFlag,
-                      &GTEST_FLAG(throw_on_failure))
-        ) {
-      // Yes.  Shift the remainder of the argv list left by one.  Note
+    bool remove_flag = false;
+    if (ParseGoogleTestFlag(arg)) {
+      remove_flag = true;
+#if GTEST_USE_OWN_FLAGFILE_FLAG_
+    } else if (ParseStringFlag(arg, kFlagfileFlag, &GTEST_FLAG(flagfile))) {
+      LoadFlagsFromFile(GTEST_FLAG(flagfile));
+      remove_flag = true;
+#endif  // GTEST_USE_OWN_FLAGFILE_FLAG_
+    } else if (arg_string == "--help" || arg_string == "-h" ||
+               arg_string == "-?" || arg_string == "/?" ||
+               HasGoogleTestFlagPrefix(arg)) {
+      // Both help flag and unrecognized Google Test flags (excluding
+      // internal ones) trigger help display.
+      g_help_flag = true;
+    }
+
+    if (remove_flag) {
+      // Shift the remainder of the argv list left by one.  Note
       // that argv has (*argc + 1) elements, the last one always being
       // NULL.  The following loop moves the trailing NULL element as
       // well.
@@ -6421,12 +6762,6 @@ void ParseGoogleTestFlagsOnlyImpl(int* argc, CharType** argv) {
       // We also need to decrement the iterator as we just removed
       // an element.
       i--;
-    } else if (arg_string == "--help" || arg_string == "-h" ||
-               arg_string == "-?" || arg_string == "/?" ||
-               HasGoogleTestFlagPrefix(arg)) {
-      // Both help flag and unrecognized Google Test flags (excluding
-      // internal ones) trigger help display.
-      g_help_flag = true;
     }
   }
 
@@ -6453,23 +6788,15 @@ void ParseGoogleTestFlagsOnly(int* argc, wchar_t** argv) {
 // wchar_t.
 template <typename CharType>
 void InitGoogleTestImpl(int* argc, CharType** argv) {
-  g_init_gtest_count++;
-
   // We don't want to run the initialization code twice.
-  if (g_init_gtest_count != 1) return;
+  if (GTestIsInitialized()) return;
 
   if (*argc <= 0) return;
-
-  internal::g_executable_path = internal::StreamableToString(argv[0]);
-
-#if GTEST_HAS_DEATH_TEST
 
   g_argvs.clear();
   for (int i = 0; i != *argc; i++) {
     g_argvs.push_back(StreamableToString(argv[i]));
   }
-
-#endif  // GTEST_HAS_DEATH_TEST
 
   ParseGoogleTestFlagsOnly(argc, argv);
   GetUnitTestImpl()->PostFlagParsingInit();
@@ -6487,13 +6814,21 @@ void InitGoogleTestImpl(int* argc, CharType** argv) {
 //
 // Calling the function for the second time has no user-visible effect.
 void InitGoogleTest(int* argc, char** argv) {
+#if defined(GTEST_CUSTOM_INIT_GOOGLE_TEST_FUNCTION_)
+  GTEST_CUSTOM_INIT_GOOGLE_TEST_FUNCTION_(argc, argv);
+#else  // defined(GTEST_CUSTOM_INIT_GOOGLE_TEST_FUNCTION_)
   internal::InitGoogleTestImpl(argc, argv);
+#endif  // defined(GTEST_CUSTOM_INIT_GOOGLE_TEST_FUNCTION_)
 }
 
 // This overloaded version can be used in Windows programs compiled in
 // UNICODE mode.
 void InitGoogleTest(int* argc, wchar_t** argv) {
+#if defined(GTEST_CUSTOM_INIT_GOOGLE_TEST_FUNCTION_)
+  GTEST_CUSTOM_INIT_GOOGLE_TEST_FUNCTION_(argc, argv);
+#else  // defined(GTEST_CUSTOM_INIT_GOOGLE_TEST_FUNCTION_)
   internal::InitGoogleTestImpl(argc, argv);
+#endif  // defined(GTEST_CUSTOM_INIT_GOOGLE_TEST_FUNCTION_)
 }
 
 }  // namespace testing
@@ -6563,9 +6898,9 @@ void InitGoogleTest(int* argc, wchar_t** argv) {
 
 // Indicates that this translation unit is part of Google Test's
 // implementation.  It must come before gtest-internal-inl.h is
-// included, or there will be a compiler error.  This trick is to
-// prevent a user from accidentally including gtest-internal-inl.h in
-// his code.
+// included, or there will be a compiler error.  This trick exists to
+// prevent the accidental inclusion of gtest-internal-inl.h in the
+// user's code.
 #define GTEST_IMPLEMENTATION_ 1
 #undef GTEST_IMPLEMENTATION_
 
@@ -6614,7 +6949,9 @@ namespace internal {
 
 // Valid only for fast death tests. Indicates the code is running in the
 // child process of a fast style death test.
+# if !GTEST_OS_WINDOWS
 static bool g_in_fast_death_test_child = false;
+# endif
 
 // Returns a Boolean value indicating whether the caller is currently
 // executing in the context of the death test child process.  Tools such as
@@ -6663,6 +7000,14 @@ KilledBySignal::KilledBySignal(int signum) : signum_(signum) {
 
 // KilledBySignal function-call operator.
 bool KilledBySignal::operator()(int exit_status) const {
+#  if defined(GTEST_KILLED_BY_SIGNAL_OVERRIDE_)
+  {
+    bool result;
+    if (GTEST_KILLED_BY_SIGNAL_OVERRIDE_(signum_, exit_status, &result)) {
+      return result;
+    }
+  }
+#  endif  // defined(GTEST_KILLED_BY_SIGNAL_OVERRIDE_)
   return WIFSIGNALED(exit_status) && WTERMSIG(exit_status) == signum_;
 }
 # endif  // !GTEST_OS_WINDOWS
@@ -7369,6 +7714,11 @@ class ExecDeathTest : public ForkingDeathTest {
   static ::std::vector<testing::internal::string>
   GetArgvsForDeathTestChildProcess() {
     ::std::vector<testing::internal::string> args = GetInjectableArgvs();
+#  if defined(GTEST_EXTRA_DEATH_TEST_COMMAND_LINE_ARGS_)
+    ::std::vector<testing::internal::string> extra_args =
+        GTEST_EXTRA_DEATH_TEST_COMMAND_LINE_ARGS_();
+    args.insert(args.end(), extra_args.begin(), extra_args.end());
+#  endif  // defined(GTEST_EXTRA_DEATH_TEST_COMMAND_LINE_ARGS_)
     return args;
   }
   // The name of the file in which the death test is located.
@@ -7479,6 +7829,8 @@ void StackLowerThanAddress(const void* ptr, bool* result) {
   *result = (&dummy < ptr);
 }
 
+// Make sure AddressSanitizer does not tamper with the stack here.
+GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
 bool StackGrowsDown() {
   int dummy;
   bool result;
@@ -7696,26 +8048,6 @@ bool DefaultDeathTestFactory::Create(const char* statement, const RE* regex,
   return true;
 }
 
-// Splits a given string on a given delimiter, populating a given
-// vector with the fields.  GTEST_HAS_DEATH_TEST implies that we have
-// ::std::string, so we can use it here.
-static void SplitString(const ::std::string& str, char delimiter,
-                        ::std::vector< ::std::string>* dest) {
-  ::std::vector< ::std::string> parsed;
-  ::std::string::size_type pos = 0;
-  while (::testing::internal::AlwaysTrue()) {
-    const ::std::string::size_type colon = str.find(delimiter, pos);
-    if (colon == ::std::string::npos) {
-      parsed.push_back(str.substr(pos));
-      break;
-    } else {
-      parsed.push_back(str.substr(pos, colon - pos));
-      pos = colon + 1;
-    }
-  }
-  dest->swap(parsed);
-}
-
 # if GTEST_OS_WINDOWS
 // Recreates the pipe and event handles from the provided parameters,
 // signals the event, and returns a file descriptor wrapped around the pipe
@@ -7904,7 +8236,6 @@ namespace internal {
 // of them.
 const char kPathSeparator = '\\';
 const char kAlternatePathSeparator = '/';
-const char kPathSeparatorString[] = "\\";
 const char kAlternatePathSeparatorString[] = "/";
 # if GTEST_OS_WINDOWS_MOBILE
 // Windows CE doesn't have a current directory. You should not use
@@ -7918,7 +8249,6 @@ const char kCurrentDirectoryString[] = ".\\";
 # endif  // GTEST_OS_WINDOWS_MOBILE
 #else
 const char kPathSeparator = '/';
-const char kPathSeparatorString[] = "/";
 const char kCurrentDirectoryString[] = "./";
 #endif  // GTEST_OS_WINDOWS
 
@@ -7933,7 +8263,7 @@ static bool IsPathSeparator(char c) {
 
 // Returns the current working directory, or "" if unsuccessful.
 FilePath FilePath::GetCurrentDir() {
-#if GTEST_OS_WINDOWS_MOBILE
+#if GTEST_OS_WINDOWS_MOBILE || GTEST_OS_WINDOWS_PHONE || GTEST_OS_WINDOWS_RT
   // Windows CE doesn't have a current directory, so we just return
   // something reasonable.
   return FilePath(kCurrentDirectoryString);
@@ -7942,7 +8272,14 @@ FilePath FilePath::GetCurrentDir() {
   return FilePath(_getcwd(cwd, sizeof(cwd)) == NULL ? "" : cwd);
 #else
   char cwd[GTEST_PATH_MAX_ + 1] = { '\0' };
-  return FilePath(getcwd(cwd, sizeof(cwd)) == NULL ? "" : cwd);
+  char* result = getcwd(cwd, sizeof(cwd));
+# if GTEST_OS_NACL
+  // getcwd will likely fail in NaCl due to the sandbox, so return something
+  // reasonable. The user may have provided a shim implementation for getcwd,
+  // however, so fallback only when failure is detected.
+  return FilePath(result == NULL ? kCurrentDirectoryString : cwd);
+# endif  // GTEST_OS_NACL
+  return FilePath(result == NULL ? "" : cwd);
 #endif  // GTEST_OS_WINDOWS_MOBILE
 }
 
@@ -8250,15 +8587,16 @@ void FilePath::Normalize() {
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <fstream>
 
-#if GTEST_OS_WINDOWS_MOBILE
-# include <windows.h>  // For TerminateProcess()
-#elif GTEST_OS_WINDOWS
+#if GTEST_OS_WINDOWS
+# include <windows.h>
 # include <io.h>
 # include <sys/stat.h>
+# include <map>  // Used in ThreadLocal.
 #else
 # include <unistd.h>
-#endif  // GTEST_OS_WINDOWS_MOBILE
+#endif  // GTEST_OS_WINDOWS
 
 #if GTEST_OS_MAC
 # include <mach/mach_init.h>
@@ -8268,15 +8606,21 @@ void FilePath::Normalize() {
 
 #if GTEST_OS_QNX
 # include <devctl.h>
+# include <fcntl.h>
 # include <sys/procfs.h>
 #endif  // GTEST_OS_QNX
+
+#if GTEST_OS_AIX
+# include <procinfo.h>
+# include <sys/types.h>
+#endif  // GTEST_OS_AIX
 
 
 // Indicates that this translation unit is part of Google Test's
 // implementation.  It must come before gtest-internal-inl.h is
-// included, or there will be a compiler error.  This trick is to
-// prevent a user from accidentally including gtest-internal-inl.h in
-// his code.
+// included, or there will be a compiler error.  This trick exists to
+// prevent the accidental inclusion of gtest-internal-inl.h in the
+// user's code.
 #define GTEST_IMPLEMENTATION_ 1
 #undef GTEST_IMPLEMENTATION_
 
@@ -8292,10 +8636,31 @@ const int kStdOutFileno = STDOUT_FILENO;
 const int kStdErrFileno = STDERR_FILENO;
 #endif  // _MSC_VER
 
-#if GTEST_OS_MAC
+#if GTEST_OS_LINUX
 
-// Returns the number of threads running in the process, or 0 to indicate that
-// we cannot detect it.
+namespace {
+template <typename T>
+T ReadProcFileField(const string& filename, int field) {
+  std::string dummy;
+  std::ifstream file(filename.c_str());
+  while (field-- > 0) {
+    file >> dummy;
+  }
+  T output = 0;
+  file >> output;
+  return output;
+}
+}  // namespace
+
+// Returns the number of active threads, or 0 when there is an error.
+size_t GetThreadCount() {
+  const string filename =
+      (Message() << "/proc/" << getpid() << "/stat").GetString();
+  return ReadProcFileField<int>(filename, 19);
+}
+
+#elif GTEST_OS_MAC
+
 size_t GetThreadCount() {
   const task_t task = mach_task_self();
   mach_msg_type_number_t thread_count;
@@ -8333,6 +8698,19 @@ size_t GetThreadCount() {
   }
 }
 
+#elif GTEST_OS_AIX
+
+size_t GetThreadCount() {
+  struct procentry64 entry;
+  pid_t pid = getpid();
+  int status = getprocs64(&entry, sizeof(entry), NULL, 0, &pid, 1);
+  if (status == 1) {
+    return entry.pi_thcount;
+  } else {
+    return 0;
+  }
+}
+
 #else
 
 size_t GetThreadCount() {
@@ -8341,7 +8719,390 @@ size_t GetThreadCount() {
   return 0;
 }
 
-#endif  // GTEST_OS_MAC
+#endif  // GTEST_OS_LINUX
+
+#if GTEST_IS_THREADSAFE && GTEST_OS_WINDOWS
+
+void SleepMilliseconds(int n) {
+  ::Sleep(n);
+}
+
+AutoHandle::AutoHandle()
+    : handle_(INVALID_HANDLE_VALUE) {}
+
+AutoHandle::AutoHandle(Handle handle)
+    : handle_(handle) {}
+
+AutoHandle::~AutoHandle() {
+  Reset();
+}
+
+AutoHandle::Handle AutoHandle::Get() const {
+  return handle_;
+}
+
+void AutoHandle::Reset() {
+  Reset(INVALID_HANDLE_VALUE);
+}
+
+void AutoHandle::Reset(HANDLE handle) {
+  // Resetting with the same handle we already own is invalid.
+  if (handle_ != handle) {
+    if (IsCloseable()) {
+      ::CloseHandle(handle_);
+    }
+    handle_ = handle;
+  } else {
+    GTEST_CHECK_(!IsCloseable())
+        << "Resetting a valid handle to itself is likely a programmer error "
+            "and thus not allowed.";
+  }
+}
+
+bool AutoHandle::IsCloseable() const {
+  // Different Windows APIs may use either of these values to represent an
+  // invalid handle.
+  return handle_ != NULL && handle_ != INVALID_HANDLE_VALUE;
+}
+
+Notification::Notification()
+    : event_(::CreateEvent(NULL,   // Default security attributes.
+                           TRUE,   // Do not reset automatically.
+                           FALSE,  // Initially unset.
+                           NULL)) {  // Anonymous event.
+  GTEST_CHECK_(event_.Get() != NULL);
+}
+
+void Notification::Notify() {
+  GTEST_CHECK_(::SetEvent(event_.Get()) != FALSE);
+}
+
+void Notification::WaitForNotification() {
+  GTEST_CHECK_(
+      ::WaitForSingleObject(event_.Get(), INFINITE) == WAIT_OBJECT_0);
+}
+
+Mutex::Mutex()
+    : owner_thread_id_(0),
+      type_(kDynamic),
+      critical_section_init_phase_(0),
+      critical_section_(new CRITICAL_SECTION) {
+  ::InitializeCriticalSection(critical_section_);
+}
+
+Mutex::~Mutex() {
+  // Static mutexes are leaked intentionally. It is not thread-safe to try
+  // to clean them up.
+  // TODO(yukawa): Switch to Slim Reader/Writer (SRW) Locks, which requires
+  // nothing to clean it up but is available only on Vista and later.
+  // http://msdn.microsoft.com/en-us/library/windows/desktop/aa904937.aspx
+  if (type_ == kDynamic) {
+    ::DeleteCriticalSection(critical_section_);
+    delete critical_section_;
+    critical_section_ = NULL;
+  }
+}
+
+void Mutex::Lock() {
+  ThreadSafeLazyInit();
+  ::EnterCriticalSection(critical_section_);
+  owner_thread_id_ = ::GetCurrentThreadId();
+}
+
+void Mutex::Unlock() {
+  ThreadSafeLazyInit();
+  // We don't protect writing to owner_thread_id_ here, as it's the
+  // caller's responsibility to ensure that the current thread holds the
+  // mutex when this is called.
+  owner_thread_id_ = 0;
+  ::LeaveCriticalSection(critical_section_);
+}
+
+// Does nothing if the current thread holds the mutex. Otherwise, crashes
+// with high probability.
+void Mutex::AssertHeld() {
+  ThreadSafeLazyInit();
+  GTEST_CHECK_(owner_thread_id_ == ::GetCurrentThreadId())
+      << "The current thread is not holding the mutex @" << this;
+}
+
+// Initializes owner_thread_id_ and critical_section_ in static mutexes.
+void Mutex::ThreadSafeLazyInit() {
+  // Dynamic mutexes are initialized in the constructor.
+  if (type_ == kStatic) {
+    switch (
+        ::InterlockedCompareExchange(&critical_section_init_phase_, 1L, 0L)) {
+      case 0:
+        // If critical_section_init_phase_ was 0 before the exchange, we
+        // are the first to test it and need to perform the initialization.
+        owner_thread_id_ = 0;
+        critical_section_ = new CRITICAL_SECTION;
+        ::InitializeCriticalSection(critical_section_);
+        // Updates the critical_section_init_phase_ to 2 to signal
+        // initialization complete.
+        GTEST_CHECK_(::InterlockedCompareExchange(
+                          &critical_section_init_phase_, 2L, 1L) ==
+                      1L);
+        break;
+      case 1:
+        // Somebody else is already initializing the mutex; spin until they
+        // are done.
+        while (::InterlockedCompareExchange(&critical_section_init_phase_,
+                                            2L,
+                                            2L) != 2L) {
+          // Possibly yields the rest of the thread's time slice to other
+          // threads.
+          ::Sleep(0);
+        }
+        break;
+
+      case 2:
+        break;  // The mutex is already initialized and ready for use.
+
+      default:
+        GTEST_CHECK_(false)
+            << "Unexpected value of critical_section_init_phase_ "
+            << "while initializing a static mutex.";
+    }
+  }
+}
+
+namespace {
+
+class ThreadWithParamSupport : public ThreadWithParamBase {
+ public:
+  static HANDLE CreateThread(Runnable* runnable,
+                             Notification* thread_can_start) {
+    ThreadMainParam* param = new ThreadMainParam(runnable, thread_can_start);
+    DWORD thread_id;
+    // TODO(yukawa): Consider to use _beginthreadex instead.
+    HANDLE thread_handle = ::CreateThread(
+        NULL,    // Default security.
+        0,       // Default stack size.
+        &ThreadWithParamSupport::ThreadMain,
+        param,   // Parameter to ThreadMainStatic
+        0x0,     // Default creation flags.
+        &thread_id);  // Need a valid pointer for the call to work under Win98.
+    GTEST_CHECK_(thread_handle != NULL) << "CreateThread failed with error "
+                                        << ::GetLastError() << ".";
+    if (thread_handle == NULL) {
+      delete param;
+    }
+    return thread_handle;
+  }
+
+ private:
+  struct ThreadMainParam {
+    ThreadMainParam(Runnable* runnable, Notification* thread_can_start)
+        : runnable_(runnable),
+          thread_can_start_(thread_can_start) {
+    }
+    scoped_ptr<Runnable> runnable_;
+    // Does not own.
+    Notification* thread_can_start_;
+  };
+
+  static DWORD WINAPI ThreadMain(void* ptr) {
+    // Transfers ownership.
+    scoped_ptr<ThreadMainParam> param(static_cast<ThreadMainParam*>(ptr));
+    if (param->thread_can_start_ != NULL)
+      param->thread_can_start_->WaitForNotification();
+    param->runnable_->Run();
+    return 0;
+  }
+
+  // Prohibit instantiation.
+  ThreadWithParamSupport();
+
+  GTEST_DISALLOW_COPY_AND_ASSIGN_(ThreadWithParamSupport);
+};
+
+}  // namespace
+
+ThreadWithParamBase::ThreadWithParamBase(Runnable *runnable,
+                                         Notification* thread_can_start)
+      : thread_(ThreadWithParamSupport::CreateThread(runnable,
+                                                     thread_can_start)) {
+}
+
+ThreadWithParamBase::~ThreadWithParamBase() {
+  Join();
+}
+
+void ThreadWithParamBase::Join() {
+  GTEST_CHECK_(::WaitForSingleObject(thread_.Get(), INFINITE) == WAIT_OBJECT_0)
+      << "Failed to join the thread with error " << ::GetLastError() << ".";
+}
+
+// Maps a thread to a set of ThreadIdToThreadLocals that have values
+// instantiated on that thread and notifies them when the thread exits.  A
+// ThreadLocal instance is expected to persist until all threads it has
+// values on have terminated.
+class ThreadLocalRegistryImpl {
+ public:
+  // Registers thread_local_instance as having value on the current thread.
+  // Returns a value that can be used to identify the thread from other threads.
+  static ThreadLocalValueHolderBase* GetValueOnCurrentThread(
+      const ThreadLocalBase* thread_local_instance) {
+    DWORD current_thread = ::GetCurrentThreadId();
+    MutexLock lock(&mutex_);
+    ThreadIdToThreadLocals* const thread_to_thread_locals =
+        GetThreadLocalsMapLocked();
+    ThreadIdToThreadLocals::iterator thread_local_pos =
+        thread_to_thread_locals->find(current_thread);
+    if (thread_local_pos == thread_to_thread_locals->end()) {
+      thread_local_pos = thread_to_thread_locals->insert(
+          std::make_pair(current_thread, ThreadLocalValues())).first;
+      StartWatcherThreadFor(current_thread);
+    }
+    ThreadLocalValues& thread_local_values = thread_local_pos->second;
+    ThreadLocalValues::iterator value_pos =
+        thread_local_values.find(thread_local_instance);
+    if (value_pos == thread_local_values.end()) {
+      value_pos =
+          thread_local_values
+              .insert(std::make_pair(
+                  thread_local_instance,
+                  linked_ptr<ThreadLocalValueHolderBase>(
+                      thread_local_instance->NewValueForCurrentThread())))
+              .first;
+    }
+    return value_pos->second.get();
+  }
+
+  static void OnThreadLocalDestroyed(
+      const ThreadLocalBase* thread_local_instance) {
+    std::vector<linked_ptr<ThreadLocalValueHolderBase> > value_holders;
+    // Clean up the ThreadLocalValues data structure while holding the lock, but
+    // defer the destruction of the ThreadLocalValueHolderBases.
+    {
+      MutexLock lock(&mutex_);
+      ThreadIdToThreadLocals* const thread_to_thread_locals =
+          GetThreadLocalsMapLocked();
+      for (ThreadIdToThreadLocals::iterator it =
+          thread_to_thread_locals->begin();
+          it != thread_to_thread_locals->end();
+          ++it) {
+        ThreadLocalValues& thread_local_values = it->second;
+        ThreadLocalValues::iterator value_pos =
+            thread_local_values.find(thread_local_instance);
+        if (value_pos != thread_local_values.end()) {
+          value_holders.push_back(value_pos->second);
+          thread_local_values.erase(value_pos);
+          // This 'if' can only be successful at most once, so theoretically we
+          // could break out of the loop here, but we don't bother doing so.
+        }
+      }
+    }
+    // Outside the lock, let the destructor for 'value_holders' deallocate the
+    // ThreadLocalValueHolderBases.
+  }
+
+  static void OnThreadExit(DWORD thread_id) {
+    GTEST_CHECK_(thread_id != 0) << ::GetLastError();
+    std::vector<linked_ptr<ThreadLocalValueHolderBase> > value_holders;
+    // Clean up the ThreadIdToThreadLocals data structure while holding the
+    // lock, but defer the destruction of the ThreadLocalValueHolderBases.
+    {
+      MutexLock lock(&mutex_);
+      ThreadIdToThreadLocals* const thread_to_thread_locals =
+          GetThreadLocalsMapLocked();
+      ThreadIdToThreadLocals::iterator thread_local_pos =
+          thread_to_thread_locals->find(thread_id);
+      if (thread_local_pos != thread_to_thread_locals->end()) {
+        ThreadLocalValues& thread_local_values = thread_local_pos->second;
+        for (ThreadLocalValues::iterator value_pos =
+            thread_local_values.begin();
+            value_pos != thread_local_values.end();
+            ++value_pos) {
+          value_holders.push_back(value_pos->second);
+        }
+        thread_to_thread_locals->erase(thread_local_pos);
+      }
+    }
+    // Outside the lock, let the destructor for 'value_holders' deallocate the
+    // ThreadLocalValueHolderBases.
+  }
+
+ private:
+  // In a particular thread, maps a ThreadLocal object to its value.
+  typedef std::map<const ThreadLocalBase*,
+                   linked_ptr<ThreadLocalValueHolderBase> > ThreadLocalValues;
+  // Stores all ThreadIdToThreadLocals having values in a thread, indexed by
+  // thread's ID.
+  typedef std::map<DWORD, ThreadLocalValues> ThreadIdToThreadLocals;
+
+  // Holds the thread id and thread handle that we pass from
+  // StartWatcherThreadFor to WatcherThreadFunc.
+  typedef std::pair<DWORD, HANDLE> ThreadIdAndHandle;
+
+  static void StartWatcherThreadFor(DWORD thread_id) {
+    // The returned handle will be kept in thread_map and closed by
+    // watcher_thread in WatcherThreadFunc.
+    HANDLE thread = ::OpenThread(SYNCHRONIZE | THREAD_QUERY_INFORMATION,
+                                 FALSE,
+                                 thread_id);
+    GTEST_CHECK_(thread != NULL);
+    // We need to to pass a valid thread ID pointer into CreateThread for it
+    // to work correctly under Win98.
+    DWORD watcher_thread_id;
+    HANDLE watcher_thread = ::CreateThread(
+        NULL,   // Default security.
+        0,      // Default stack size
+        &ThreadLocalRegistryImpl::WatcherThreadFunc,
+        reinterpret_cast<LPVOID>(new ThreadIdAndHandle(thread_id, thread)),
+        CREATE_SUSPENDED,
+        &watcher_thread_id);
+    GTEST_CHECK_(watcher_thread != NULL);
+    // Give the watcher thread the same priority as ours to avoid being
+    // blocked by it.
+    ::SetThreadPriority(watcher_thread,
+                        ::GetThreadPriority(::GetCurrentThread()));
+    ::ResumeThread(watcher_thread);
+    ::CloseHandle(watcher_thread);
+  }
+
+  // Monitors exit from a given thread and notifies those
+  // ThreadIdToThreadLocals about thread termination.
+  static DWORD WINAPI WatcherThreadFunc(LPVOID param) {
+    const ThreadIdAndHandle* tah =
+        reinterpret_cast<const ThreadIdAndHandle*>(param);
+    GTEST_CHECK_(
+        ::WaitForSingleObject(tah->second, INFINITE) == WAIT_OBJECT_0);
+    OnThreadExit(tah->first);
+    ::CloseHandle(tah->second);
+    delete tah;
+    return 0;
+  }
+
+  // Returns map of thread local instances.
+  static ThreadIdToThreadLocals* GetThreadLocalsMapLocked() {
+    mutex_.AssertHeld();
+    static ThreadIdToThreadLocals* map = new ThreadIdToThreadLocals;
+    return map;
+  }
+
+  // Protects access to GetThreadLocalsMapLocked() and its return value.
+  static Mutex mutex_;
+  // Protects access to GetThreadMapLocked() and its return value.
+  static Mutex thread_map_mutex_;
+};
+
+Mutex ThreadLocalRegistryImpl::mutex_(Mutex::kStaticMutex);
+Mutex ThreadLocalRegistryImpl::thread_map_mutex_(Mutex::kStaticMutex);
+
+ThreadLocalValueHolderBase* ThreadLocalRegistry::GetValueOnCurrentThread(
+      const ThreadLocalBase* thread_local_instance) {
+  return ThreadLocalRegistryImpl::GetValueOnCurrentThread(
+      thread_local_instance);
+}
+
+void ThreadLocalRegistry::OnThreadLocalDestroyed(
+      const ThreadLocalBase* thread_local_instance) {
+  ThreadLocalRegistryImpl::OnThreadLocalDestroyed(thread_local_instance);
+}
+
+#endif  // GTEST_IS_THREADSAFE && GTEST_OS_WINDOWS
 
 #if GTEST_USES_POSIX_RE
 
@@ -8691,7 +9452,6 @@ GTEST_API_ ::std::string FormatCompilerIndependentFileLocation(
     return file_name + ":" + StreamableToString(line);
 }
 
-
 GTestLog::GTestLog(GTestLogSeverity severity, const char* file, int line)
     : severity_(severity) {
   const char* const marker =
@@ -8712,10 +9472,7 @@ GTestLog::~GTestLog() {
 }
 // Disable Microsoft deprecation warnings for POSIX functions called from
 // this class (creat, dup, dup2, and close)
-#ifdef _MSC_VER
-# pragma warning(push)
-# pragma warning(disable: 4996)
-#endif  // _MSC_VER
+GTEST_DISABLE_MSC_WARNINGS_PUSH_(4996)
 
 #if GTEST_HAS_STREAM_REDIRECTION
 
@@ -8791,12 +9548,6 @@ class CapturedStream {
   }
 
  private:
-  // Reads the entire content of a file as an std::string.
-  static std::string ReadEntireFile(FILE* file);
-
-  // Returns the size (in bytes) of a file.
-  static size_t GetFileSize(FILE* file);
-
   const int fd_;  // A stream to capture.
   int uncaptured_fd_;
   // Name of the temporary file holding the stderr output.
@@ -8805,38 +9556,7 @@ class CapturedStream {
   GTEST_DISALLOW_COPY_AND_ASSIGN_(CapturedStream);
 };
 
-// Returns the size (in bytes) of a file.
-size_t CapturedStream::GetFileSize(FILE* file) {
-  fseek(file, 0, SEEK_END);
-  return static_cast<size_t>(ftell(file));
-}
-
-// Reads the entire content of a file as a string.
-std::string CapturedStream::ReadEntireFile(FILE* file) {
-  const size_t file_size = GetFileSize(file);
-  char* const buffer = new char[file_size];
-
-  size_t bytes_last_read = 0;  // # of bytes read in the last fread()
-  size_t bytes_read = 0;       // # of bytes read so far
-
-  fseek(file, 0, SEEK_SET);
-
-  // Keeps reading the file until we cannot read further or the
-  // pre-determined file size is reached.
-  do {
-    bytes_last_read = fread(buffer+bytes_read, 1, file_size-bytes_read, file);
-    bytes_read += bytes_last_read;
-  } while (bytes_last_read > 0 && bytes_read < file_size);
-
-  const std::string content(buffer, bytes_read);
-  delete[] buffer;
-
-  return content;
-}
-
-# ifdef _MSC_VER
-#  pragma warning(pop)
-# endif  // _MSC_VER
+GTEST_DISABLE_MSC_WARNINGS_POP_()
 
 static CapturedStream* g_captured_stderr = NULL;
 static CapturedStream* g_captured_stdout = NULL;
@@ -8882,10 +9602,52 @@ std::string GetCapturedStderr() {
 
 #endif  // GTEST_HAS_STREAM_REDIRECTION
 
-#if GTEST_HAS_DEATH_TEST
+std::string TempDir() {
+#if GTEST_OS_WINDOWS_MOBILE
+  return "\\temp\\";
+#elif GTEST_OS_WINDOWS
+  const char* temp_dir = posix::GetEnv("TEMP");
+  if (temp_dir == NULL || temp_dir[0] == '\0')
+    return "\\temp\\";
+  else if (temp_dir[strlen(temp_dir) - 1] == '\\')
+    return temp_dir;
+  else
+    return std::string(temp_dir) + "\\";
+#elif GTEST_OS_LINUX_ANDROID
+  return "/sdcard/";
+#else
+  return "/tmp/";
+#endif  // GTEST_OS_WINDOWS_MOBILE
+}
 
-// A copy of all command line arguments.  Set by InitGoogleTest().
-::std::vector<testing::internal::string> g_argvs;
+size_t GetFileSize(FILE* file) {
+  fseek(file, 0, SEEK_END);
+  return static_cast<size_t>(ftell(file));
+}
+
+std::string ReadEntireFile(FILE* file) {
+  const size_t file_size = GetFileSize(file);
+  char* const buffer = new char[file_size];
+
+  size_t bytes_last_read = 0;  // # of bytes read in the last fread()
+  size_t bytes_read = 0;       // # of bytes read so far
+
+  fseek(file, 0, SEEK_SET);
+
+  // Keeps reading the file until we cannot read further or the
+  // pre-determined file size is reached.
+  do {
+    bytes_last_read = fread(buffer+bytes_read, 1, file_size-bytes_read, file);
+    bytes_read += bytes_last_read;
+  } while (bytes_last_read > 0 && bytes_read < file_size);
+
+  const std::string content(buffer, bytes_read);
+  delete[] buffer;
+
+  return content;
+}
+
+#if GTEST_HAS_DEATH_TEST
 
 static const ::std::vector<testing::internal::string>* g_injected_test_argvs =
                                         NULL;  // Owned.
@@ -8900,7 +9662,7 @@ const ::std::vector<testing::internal::string>& GetInjectableArgvs() {
   if (g_injected_test_argvs != NULL) {
     return *g_injected_test_argvs;
   }
-  return g_argvs;
+  return GetArgvs();
 }
 #endif  // GTEST_HAS_DEATH_TEST
 
@@ -8974,6 +9736,9 @@ bool ParseInt32(const Message& src_text, const char* str, Int32* value) {
 //
 // The value is considered true iff it's not "0".
 bool BoolFromGTestEnv(const char* flag, bool default_value) {
+#if defined(GTEST_GET_BOOL_FROM_ENV_)
+  return GTEST_GET_BOOL_FROM_ENV_(flag, default_value);
+#endif  // defined(GTEST_GET_BOOL_FROM_ENV_)
   const std::string env_var = FlagToEnvVar(flag);
   const char* const string_value = posix::GetEnv(env_var.c_str());
   return string_value == NULL ?
@@ -8984,6 +9749,9 @@ bool BoolFromGTestEnv(const char* flag, bool default_value) {
 // variable corresponding to the given flag; if it isn't set or
 // doesn't represent a valid 32-bit integer, returns default_value.
 Int32 Int32FromGTestEnv(const char* flag, Int32 default_value) {
+#if defined(GTEST_GET_INT32_FROM_ENV_)
+  return GTEST_GET_INT32_FROM_ENV_(flag, default_value);
+#endif  // defined(GTEST_GET_INT32_FROM_ENV_)
   const std::string env_var = FlagToEnvVar(flag);
   const char* const string_value = posix::GetEnv(env_var.c_str());
   if (string_value == NULL) {
@@ -9006,6 +9774,9 @@ Int32 Int32FromGTestEnv(const char* flag, Int32 default_value) {
 // Reads and returns the string environment variable corresponding to
 // the given flag; if it's not set, returns default_value.
 const char* StringFromGTestEnv(const char* flag, const char* default_value) {
+#if defined(GTEST_GET_STRING_FROM_ENV_)
+  return GTEST_GET_STRING_FROM_ENV_(flag, default_value);
+#endif  // defined(GTEST_GET_STRING_FROM_ENV_)
   const std::string env_var = FlagToEnvVar(flag);
   const char* const value = posix::GetEnv(env_var.c_str());
   return value == NULL ? default_value : value;
@@ -9059,6 +9830,7 @@ const char* StringFromGTestEnv(const char* flag, const char* default_value) {
 
 #include <ctype.h>
 #include <stdio.h>
+#include <cwchar>
 #include <ostream>  // NOLINT
 #include <string>
 
@@ -9069,6 +9841,9 @@ namespace {
 using ::std::ostream;
 
 // Prints a segment of bytes in the given object.
+GTEST_ATTRIBUTE_NO_SANITIZE_MEMORY_
+GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
+GTEST_ATTRIBUTE_NO_SANITIZE_THREAD_
 void PrintByteSegmentInObjectTo(const unsigned char* obj_bytes, size_t start,
                                 size_t count, ostream* os) {
   char text[5] = "";
@@ -9265,6 +10040,9 @@ void PrintTo(wchar_t wc, ostream* os) {
 // The array starts at begin, the length is len, it may include '\0' characters
 // and may not be NUL-terminated.
 template <typename CharType>
+GTEST_ATTRIBUTE_NO_SANITIZE_MEMORY_
+GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
+GTEST_ATTRIBUTE_NO_SANITIZE_THREAD_
 static void PrintCharsAsStringTo(
     const CharType* begin, size_t len, ostream* os) {
   const char* const kQuoteBegin = sizeof(CharType) == 1 ? "\"" : "L\"";
@@ -9286,6 +10064,9 @@ static void PrintCharsAsStringTo(
 // Prints a (const) char/wchar_t array of 'len' elements, starting at address
 // 'begin'.  CharType must be either char or wchar_t.
 template <typename CharType>
+GTEST_ATTRIBUTE_NO_SANITIZE_MEMORY_
+GTEST_ATTRIBUTE_NO_SANITIZE_ADDRESS_
+GTEST_ATTRIBUTE_NO_SANITIZE_THREAD_
 static void UniversalPrintCharArray(
     const CharType* begin, size_t len, ostream* os) {
   // The code
@@ -9342,7 +10123,7 @@ void PrintTo(const wchar_t* s, ostream* os) {
     *os << "NULL";
   } else {
     *os << ImplicitCast_<const void*>(s) << " pointing to ";
-    PrintCharsAsStringTo(s, wcslen(s), os);
+    PrintCharsAsStringTo(s, std::wcslen(s), os);
   }
 }
 #endif  // wchar_t is native
@@ -9410,9 +10191,9 @@ void PrintWideStringTo(const ::std::wstring& s, ostream* os) {
 
 // Indicates that this translation unit is part of Google Test's
 // implementation.  It must come before gtest-internal-inl.h is
-// included, or there will be a compiler error.  This trick is to
-// prevent a user from accidentally including gtest-internal-inl.h in
-// his code.
+// included, or there will be a compiler error.  This trick exists to
+// prevent the accidental inclusion of gtest-internal-inl.h in the
+// user's code.
 #define GTEST_IMPLEMENTATION_ 1
 #undef GTEST_IMPLEMENTATION_
 
@@ -9527,33 +10308,41 @@ static const char* SkipSpaces(const char* str) {
   return str;
 }
 
+static std::vector<std::string> SplitIntoTestNames(const char* src) {
+  std::vector<std::string> name_vec;
+  src = SkipSpaces(src);
+  for (; src != NULL; src = SkipComma(src)) {
+    name_vec.push_back(StripTrailingSpaces(GetPrefixUntilComma(src)));
+  }
+  return name_vec;
+}
+
 // Verifies that registered_tests match the test names in
-// defined_test_names_; returns registered_tests if successful, or
+// registered_tests_; returns registered_tests if successful, or
 // aborts the program otherwise.
 const char* TypedTestCasePState::VerifyRegisteredTestNames(
     const char* file, int line, const char* registered_tests) {
-  typedef ::std::set<const char*>::const_iterator DefinedTestIter;
+  typedef RegisteredTestsMap::const_iterator RegisteredTestIter;
   registered_ = true;
 
-  // Skip initial whitespace in registered_tests since some
-  // preprocessors prefix stringizied literals with whitespace.
-  registered_tests = SkipSpaces(registered_tests);
+  std::vector<std::string> name_vec = SplitIntoTestNames(registered_tests);
 
   Message errors;
-  ::std::set<std::string> tests;
-  for (const char* names = registered_tests; names != NULL;
-       names = SkipComma(names)) {
-    const std::string name = GetPrefixUntilComma(names);
+
+  std::set<std::string> tests;
+  for (std::vector<std::string>::const_iterator name_it = name_vec.begin();
+       name_it != name_vec.end(); ++name_it) {
+    const std::string& name = *name_it;
     if (tests.count(name) != 0) {
       errors << "Test " << name << " is listed more than once.\n";
       continue;
     }
 
     bool found = false;
-    for (DefinedTestIter it = defined_test_names_.begin();
-         it != defined_test_names_.end();
+    for (RegisteredTestIter it = registered_tests_.begin();
+         it != registered_tests_.end();
          ++it) {
-      if (name == *it) {
+      if (name == it->first) {
         found = true;
         break;
       }
@@ -9567,11 +10356,11 @@ const char* TypedTestCasePState::VerifyRegisteredTestNames(
     }
   }
 
-  for (DefinedTestIter it = defined_test_names_.begin();
-       it != defined_test_names_.end();
+  for (RegisteredTestIter it = registered_tests_.begin();
+       it != registered_tests_.end();
        ++it) {
-    if (tests.count(*it) == 0) {
-      errors << "You forgot to list test " << *it << ".\n";
+    if (tests.count(it->first) == 0) {
+      errors << "You forgot to list test " << it->first << ".\n";
     }
   }
 
@@ -9589,4 +10378,1866 @@ const char* TypedTestCasePState::VerifyRegisteredTestNames(
 #endif  // GTEST_HAS_TYPED_TEST_P
 
 }  // namespace internal
+}  // namespace testing
+// Copyright 2008, Google Inc.
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: wan@google.com (Zhanyong Wan)
+//
+// Google C++ Mocking Framework (Google Mock)
+//
+// This file #includes all Google Mock implementation .cc files.  The
+// purpose is to allow a user to build Google Mock by compiling this
+// file alone.
+
+// This line ensures that gmock.h can be compiled on its own, even
+// when it's fused.
+#include "gmock/gmock.h"
+
+// The following lines pull in the real gmock *.cc files.
+// Copyright 2007, Google Inc.
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: wan@google.com (Zhanyong Wan)
+
+// Google Mock - a framework for writing C++ mock classes.
+//
+// This file implements cardinalities.
+
+
+#include <limits.h>
+#include <ostream>  // NOLINT
+#include <sstream>
+#include <string>
+
+namespace testing {
+
+namespace {
+
+// Implements the Between(m, n) cardinality.
+class BetweenCardinalityImpl : public CardinalityInterface {
+ public:
+  BetweenCardinalityImpl(int min, int max)
+      : min_(min >= 0 ? min : 0),
+        max_(max >= min_ ? max : min_) {
+    std::stringstream ss;
+    if (min < 0) {
+      ss << "The invocation lower bound must be >= 0, "
+         << "but is actually " << min << ".";
+      internal::Expect(false, __FILE__, __LINE__, ss.str());
+    } else if (max < 0) {
+      ss << "The invocation upper bound must be >= 0, "
+         << "but is actually " << max << ".";
+      internal::Expect(false, __FILE__, __LINE__, ss.str());
+    } else if (min > max) {
+      ss << "The invocation upper bound (" << max
+         << ") must be >= the invocation lower bound (" << min
+         << ").";
+      internal::Expect(false, __FILE__, __LINE__, ss.str());
+    }
+  }
+
+  // Conservative estimate on the lower/upper bound of the number of
+  // calls allowed.
+  virtual int ConservativeLowerBound() const { return min_; }
+  virtual int ConservativeUpperBound() const { return max_; }
+
+  virtual bool IsSatisfiedByCallCount(int call_count) const {
+    return min_ <= call_count && call_count <= max_;
+  }
+
+  virtual bool IsSaturatedByCallCount(int call_count) const {
+    return call_count >= max_;
+  }
+
+  virtual void DescribeTo(::std::ostream* os) const;
+
+ private:
+  const int min_;
+  const int max_;
+
+  GTEST_DISALLOW_COPY_AND_ASSIGN_(BetweenCardinalityImpl);
+};
+
+// Formats "n times" in a human-friendly way.
+inline internal::string FormatTimes(int n) {
+  if (n == 1) {
+    return "once";
+  } else if (n == 2) {
+    return "twice";
+  } else {
+    std::stringstream ss;
+    ss << n << " times";
+    return ss.str();
+  }
+}
+
+// Describes the Between(m, n) cardinality in human-friendly text.
+void BetweenCardinalityImpl::DescribeTo(::std::ostream* os) const {
+  if (min_ == 0) {
+    if (max_ == 0) {
+      *os << "never called";
+    } else if (max_ == INT_MAX) {
+      *os << "called any number of times";
+    } else {
+      *os << "called at most " << FormatTimes(max_);
+    }
+  } else if (min_ == max_) {
+    *os << "called " << FormatTimes(min_);
+  } else if (max_ == INT_MAX) {
+    *os << "called at least " << FormatTimes(min_);
+  } else {
+    // 0 < min_ < max_ < INT_MAX
+    *os << "called between " << min_ << " and " << max_ << " times";
+  }
+}
+
+}  // Unnamed namespace
+
+// Describes the given call count to an ostream.
+void Cardinality::DescribeActualCallCountTo(int actual_call_count,
+                                            ::std::ostream* os) {
+  if (actual_call_count > 0) {
+    *os << "called " << FormatTimes(actual_call_count);
+  } else {
+    *os << "never called";
+  }
+}
+
+// Creates a cardinality that allows at least n calls.
+GTEST_API_ Cardinality AtLeast(int n) { return Between(n, INT_MAX); }
+
+// Creates a cardinality that allows at most n calls.
+GTEST_API_ Cardinality AtMost(int n) { return Between(0, n); }
+
+// Creates a cardinality that allows any number of calls.
+GTEST_API_ Cardinality AnyNumber() { return AtLeast(0); }
+
+// Creates a cardinality that allows between min and max calls.
+GTEST_API_ Cardinality Between(int min, int max) {
+  return Cardinality(new BetweenCardinalityImpl(min, max));
+}
+
+// Creates a cardinality that allows exactly n calls.
+GTEST_API_ Cardinality Exactly(int n) { return Between(n, n); }
+
+}  // namespace testing
+// Copyright 2007, Google Inc.
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: wan@google.com (Zhanyong Wan)
+
+// Google Mock - a framework for writing C++ mock classes.
+//
+// This file defines some utilities useful for implementing Google
+// Mock.  They are subject to change without notice, so please DO NOT
+// USE THEM IN USER CODE.
+
+
+#include <ctype.h>
+#include <ostream>  // NOLINT
+#include <string>
+
+namespace testing {
+namespace internal {
+
+// Converts an identifier name to a space-separated list of lower-case
+// words.  Each maximum substring of the form [A-Za-z][a-z]*|\d+ is
+// treated as one word.  For example, both "FooBar123" and
+// "foo_bar_123" are converted to "foo bar 123".
+GTEST_API_ string ConvertIdentifierNameToWords(const char* id_name) {
+  string result;
+  char prev_char = '\0';
+  for (const char* p = id_name; *p != '\0'; prev_char = *(p++)) {
+    // We don't care about the current locale as the input is
+    // guaranteed to be a valid C++ identifier name.
+    const bool starts_new_word = IsUpper(*p) ||
+        (!IsAlpha(prev_char) && IsLower(*p)) ||
+        (!IsDigit(prev_char) && IsDigit(*p));
+
+    if (IsAlNum(*p)) {
+      if (starts_new_word && result != "")
+        result += ' ';
+      result += ToLower(*p);
+    }
+  }
+  return result;
+}
+
+// This class reports Google Mock failures as Google Test failures.  A
+// user can define another class in a similar fashion if he intends to
+// use Google Mock with a testing framework other than Google Test.
+class GoogleTestFailureReporter : public FailureReporterInterface {
+ public:
+  virtual void ReportFailure(FailureType type, const char* file, int line,
+                             const string& message) {
+    AssertHelper(type == kFatal ?
+                 TestPartResult::kFatalFailure :
+                 TestPartResult::kNonFatalFailure,
+                 file,
+                 line,
+                 message.c_str()) = Message();
+    if (type == kFatal) {
+      posix::Abort();
+    }
+  }
+};
+
+// Returns the global failure reporter.  Will create a
+// GoogleTestFailureReporter and return it the first time called.
+GTEST_API_ FailureReporterInterface* GetFailureReporter() {
+  // Points to the global failure reporter used by Google Mock.  gcc
+  // guarantees that the following use of failure_reporter is
+  // thread-safe.  We may need to add additional synchronization to
+  // protect failure_reporter if we port Google Mock to other
+  // compilers.
+  static FailureReporterInterface* const failure_reporter =
+      new GoogleTestFailureReporter();
+  return failure_reporter;
+}
+
+// Protects global resources (stdout in particular) used by Log().
+static GTEST_DEFINE_STATIC_MUTEX_(g_log_mutex);
+
+// Returns true iff a log with the given severity is visible according
+// to the --gmock_verbose flag.
+GTEST_API_ bool LogIsVisible(LogSeverity severity) {
+  if (GMOCK_FLAG(verbose) == kInfoVerbosity) {
+    // Always show the log if --gmock_verbose=info.
+    return true;
+  } else if (GMOCK_FLAG(verbose) == kErrorVerbosity) {
+    // Always hide it if --gmock_verbose=error.
+    return false;
+  } else {
+    // If --gmock_verbose is neither "info" nor "error", we treat it
+    // as "warning" (its default value).
+    return severity == kWarning;
+  }
+}
+
+// Prints the given message to stdout iff 'severity' >= the level
+// specified by the --gmock_verbose flag.  If stack_frames_to_skip >=
+// 0, also prints the stack trace excluding the top
+// stack_frames_to_skip frames.  In opt mode, any positive
+// stack_frames_to_skip is treated as 0, since we don't know which
+// function calls will be inlined by the compiler and need to be
+// conservative.
+GTEST_API_ void Log(LogSeverity severity,
+                    const string& message,
+                    int stack_frames_to_skip) {
+  if (!LogIsVisible(severity))
+    return;
+
+  // Ensures that logs from different threads don't interleave.
+  MutexLock l(&g_log_mutex);
+
+  // "using ::std::cout;" doesn't work with Symbian's STLport, where cout is a
+  // macro.
+
+  if (severity == kWarning) {
+    // Prints a GMOCK WARNING marker to make the warnings easily searchable.
+    std::cout << "\nGMOCK WARNING:";
+  }
+  // Pre-pends a new-line to message if it doesn't start with one.
+  if (message.empty() || message[0] != '\n') {
+    std::cout << "\n";
+  }
+  std::cout << message;
+  if (stack_frames_to_skip >= 0) {
+#ifdef NDEBUG
+    // In opt mode, we have to be conservative and skip no stack frame.
+    const int actual_to_skip = 0;
+#else
+    // In dbg mode, we can do what the caller tell us to do (plus one
+    // for skipping this function's stack frame).
+    const int actual_to_skip = stack_frames_to_skip + 1;
+#endif  // NDEBUG
+
+    // Appends a new-line to message if it doesn't end with one.
+    if (!message.empty() && *message.rbegin() != '\n') {
+      std::cout << "\n";
+    }
+    std::cout << "Stack trace:\n"
+         << ::testing::internal::GetCurrentOsStackTraceExceptTop(
+             ::testing::UnitTest::GetInstance(), actual_to_skip);
+  }
+  std::cout << ::std::flush;
+}
+
+}  // namespace internal
+}  // namespace testing
+// Copyright 2007, Google Inc.
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: wan@google.com (Zhanyong Wan)
+
+// Google Mock - a framework for writing C++ mock classes.
+//
+// This file implements Matcher<const string&>, Matcher<string>, and
+// utilities for defining matchers.
+
+
+#include <string.h>
+#include <sstream>
+#include <string>
+
+namespace testing {
+
+// Constructs a matcher that matches a const string& whose value is
+// equal to s.
+Matcher<const internal::string&>::Matcher(const internal::string& s) {
+  *this = Eq(s);
+}
+
+// Constructs a matcher that matches a const string& whose value is
+// equal to s.
+Matcher<const internal::string&>::Matcher(const char* s) {
+  *this = Eq(internal::string(s));
+}
+
+// Constructs a matcher that matches a string whose value is equal to s.
+Matcher<internal::string>::Matcher(const internal::string& s) { *this = Eq(s); }
+
+// Constructs a matcher that matches a string whose value is equal to s.
+Matcher<internal::string>::Matcher(const char* s) {
+  *this = Eq(internal::string(s));
+}
+
+#if GTEST_HAS_STRING_PIECE_
+// Constructs a matcher that matches a const StringPiece& whose value is
+// equal to s.
+Matcher<const StringPiece&>::Matcher(const internal::string& s) {
+  *this = Eq(s);
+}
+
+// Constructs a matcher that matches a const StringPiece& whose value is
+// equal to s.
+Matcher<const StringPiece&>::Matcher(const char* s) {
+  *this = Eq(internal::string(s));
+}
+
+// Constructs a matcher that matches a const StringPiece& whose value is
+// equal to s.
+Matcher<const StringPiece&>::Matcher(StringPiece s) {
+  *this = Eq(s.ToString());
+}
+
+// Constructs a matcher that matches a StringPiece whose value is equal to s.
+Matcher<StringPiece>::Matcher(const internal::string& s) {
+  *this = Eq(s);
+}
+
+// Constructs a matcher that matches a StringPiece whose value is equal to s.
+Matcher<StringPiece>::Matcher(const char* s) {
+  *this = Eq(internal::string(s));
+}
+
+// Constructs a matcher that matches a StringPiece whose value is equal to s.
+Matcher<StringPiece>::Matcher(StringPiece s) {
+  *this = Eq(s.ToString());
+}
+#endif  // GTEST_HAS_STRING_PIECE_
+
+namespace internal {
+
+// Joins a vector of strings as if they are fields of a tuple; returns
+// the joined string.
+GTEST_API_ string JoinAsTuple(const Strings& fields) {
+  switch (fields.size()) {
+    case 0:
+      return "";
+    case 1:
+      return fields[0];
+    default:
+      string result = "(" + fields[0];
+      for (size_t i = 1; i < fields.size(); i++) {
+        result += ", ";
+        result += fields[i];
+      }
+      result += ")";
+      return result;
+  }
+}
+
+// Returns the description for a matcher defined using the MATCHER*()
+// macro where the user-supplied description string is "", if
+// 'negation' is false; otherwise returns the description of the
+// negation of the matcher.  'param_values' contains a list of strings
+// that are the print-out of the matcher's parameters.
+GTEST_API_ string FormatMatcherDescription(bool negation,
+                                           const char* matcher_name,
+                                           const Strings& param_values) {
+  string result = ConvertIdentifierNameToWords(matcher_name);
+  if (param_values.size() >= 1)
+    result += " " + JoinAsTuple(param_values);
+  return negation ? "not (" + result + ")" : result;
+}
+
+// FindMaxBipartiteMatching and its helper class.
+//
+// Uses the well-known Ford-Fulkerson max flow method to find a maximum
+// bipartite matching. Flow is considered to be from left to right.
+// There is an implicit source node that is connected to all of the left
+// nodes, and an implicit sink node that is connected to all of the
+// right nodes. All edges have unit capacity.
+//
+// Neither the flow graph nor the residual flow graph are represented
+// explicitly. Instead, they are implied by the information in 'graph' and
+// a vector<int> called 'left_' whose elements are initialized to the
+// value kUnused. This represents the initial state of the algorithm,
+// where the flow graph is empty, and the residual flow graph has the
+// following edges:
+//   - An edge from source to each left_ node
+//   - An edge from each right_ node to sink
+//   - An edge from each left_ node to each right_ node, if the
+//     corresponding edge exists in 'graph'.
+//
+// When the TryAugment() method adds a flow, it sets left_[l] = r for some
+// nodes l and r. This induces the following changes:
+//   - The edges (source, l), (l, r), and (r, sink) are added to the
+//     flow graph.
+//   - The same three edges are removed from the residual flow graph.
+//   - The reverse edges (l, source), (r, l), and (sink, r) are added
+//     to the residual flow graph, which is a directional graph
+//     representing unused flow capacity.
+//
+// When the method augments a flow (moving left_[l] from some r1 to some
+// other r2), this can be thought of as "undoing" the above steps with
+// respect to r1 and "redoing" them with respect to r2.
+//
+// It bears repeating that the flow graph and residual flow graph are
+// never represented explicitly, but can be derived by looking at the
+// information in 'graph' and in left_.
+//
+// As an optimization, there is a second vector<int> called right_ which
+// does not provide any new information. Instead, it enables more
+// efficient queries about edges entering or leaving the right-side nodes
+// of the flow or residual flow graphs. The following invariants are
+// maintained:
+//
+// left[l] == kUnused or right[left[l]] == l
+// right[r] == kUnused or left[right[r]] == r
+//
+// . [ source ]                                        .
+// .   |||                                             .
+// .   |||                                             .
+// .   ||\--> left[0]=1  ---\    right[0]=-1 ----\     .
+// .   ||                   |                    |     .
+// .   |\---> left[1]=-1    \--> right[1]=0  ---\|     .
+// .   |                                        ||     .
+// .   \----> left[2]=2  ------> right[2]=2  --\||     .
+// .                                           |||     .
+// .         elements           matchers       vvv     .
+// .                                         [ sink ]  .
+//
+// See Also:
+//   [1] Cormen, et al (2001). "Section 26.2: The Ford-Fulkerson method".
+//       "Introduction to Algorithms (Second ed.)", pp. 651-664.
+//   [2] "Ford-Fulkerson algorithm", Wikipedia,
+//       'http://en.wikipedia.org/wiki/Ford%E2%80%93Fulkerson_algorithm'
+class MaxBipartiteMatchState {
+ public:
+  explicit MaxBipartiteMatchState(const MatchMatrix& graph)
+      : graph_(&graph),
+        left_(graph_->LhsSize(), kUnused),
+        right_(graph_->RhsSize(), kUnused) {
+  }
+
+  // Returns the edges of a maximal match, each in the form {left, right}.
+  ElementMatcherPairs Compute() {
+    // 'seen' is used for path finding { 0: unseen, 1: seen }.
+    ::std::vector<char> seen;
+    // Searches the residual flow graph for a path from each left node to
+    // the sink in the residual flow graph, and if one is found, add flow
+    // to the graph. It's okay to search through the left nodes once. The
+    // edge from the implicit source node to each previously-visited left
+    // node will have flow if that left node has any path to the sink
+    // whatsoever. Subsequent augmentations can only add flow to the
+    // network, and cannot take away that previous flow unit from the source.
+    // Since the source-to-left edge can only carry one flow unit (or,
+    // each element can be matched to only one matcher), there is no need
+    // to visit the left nodes more than once looking for augmented paths.
+    // The flow is known to be possible or impossible by looking at the
+    // node once.
+    for (size_t ilhs = 0; ilhs < graph_->LhsSize(); ++ilhs) {
+      // Reset the path-marking vector and try to find a path from
+      // source to sink starting at the left_[ilhs] node.
+      GTEST_CHECK_(left_[ilhs] == kUnused)
+          << "ilhs: " << ilhs << ", left_[ilhs]: " << left_[ilhs];
+      // 'seen' initialized to 'graph_->RhsSize()' copies of 0.
+      seen.assign(graph_->RhsSize(), 0);
+      TryAugment(ilhs, &seen);
+    }
+    ElementMatcherPairs result;
+    for (size_t ilhs = 0; ilhs < left_.size(); ++ilhs) {
+      size_t irhs = left_[ilhs];
+      if (irhs == kUnused) continue;
+      result.push_back(ElementMatcherPair(ilhs, irhs));
+    }
+    return result;
+  }
+
+ private:
+  static const size_t kUnused = static_cast<size_t>(-1);
+
+  // Perform a depth-first search from left node ilhs to the sink.  If a
+  // path is found, flow is added to the network by linking the left and
+  // right vector elements corresponding each segment of the path.
+  // Returns true if a path to sink was found, which means that a unit of
+  // flow was added to the network. The 'seen' vector elements correspond
+  // to right nodes and are marked to eliminate cycles from the search.
+  //
+  // Left nodes will only be explored at most once because they
+  // are accessible from at most one right node in the residual flow
+  // graph.
+  //
+  // Note that left_[ilhs] is the only element of left_ that TryAugment will
+  // potentially transition from kUnused to another value. Any other
+  // left_ element holding kUnused before TryAugment will be holding it
+  // when TryAugment returns.
+  //
+  bool TryAugment(size_t ilhs, ::std::vector<char>* seen) {
+    for (size_t irhs = 0; irhs < graph_->RhsSize(); ++irhs) {
+      if ((*seen)[irhs])
+        continue;
+      if (!graph_->HasEdge(ilhs, irhs))
+        continue;
+      // There's an available edge from ilhs to irhs.
+      (*seen)[irhs] = 1;
+      // Next a search is performed to determine whether
+      // this edge is a dead end or leads to the sink.
+      //
+      // right_[irhs] == kUnused means that there is residual flow from
+      // right node irhs to the sink, so we can use that to finish this
+      // flow path and return success.
+      //
+      // Otherwise there is residual flow to some ilhs. We push flow
+      // along that path and call ourselves recursively to see if this
+      // ultimately leads to sink.
+      if (right_[irhs] == kUnused || TryAugment(right_[irhs], seen)) {
+        // Add flow from left_[ilhs] to right_[irhs].
+        left_[ilhs] = irhs;
+        right_[irhs] = ilhs;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  const MatchMatrix* graph_;  // not owned
+  // Each element of the left_ vector represents a left hand side node
+  // (i.e. an element) and each element of right_ is a right hand side
+  // node (i.e. a matcher). The values in the left_ vector indicate
+  // outflow from that node to a node on the the right_ side. The values
+  // in the right_ indicate inflow, and specify which left_ node is
+  // feeding that right_ node, if any. For example, left_[3] == 1 means
+  // there's a flow from element #3 to matcher #1. Such a flow would also
+  // be redundantly represented in the right_ vector as right_[1] == 3.
+  // Elements of left_ and right_ are either kUnused or mutually
+  // referent. Mutually referent means that left_[right_[i]] = i and
+  // right_[left_[i]] = i.
+  ::std::vector<size_t> left_;
+  ::std::vector<size_t> right_;
+
+  GTEST_DISALLOW_ASSIGN_(MaxBipartiteMatchState);
+};
+
+const size_t MaxBipartiteMatchState::kUnused;
+
+GTEST_API_ ElementMatcherPairs
+FindMaxBipartiteMatching(const MatchMatrix& g) {
+  return MaxBipartiteMatchState(g).Compute();
+}
+
+static void LogElementMatcherPairVec(const ElementMatcherPairs& pairs,
+                                     ::std::ostream* stream) {
+  typedef ElementMatcherPairs::const_iterator Iter;
+  ::std::ostream& os = *stream;
+  os << "{";
+  const char *sep = "";
+  for (Iter it = pairs.begin(); it != pairs.end(); ++it) {
+    os << sep << "\n  ("
+       << "element #" << it->first << ", "
+       << "matcher #" << it->second << ")";
+    sep = ",";
+  }
+  os << "\n}";
+}
+
+// Tries to find a pairing, and explains the result.
+GTEST_API_ bool FindPairing(const MatchMatrix& matrix,
+                            MatchResultListener* listener) {
+  ElementMatcherPairs matches = FindMaxBipartiteMatching(matrix);
+
+  size_t max_flow = matches.size();
+  bool result = (max_flow == matrix.RhsSize());
+
+  if (!result) {
+    if (listener->IsInterested()) {
+      *listener << "where no permutation of the elements can "
+                   "satisfy all matchers, and the closest match is "
+                << max_flow << " of " << matrix.RhsSize()
+                << " matchers with the pairings:\n";
+      LogElementMatcherPairVec(matches, listener->stream());
+    }
+    return false;
+  }
+
+  if (matches.size() > 1) {
+    if (listener->IsInterested()) {
+      const char *sep = "where:\n";
+      for (size_t mi = 0; mi < matches.size(); ++mi) {
+        *listener << sep << " - element #" << matches[mi].first
+                  << " is matched by matcher #" << matches[mi].second;
+        sep = ",\n";
+      }
+    }
+  }
+  return true;
+}
+
+bool MatchMatrix::NextGraph() {
+  for (size_t ilhs = 0; ilhs < LhsSize(); ++ilhs) {
+    for (size_t irhs = 0; irhs < RhsSize(); ++irhs) {
+      char& b = matched_[SpaceIndex(ilhs, irhs)];
+      if (!b) {
+        b = 1;
+        return true;
+      }
+      b = 0;
+    }
+  }
+  return false;
+}
+
+void MatchMatrix::Randomize() {
+  for (size_t ilhs = 0; ilhs < LhsSize(); ++ilhs) {
+    for (size_t irhs = 0; irhs < RhsSize(); ++irhs) {
+      char& b = matched_[SpaceIndex(ilhs, irhs)];
+      b = static_cast<char>(rand() & 1);  // NOLINT
+    }
+  }
+}
+
+string MatchMatrix::DebugString() const {
+  ::std::stringstream ss;
+  const char *sep = "";
+  for (size_t i = 0; i < LhsSize(); ++i) {
+    ss << sep;
+    for (size_t j = 0; j < RhsSize(); ++j) {
+      ss << HasEdge(i, j);
+    }
+    sep = ";";
+  }
+  return ss.str();
+}
+
+void UnorderedElementsAreMatcherImplBase::DescribeToImpl(
+    ::std::ostream* os) const {
+  if (matcher_describers_.empty()) {
+    *os << "is empty";
+    return;
+  }
+  if (matcher_describers_.size() == 1) {
+    *os << "has " << Elements(1) << " and that element ";
+    matcher_describers_[0]->DescribeTo(os);
+    return;
+  }
+  *os << "has " << Elements(matcher_describers_.size())
+      << " and there exists some permutation of elements such that:\n";
+  const char* sep = "";
+  for (size_t i = 0; i != matcher_describers_.size(); ++i) {
+    *os << sep << " - element #" << i << " ";
+    matcher_describers_[i]->DescribeTo(os);
+    sep = ", and\n";
+  }
+}
+
+void UnorderedElementsAreMatcherImplBase::DescribeNegationToImpl(
+    ::std::ostream* os) const {
+  if (matcher_describers_.empty()) {
+    *os << "isn't empty";
+    return;
+  }
+  if (matcher_describers_.size() == 1) {
+    *os << "doesn't have " << Elements(1)
+        << ", or has " << Elements(1) << " that ";
+    matcher_describers_[0]->DescribeNegationTo(os);
+    return;
+  }
+  *os << "doesn't have " << Elements(matcher_describers_.size())
+      << ", or there exists no permutation of elements such that:\n";
+  const char* sep = "";
+  for (size_t i = 0; i != matcher_describers_.size(); ++i) {
+    *os << sep << " - element #" << i << " ";
+    matcher_describers_[i]->DescribeTo(os);
+    sep = ", and\n";
+  }
+}
+
+// Checks that all matchers match at least one element, and that all
+// elements match at least one matcher. This enables faster matching
+// and better error reporting.
+// Returns false, writing an explanation to 'listener', if and only
+// if the success criteria are not met.
+bool UnorderedElementsAreMatcherImplBase::
+VerifyAllElementsAndMatchersAreMatched(
+    const ::std::vector<string>& element_printouts,
+    const MatchMatrix& matrix,
+    MatchResultListener* listener) const {
+  bool result = true;
+  ::std::vector<char> element_matched(matrix.LhsSize(), 0);
+  ::std::vector<char> matcher_matched(matrix.RhsSize(), 0);
+
+  for (size_t ilhs = 0; ilhs < matrix.LhsSize(); ilhs++) {
+    for (size_t irhs = 0; irhs < matrix.RhsSize(); irhs++) {
+      char matched = matrix.HasEdge(ilhs, irhs);
+      element_matched[ilhs] |= matched;
+      matcher_matched[irhs] |= matched;
+    }
+  }
+
+  {
+    const char* sep =
+        "where the following matchers don't match any elements:\n";
+    for (size_t mi = 0; mi < matcher_matched.size(); ++mi) {
+      if (matcher_matched[mi])
+        continue;
+      result = false;
+      if (listener->IsInterested()) {
+        *listener << sep << "matcher #" << mi << ": ";
+        matcher_describers_[mi]->DescribeTo(listener->stream());
+        sep = ",\n";
+      }
+    }
+  }
+
+  {
+    const char* sep =
+        "where the following elements don't match any matchers:\n";
+    const char* outer_sep = "";
+    if (!result) {
+      outer_sep = "\nand ";
+    }
+    for (size_t ei = 0; ei < element_matched.size(); ++ei) {
+      if (element_matched[ei])
+        continue;
+      result = false;
+      if (listener->IsInterested()) {
+        *listener << outer_sep << sep << "element #" << ei << ": "
+                  << element_printouts[ei];
+        sep = ",\n";
+        outer_sep = "";
+      }
+    }
+  }
+  return result;
+}
+
+}  // namespace internal
+}  // namespace testing
+// Copyright 2007, Google Inc.
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: wan@google.com (Zhanyong Wan)
+
+// Google Mock - a framework for writing C++ mock classes.
+//
+// This file implements the spec builder syntax (ON_CALL and
+// EXPECT_CALL).
+
+
+#include <stdlib.h>
+#include <iostream>  // NOLINT
+#include <map>
+#include <set>
+#include <string>
+
+#if GTEST_OS_CYGWIN || GTEST_OS_LINUX || GTEST_OS_MAC
+# include <unistd.h>  // NOLINT
+#endif
+
+namespace testing {
+namespace internal {
+
+// Protects the mock object registry (in class Mock), all function
+// mockers, and all expectations.
+GTEST_API_ GTEST_DEFINE_STATIC_MUTEX_(g_gmock_mutex);
+
+// Logs a message including file and line number information.
+GTEST_API_ void LogWithLocation(testing::internal::LogSeverity severity,
+                                const char* file, int line,
+                                const string& message) {
+  ::std::ostringstream s;
+  s << file << ":" << line << ": " << message << ::std::endl;
+  Log(severity, s.str(), 0);
+}
+
+// Constructs an ExpectationBase object.
+ExpectationBase::ExpectationBase(const char* a_file,
+                                 int a_line,
+                                 const string& a_source_text)
+    : file_(a_file),
+      line_(a_line),
+      source_text_(a_source_text),
+      cardinality_specified_(false),
+      cardinality_(Exactly(1)),
+      call_count_(0),
+      retired_(false),
+      extra_matcher_specified_(false),
+      repeated_action_specified_(false),
+      retires_on_saturation_(false),
+      last_clause_(kNone),
+      action_count_checked_(false) {}
+
+// Destructs an ExpectationBase object.
+ExpectationBase::~ExpectationBase() {}
+
+// Explicitly specifies the cardinality of this expectation.  Used by
+// the subclasses to implement the .Times() clause.
+void ExpectationBase::SpecifyCardinality(const Cardinality& a_cardinality) {
+  cardinality_specified_ = true;
+  cardinality_ = a_cardinality;
+}
+
+// Retires all pre-requisites of this expectation.
+void ExpectationBase::RetireAllPreRequisites()
+    GTEST_EXCLUSIVE_LOCK_REQUIRED_(g_gmock_mutex) {
+  if (is_retired()) {
+    // We can take this short-cut as we never retire an expectation
+    // until we have retired all its pre-requisites.
+    return;
+  }
+
+  for (ExpectationSet::const_iterator it = immediate_prerequisites_.begin();
+       it != immediate_prerequisites_.end(); ++it) {
+    ExpectationBase* const prerequisite = it->expectation_base().get();
+    if (!prerequisite->is_retired()) {
+      prerequisite->RetireAllPreRequisites();
+      prerequisite->Retire();
+    }
+  }
+}
+
+// Returns true iff all pre-requisites of this expectation have been
+// satisfied.
+bool ExpectationBase::AllPrerequisitesAreSatisfied() const
+    GTEST_EXCLUSIVE_LOCK_REQUIRED_(g_gmock_mutex) {
+  g_gmock_mutex.AssertHeld();
+  for (ExpectationSet::const_iterator it = immediate_prerequisites_.begin();
+       it != immediate_prerequisites_.end(); ++it) {
+    if (!(it->expectation_base()->IsSatisfied()) ||
+        !(it->expectation_base()->AllPrerequisitesAreSatisfied()))
+      return false;
+  }
+  return true;
+}
+
+// Adds unsatisfied pre-requisites of this expectation to 'result'.
+void ExpectationBase::FindUnsatisfiedPrerequisites(ExpectationSet* result) const
+    GTEST_EXCLUSIVE_LOCK_REQUIRED_(g_gmock_mutex) {
+  g_gmock_mutex.AssertHeld();
+  for (ExpectationSet::const_iterator it = immediate_prerequisites_.begin();
+       it != immediate_prerequisites_.end(); ++it) {
+    if (it->expectation_base()->IsSatisfied()) {
+      // If *it is satisfied and has a call count of 0, some of its
+      // pre-requisites may not be satisfied yet.
+      if (it->expectation_base()->call_count_ == 0) {
+        it->expectation_base()->FindUnsatisfiedPrerequisites(result);
+      }
+    } else {
+      // Now that we know *it is unsatisfied, we are not so interested
+      // in whether its pre-requisites are satisfied.  Therefore we
+      // don't recursively call FindUnsatisfiedPrerequisites() here.
+      *result += *it;
+    }
+  }
+}
+
+// Describes how many times a function call matching this
+// expectation has occurred.
+void ExpectationBase::DescribeCallCountTo(::std::ostream* os) const
+    GTEST_EXCLUSIVE_LOCK_REQUIRED_(g_gmock_mutex) {
+  g_gmock_mutex.AssertHeld();
+
+  // Describes how many times the function is expected to be called.
+  *os << "         Expected: to be ";
+  cardinality().DescribeTo(os);
+  *os << "\n           Actual: ";
+  Cardinality::DescribeActualCallCountTo(call_count(), os);
+
+  // Describes the state of the expectation (e.g. is it satisfied?
+  // is it active?).
+  *os << " - " << (IsOverSaturated() ? "over-saturated" :
+                   IsSaturated() ? "saturated" :
+                   IsSatisfied() ? "satisfied" : "unsatisfied")
+      << " and "
+      << (is_retired() ? "retired" : "active");
+}
+
+// Checks the action count (i.e. the number of WillOnce() and
+// WillRepeatedly() clauses) against the cardinality if this hasn't
+// been done before.  Prints a warning if there are too many or too
+// few actions.
+void ExpectationBase::CheckActionCountIfNotDone() const
+    GTEST_LOCK_EXCLUDED_(mutex_) {
+  bool should_check = false;
+  {
+    MutexLock l(&mutex_);
+    if (!action_count_checked_) {
+      action_count_checked_ = true;
+      should_check = true;
+    }
+  }
+
+  if (should_check) {
+    if (!cardinality_specified_) {
+      // The cardinality was inferred - no need to check the action
+      // count against it.
+      return;
+    }
+
+    // The cardinality was explicitly specified.
+    const int action_count = static_cast<int>(untyped_actions_.size());
+    const int upper_bound = cardinality().ConservativeUpperBound();
+    const int lower_bound = cardinality().ConservativeLowerBound();
+    bool too_many;  // True if there are too many actions, or false
+    // if there are too few.
+    if (action_count > upper_bound ||
+        (action_count == upper_bound && repeated_action_specified_)) {
+      too_many = true;
+    } else if (0 < action_count && action_count < lower_bound &&
+               !repeated_action_specified_) {
+      too_many = false;
+    } else {
+      return;
+    }
+
+    ::std::stringstream ss;
+    DescribeLocationTo(&ss);
+    ss << "Too " << (too_many ? "many" : "few")
+       << " actions specified in " << source_text() << "...\n"
+       << "Expected to be ";
+    cardinality().DescribeTo(&ss);
+    ss << ", but has " << (too_many ? "" : "only ")
+       << action_count << " WillOnce()"
+       << (action_count == 1 ? "" : "s");
+    if (repeated_action_specified_) {
+      ss << " and a WillRepeatedly()";
+    }
+    ss << ".";
+    Log(kWarning, ss.str(), -1);  // -1 means "don't print stack trace".
+  }
+}
+
+// Implements the .Times() clause.
+void ExpectationBase::UntypedTimes(const Cardinality& a_cardinality) {
+  if (last_clause_ == kTimes) {
+    ExpectSpecProperty(false,
+                       ".Times() cannot appear "
+                       "more than once in an EXPECT_CALL().");
+  } else {
+    ExpectSpecProperty(last_clause_ < kTimes,
+                       ".Times() cannot appear after "
+                       ".InSequence(), .WillOnce(), .WillRepeatedly(), "
+                       "or .RetiresOnSaturation().");
+  }
+  last_clause_ = kTimes;
+
+  SpecifyCardinality(a_cardinality);
+}
+
+// Points to the implicit sequence introduced by a living InSequence
+// object (if any) in the current thread or NULL.
+GTEST_API_ ThreadLocal<Sequence*> g_gmock_implicit_sequence;
+
+// Reports an uninteresting call (whose description is in msg) in the
+// manner specified by 'reaction'.
+void ReportUninterestingCall(CallReaction reaction, const string& msg) {
+  // Include a stack trace only if --gmock_verbose=info is specified.
+  const int stack_frames_to_skip =
+      GMOCK_FLAG(verbose) == kInfoVerbosity ? 3 : -1;
+  switch (reaction) {
+    case kAllow:
+      Log(kInfo, msg, stack_frames_to_skip);
+      break;
+    case kWarn:
+      Log(kWarning,
+          msg +
+          "\nNOTE: You can safely ignore the above warning unless this "
+          "call should not happen.  Do not suppress it by blindly adding "
+          "an EXPECT_CALL() if you don't mean to enforce the call.  "
+          "See http://code.google.com/p/googlemock/wiki/CookBook#"
+          "Knowing_When_to_Expect for details.\n",
+          stack_frames_to_skip);
+      break;
+    default:  // FAIL
+      Expect(false, NULL, -1, msg);
+  }
+}
+
+UntypedFunctionMockerBase::UntypedFunctionMockerBase()
+    : mock_obj_(NULL), name_("") {}
+
+UntypedFunctionMockerBase::~UntypedFunctionMockerBase() {}
+
+// Sets the mock object this mock method belongs to, and registers
+// this information in the global mock registry.  Will be called
+// whenever an EXPECT_CALL() or ON_CALL() is executed on this mock
+// method.
+void UntypedFunctionMockerBase::RegisterOwner(const void* mock_obj)
+    GTEST_LOCK_EXCLUDED_(g_gmock_mutex) {
+  {
+    MutexLock l(&g_gmock_mutex);
+    mock_obj_ = mock_obj;
+  }
+  Mock::Register(mock_obj, this);
+}
+
+// Sets the mock object this mock method belongs to, and sets the name
+// of the mock function.  Will be called upon each invocation of this
+// mock function.
+void UntypedFunctionMockerBase::SetOwnerAndName(const void* mock_obj,
+                                                const char* name)
+    GTEST_LOCK_EXCLUDED_(g_gmock_mutex) {
+  // We protect name_ under g_gmock_mutex in case this mock function
+  // is called from two threads concurrently.
+  MutexLock l(&g_gmock_mutex);
+  mock_obj_ = mock_obj;
+  name_ = name;
+}
+
+// Returns the name of the function being mocked.  Must be called
+// after RegisterOwner() or SetOwnerAndName() has been called.
+const void* UntypedFunctionMockerBase::MockObject() const
+    GTEST_LOCK_EXCLUDED_(g_gmock_mutex) {
+  const void* mock_obj;
+  {
+    // We protect mock_obj_ under g_gmock_mutex in case this mock
+    // function is called from two threads concurrently.
+    MutexLock l(&g_gmock_mutex);
+    Assert(mock_obj_ != NULL, __FILE__, __LINE__,
+           "MockObject() must not be called before RegisterOwner() or "
+           "SetOwnerAndName() has been called.");
+    mock_obj = mock_obj_;
+  }
+  return mock_obj;
+}
+
+// Returns the name of this mock method.  Must be called after
+// SetOwnerAndName() has been called.
+const char* UntypedFunctionMockerBase::Name() const
+    GTEST_LOCK_EXCLUDED_(g_gmock_mutex) {
+  const char* name;
+  {
+    // We protect name_ under g_gmock_mutex in case this mock
+    // function is called from two threads concurrently.
+    MutexLock l(&g_gmock_mutex);
+    Assert(name_ != NULL, __FILE__, __LINE__,
+           "Name() must not be called before SetOwnerAndName() has "
+           "been called.");
+    name = name_;
+  }
+  return name;
+}
+
+// Calculates the result of invoking this mock function with the given
+// arguments, prints it, and returns it.  The caller is responsible
+// for deleting the result.
+UntypedActionResultHolderBase*
+UntypedFunctionMockerBase::UntypedInvokeWith(const void* const untyped_args)
+    GTEST_LOCK_EXCLUDED_(g_gmock_mutex) {
+  if (untyped_expectations_.size() == 0) {
+    // No expectation is set on this mock method - we have an
+    // uninteresting call.
+
+    // We must get Google Mock's reaction on uninteresting calls
+    // made on this mock object BEFORE performing the action,
+    // because the action may DELETE the mock object and make the
+    // following expression meaningless.
+    const CallReaction reaction =
+        Mock::GetReactionOnUninterestingCalls(MockObject());
+
+    // True iff we need to print this call's arguments and return
+    // value.  This definition must be kept in sync with
+    // the behavior of ReportUninterestingCall().
+    const bool need_to_report_uninteresting_call =
+        // If the user allows this uninteresting call, we print it
+        // only when he wants informational messages.
+        reaction == kAllow ? LogIsVisible(kInfo) :
+        // If the user wants this to be a warning, we print it only
+        // when he wants to see warnings.
+        reaction == kWarn ? LogIsVisible(kWarning) :
+        // Otherwise, the user wants this to be an error, and we
+        // should always print detailed information in the error.
+        true;
+
+    if (!need_to_report_uninteresting_call) {
+      // Perform the action without printing the call information.
+      return this->UntypedPerformDefaultAction(untyped_args, "");
+    }
+
+    // Warns about the uninteresting call.
+    ::std::stringstream ss;
+    this->UntypedDescribeUninterestingCall(untyped_args, &ss);
+
+    // Calculates the function result.
+    UntypedActionResultHolderBase* const result =
+        this->UntypedPerformDefaultAction(untyped_args, ss.str());
+
+    // Prints the function result.
+    if (result != NULL)
+      result->PrintAsActionResult(&ss);
+
+    ReportUninterestingCall(reaction, ss.str());
+    return result;
+  }
+
+  bool is_excessive = false;
+  ::std::stringstream ss;
+  ::std::stringstream why;
+  ::std::stringstream loc;
+  const void* untyped_action = NULL;
+
+  // The UntypedFindMatchingExpectation() function acquires and
+  // releases g_gmock_mutex.
+  const ExpectationBase* const untyped_expectation =
+      this->UntypedFindMatchingExpectation(
+          untyped_args, &untyped_action, &is_excessive,
+          &ss, &why);
+  const bool found = untyped_expectation != NULL;
+
+  // True iff we need to print the call's arguments and return value.
+  // This definition must be kept in sync with the uses of Expect()
+  // and Log() in this function.
+  const bool need_to_report_call =
+      !found || is_excessive || LogIsVisible(kInfo);
+  if (!need_to_report_call) {
+    // Perform the action without printing the call information.
+    return
+        untyped_action == NULL ?
+        this->UntypedPerformDefaultAction(untyped_args, "") :
+        this->UntypedPerformAction(untyped_action, untyped_args);
+  }
+
+  ss << "    Function call: " << Name();
+  this->UntypedPrintArgs(untyped_args, &ss);
+
+  // In case the action deletes a piece of the expectation, we
+  // generate the message beforehand.
+  if (found && !is_excessive) {
+    untyped_expectation->DescribeLocationTo(&loc);
+  }
+
+  UntypedActionResultHolderBase* const result =
+      untyped_action == NULL ?
+      this->UntypedPerformDefaultAction(untyped_args, ss.str()) :
+      this->UntypedPerformAction(untyped_action, untyped_args);
+  if (result != NULL)
+    result->PrintAsActionResult(&ss);
+  ss << "\n" << why.str();
+
+  if (!found) {
+    // No expectation matches this call - reports a failure.
+    Expect(false, NULL, -1, ss.str());
+  } else if (is_excessive) {
+    // We had an upper-bound violation and the failure message is in ss.
+    Expect(false, untyped_expectation->file(),
+           untyped_expectation->line(), ss.str());
+  } else {
+    // We had an expected call and the matching expectation is
+    // described in ss.
+    Log(kInfo, loc.str() + ss.str(), 2);
+  }
+
+  return result;
+}
+
+// Returns an Expectation object that references and co-owns exp,
+// which must be an expectation on this mock function.
+Expectation UntypedFunctionMockerBase::GetHandleOf(ExpectationBase* exp) {
+  for (UntypedExpectations::const_iterator it =
+           untyped_expectations_.begin();
+       it != untyped_expectations_.end(); ++it) {
+    if (it->get() == exp) {
+      return Expectation(*it);
+    }
+  }
+
+  Assert(false, __FILE__, __LINE__, "Cannot find expectation.");
+  return Expectation();
+  // The above statement is just to make the code compile, and will
+  // never be executed.
+}
+
+// Verifies that all expectations on this mock function have been
+// satisfied.  Reports one or more Google Test non-fatal failures
+// and returns false if not.
+bool UntypedFunctionMockerBase::VerifyAndClearExpectationsLocked()
+    GTEST_EXCLUSIVE_LOCK_REQUIRED_(g_gmock_mutex) {
+  g_gmock_mutex.AssertHeld();
+  bool expectations_met = true;
+  for (UntypedExpectations::const_iterator it =
+           untyped_expectations_.begin();
+       it != untyped_expectations_.end(); ++it) {
+    ExpectationBase* const untyped_expectation = it->get();
+    if (untyped_expectation->IsOverSaturated()) {
+      // There was an upper-bound violation.  Since the error was
+      // already reported when it occurred, there is no need to do
+      // anything here.
+      expectations_met = false;
+    } else if (!untyped_expectation->IsSatisfied()) {
+      expectations_met = false;
+      ::std::stringstream ss;
+      ss  << "Actual function call count doesn't match "
+          << untyped_expectation->source_text() << "...\n";
+      // No need to show the source file location of the expectation
+      // in the description, as the Expect() call that follows already
+      // takes care of it.
+      untyped_expectation->MaybeDescribeExtraMatcherTo(&ss);
+      untyped_expectation->DescribeCallCountTo(&ss);
+      Expect(false, untyped_expectation->file(),
+             untyped_expectation->line(), ss.str());
+    }
+  }
+
+  // Deleting our expectations may trigger other mock objects to be deleted, for
+  // example if an action contains a reference counted smart pointer to that
+  // mock object, and that is the last reference. So if we delete our
+  // expectations within the context of the global mutex we may deadlock when
+  // this method is called again. Instead, make a copy of the set of
+  // expectations to delete, clear our set within the mutex, and then clear the
+  // copied set outside of it.
+  UntypedExpectations expectations_to_delete;
+  untyped_expectations_.swap(expectations_to_delete);
+
+  g_gmock_mutex.Unlock();
+  expectations_to_delete.clear();
+  g_gmock_mutex.Lock();
+
+  return expectations_met;
+}
+
+}  // namespace internal
+
+// Class Mock.
+
+namespace {
+
+typedef std::set<internal::UntypedFunctionMockerBase*> FunctionMockers;
+
+// The current state of a mock object.  Such information is needed for
+// detecting leaked mock objects and explicitly verifying a mock's
+// expectations.
+struct MockObjectState {
+  MockObjectState()
+      : first_used_file(NULL), first_used_line(-1), leakable(false) {}
+
+  // Where in the source file an ON_CALL or EXPECT_CALL is first
+  // invoked on this mock object.
+  const char* first_used_file;
+  int first_used_line;
+  ::std::string first_used_test_case;
+  ::std::string first_used_test;
+  bool leakable;  // true iff it's OK to leak the object.
+  FunctionMockers function_mockers;  // All registered methods of the object.
+};
+
+// A global registry holding the state of all mock objects that are
+// alive.  A mock object is added to this registry the first time
+// Mock::AllowLeak(), ON_CALL(), or EXPECT_CALL() is called on it.  It
+// is removed from the registry in the mock object's destructor.
+class MockObjectRegistry {
+ public:
+  // Maps a mock object (identified by its address) to its state.
+  typedef std::map<const void*, MockObjectState> StateMap;
+
+  // This destructor will be called when a program exits, after all
+  // tests in it have been run.  By then, there should be no mock
+  // object alive.  Therefore we report any living object as test
+  // failure, unless the user explicitly asked us to ignore it.
+  ~MockObjectRegistry() {
+    // "using ::std::cout;" doesn't work with Symbian's STLport, where cout is
+    // a macro.
+
+    if (!GMOCK_FLAG(catch_leaked_mocks))
+      return;
+
+    int leaked_count = 0;
+    for (StateMap::const_iterator it = states_.begin(); it != states_.end();
+         ++it) {
+      if (it->second.leakable)  // The user said it's fine to leak this object.
+        continue;
+
+      // TODO(wan@google.com): Print the type of the leaked object.
+      // This can help the user identify the leaked object.
+      std::cout << "\n";
+      const MockObjectState& state = it->second;
+      std::cout << internal::FormatFileLocation(state.first_used_file,
+                                                state.first_used_line);
+      std::cout << " ERROR: this mock object";
+      if (state.first_used_test != "") {
+        std::cout << " (used in test " << state.first_used_test_case << "."
+             << state.first_used_test << ")";
+      }
+      std::cout << " should be deleted but never is. Its address is @"
+           << it->first << ".";
+      leaked_count++;
+    }
+    if (leaked_count > 0) {
+      std::cout << "\nERROR: " << leaked_count
+           << " leaked mock " << (leaked_count == 1 ? "object" : "objects")
+           << " found at program exit.\n";
+      std::cout.flush();
+      ::std::cerr.flush();
+      // RUN_ALL_TESTS() has already returned when this destructor is
+      // called.  Therefore we cannot use the normal Google Test
+      // failure reporting mechanism.
+      _exit(1);  // We cannot call exit() as it is not reentrant and
+                 // may already have been called.
+    }
+  }
+
+  StateMap& states() { return states_; }
+
+ private:
+  StateMap states_;
+};
+
+// Protected by g_gmock_mutex.
+MockObjectRegistry g_mock_object_registry;
+
+// Maps a mock object to the reaction Google Mock should have when an
+// uninteresting method is called.  Protected by g_gmock_mutex.
+std::map<const void*, internal::CallReaction> g_uninteresting_call_reaction;
+
+// Sets the reaction Google Mock should have when an uninteresting
+// method of the given mock object is called.
+void SetReactionOnUninterestingCalls(const void* mock_obj,
+                                     internal::CallReaction reaction)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  internal::MutexLock l(&internal::g_gmock_mutex);
+  g_uninteresting_call_reaction[mock_obj] = reaction;
+}
+
+}  // namespace
+
+// Tells Google Mock to allow uninteresting calls on the given mock
+// object.
+void Mock::AllowUninterestingCalls(const void* mock_obj)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  SetReactionOnUninterestingCalls(mock_obj, internal::kAllow);
+}
+
+// Tells Google Mock to warn the user about uninteresting calls on the
+// given mock object.
+void Mock::WarnUninterestingCalls(const void* mock_obj)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  SetReactionOnUninterestingCalls(mock_obj, internal::kWarn);
+}
+
+// Tells Google Mock to fail uninteresting calls on the given mock
+// object.
+void Mock::FailUninterestingCalls(const void* mock_obj)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  SetReactionOnUninterestingCalls(mock_obj, internal::kFail);
+}
+
+// Tells Google Mock the given mock object is being destroyed and its
+// entry in the call-reaction table should be removed.
+void Mock::UnregisterCallReaction(const void* mock_obj)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  internal::MutexLock l(&internal::g_gmock_mutex);
+  g_uninteresting_call_reaction.erase(mock_obj);
+}
+
+// Returns the reaction Google Mock will have on uninteresting calls
+// made on the given mock object.
+internal::CallReaction Mock::GetReactionOnUninterestingCalls(
+    const void* mock_obj)
+        GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  internal::MutexLock l(&internal::g_gmock_mutex);
+  return (g_uninteresting_call_reaction.count(mock_obj) == 0) ?
+      internal::kDefault : g_uninteresting_call_reaction[mock_obj];
+}
+
+// Tells Google Mock to ignore mock_obj when checking for leaked mock
+// objects.
+void Mock::AllowLeak(const void* mock_obj)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  internal::MutexLock l(&internal::g_gmock_mutex);
+  g_mock_object_registry.states()[mock_obj].leakable = true;
+}
+
+// Verifies and clears all expectations on the given mock object.  If
+// the expectations aren't satisfied, generates one or more Google
+// Test non-fatal failures and returns false.
+bool Mock::VerifyAndClearExpectations(void* mock_obj)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  internal::MutexLock l(&internal::g_gmock_mutex);
+  return VerifyAndClearExpectationsLocked(mock_obj);
+}
+
+// Verifies all expectations on the given mock object and clears its
+// default actions and expectations.  Returns true iff the
+// verification was successful.
+bool Mock::VerifyAndClear(void* mock_obj)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  internal::MutexLock l(&internal::g_gmock_mutex);
+  ClearDefaultActionsLocked(mock_obj);
+  return VerifyAndClearExpectationsLocked(mock_obj);
+}
+
+// Verifies and clears all expectations on the given mock object.  If
+// the expectations aren't satisfied, generates one or more Google
+// Test non-fatal failures and returns false.
+bool Mock::VerifyAndClearExpectationsLocked(void* mock_obj)
+    GTEST_EXCLUSIVE_LOCK_REQUIRED_(internal::g_gmock_mutex) {
+  internal::g_gmock_mutex.AssertHeld();
+  if (g_mock_object_registry.states().count(mock_obj) == 0) {
+    // No EXPECT_CALL() was set on the given mock object.
+    return true;
+  }
+
+  // Verifies and clears the expectations on each mock method in the
+  // given mock object.
+  bool expectations_met = true;
+  FunctionMockers& mockers =
+      g_mock_object_registry.states()[mock_obj].function_mockers;
+  for (FunctionMockers::const_iterator it = mockers.begin();
+       it != mockers.end(); ++it) {
+    if (!(*it)->VerifyAndClearExpectationsLocked()) {
+      expectations_met = false;
+    }
+  }
+
+  // We don't clear the content of mockers, as they may still be
+  // needed by ClearDefaultActionsLocked().
+  return expectations_met;
+}
+
+// Registers a mock object and a mock method it owns.
+void Mock::Register(const void* mock_obj,
+                    internal::UntypedFunctionMockerBase* mocker)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  internal::MutexLock l(&internal::g_gmock_mutex);
+  g_mock_object_registry.states()[mock_obj].function_mockers.insert(mocker);
+}
+
+// Tells Google Mock where in the source code mock_obj is used in an
+// ON_CALL or EXPECT_CALL.  In case mock_obj is leaked, this
+// information helps the user identify which object it is.
+void Mock::RegisterUseByOnCallOrExpectCall(const void* mock_obj,
+                                           const char* file, int line)
+    GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex) {
+  internal::MutexLock l(&internal::g_gmock_mutex);
+  MockObjectState& state = g_mock_object_registry.states()[mock_obj];
+  if (state.first_used_file == NULL) {
+    state.first_used_file = file;
+    state.first_used_line = line;
+    const TestInfo* const test_info =
+        UnitTest::GetInstance()->current_test_info();
+    if (test_info != NULL) {
+      // TODO(wan@google.com): record the test case name when the
+      // ON_CALL or EXPECT_CALL is invoked from SetUpTestCase() or
+      // TearDownTestCase().
+      state.first_used_test_case = test_info->test_case_name();
+      state.first_used_test = test_info->name();
+    }
+  }
+}
+
+// Unregisters a mock method; removes the owning mock object from the
+// registry when the last mock method associated with it has been
+// unregistered.  This is called only in the destructor of
+// FunctionMockerBase.
+void Mock::UnregisterLocked(internal::UntypedFunctionMockerBase* mocker)
+    GTEST_EXCLUSIVE_LOCK_REQUIRED_(internal::g_gmock_mutex) {
+  internal::g_gmock_mutex.AssertHeld();
+  for (MockObjectRegistry::StateMap::iterator it =
+           g_mock_object_registry.states().begin();
+       it != g_mock_object_registry.states().end(); ++it) {
+    FunctionMockers& mockers = it->second.function_mockers;
+    if (mockers.erase(mocker) > 0) {
+      // mocker was in mockers and has been just removed.
+      if (mockers.empty()) {
+        g_mock_object_registry.states().erase(it);
+      }
+      return;
+    }
+  }
+}
+
+// Clears all ON_CALL()s set on the given mock object.
+void Mock::ClearDefaultActionsLocked(void* mock_obj)
+    GTEST_EXCLUSIVE_LOCK_REQUIRED_(internal::g_gmock_mutex) {
+  internal::g_gmock_mutex.AssertHeld();
+
+  if (g_mock_object_registry.states().count(mock_obj) == 0) {
+    // No ON_CALL() was set on the given mock object.
+    return;
+  }
+
+  // Clears the default actions for each mock method in the given mock
+  // object.
+  FunctionMockers& mockers =
+      g_mock_object_registry.states()[mock_obj].function_mockers;
+  for (FunctionMockers::const_iterator it = mockers.begin();
+       it != mockers.end(); ++it) {
+    (*it)->ClearDefaultActionsLocked();
+  }
+
+  // We don't clear the content of mockers, as they may still be
+  // needed by VerifyAndClearExpectationsLocked().
+}
+
+Expectation::Expectation() {}
+
+Expectation::Expectation(
+    const internal::linked_ptr<internal::ExpectationBase>& an_expectation_base)
+    : expectation_base_(an_expectation_base) {}
+
+Expectation::~Expectation() {}
+
+// Adds an expectation to a sequence.
+void Sequence::AddExpectation(const Expectation& expectation) const {
+  if (*last_expectation_ != expectation) {
+    if (last_expectation_->expectation_base() != NULL) {
+      expectation.expectation_base()->immediate_prerequisites_
+          += *last_expectation_;
+    }
+    *last_expectation_ = expectation;
+  }
+}
+
+// Creates the implicit sequence if there isn't one.
+InSequence::InSequence() {
+  if (internal::g_gmock_implicit_sequence.get() == NULL) {
+    internal::g_gmock_implicit_sequence.set(new Sequence);
+    sequence_created_ = true;
+  } else {
+    sequence_created_ = false;
+  }
+}
+
+// Deletes the implicit sequence if it was created by the constructor
+// of this object.
+InSequence::~InSequence() {
+  if (sequence_created_) {
+    delete internal::g_gmock_implicit_sequence.get();
+    internal::g_gmock_implicit_sequence.set(NULL);
+  }
+}
+
+}  // namespace testing
+// Copyright 2008, Google Inc.
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+//     * Redistributions of source code must retain the above copyright
+// notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above
+// copyright notice, this list of conditions and the following disclaimer
+// in the documentation and/or other materials provided with the
+// distribution.
+//     * Neither the name of Google Inc. nor the names of its
+// contributors may be used to endorse or promote products derived from
+// this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Author: wan@google.com (Zhanyong Wan)
+
+
+namespace testing {
+
+// TODO(wan@google.com): support using environment variables to
+// control the flag values, like what Google Test does.
+
+GMOCK_DEFINE_bool_(catch_leaked_mocks, true,
+                   "true iff Google Mock should report leaked mock objects "
+                   "as failures.");
+
+GMOCK_DEFINE_string_(verbose, internal::kWarningVerbosity,
+                     "Controls how verbose Google Mock's output is."
+                     "  Valid values:\n"
+                     "  info    - prints all messages.\n"
+                     "  warning - prints warnings and errors.\n"
+                     "  error   - prints errors only.");
+
+namespace internal {
+
+// Parses a string as a command line flag.  The string should have the
+// format "--gmock_flag=value".  When def_optional is true, the
+// "=value" part can be omitted.
+//
+// Returns the value of the flag, or NULL if the parsing failed.
+static const char* ParseGoogleMockFlagValue(const char* str,
+                                            const char* flag,
+                                            bool def_optional) {
+  // str and flag must not be NULL.
+  if (str == NULL || flag == NULL) return NULL;
+
+  // The flag must start with "--gmock_".
+  const std::string flag_str = std::string("--gmock_") + flag;
+  const size_t flag_len = flag_str.length();
+  if (strncmp(str, flag_str.c_str(), flag_len) != 0) return NULL;
+
+  // Skips the flag name.
+  const char* flag_end = str + flag_len;
+
+  // When def_optional is true, it's OK to not have a "=value" part.
+  if (def_optional && (flag_end[0] == '\0')) {
+    return flag_end;
+  }
+
+  // If def_optional is true and there are more characters after the
+  // flag name, or if def_optional is false, there must be a '=' after
+  // the flag name.
+  if (flag_end[0] != '=') return NULL;
+
+  // Returns the string after "=".
+  return flag_end + 1;
+}
+
+// Parses a string for a Google Mock bool flag, in the form of
+// "--gmock_flag=value".
+//
+// On success, stores the value of the flag in *value, and returns
+// true.  On failure, returns false without changing *value.
+static bool ParseGoogleMockBoolFlag(const char* str, const char* flag,
+                                    bool* value) {
+  // Gets the value of the flag as a string.
+  const char* const value_str = ParseGoogleMockFlagValue(str, flag, true);
+
+  // Aborts if the parsing failed.
+  if (value_str == NULL) return false;
+
+  // Converts the string value to a bool.
+  *value = !(*value_str == '0' || *value_str == 'f' || *value_str == 'F');
+  return true;
+}
+
+// Parses a string for a Google Mock string flag, in the form of
+// "--gmock_flag=value".
+//
+// On success, stores the value of the flag in *value, and returns
+// true.  On failure, returns false without changing *value.
+template <typename String>
+static bool ParseGoogleMockStringFlag(const char* str, const char* flag,
+                                      String* value) {
+  // Gets the value of the flag as a string.
+  const char* const value_str = ParseGoogleMockFlagValue(str, flag, false);
+
+  // Aborts if the parsing failed.
+  if (value_str == NULL) return false;
+
+  // Sets *value to the value of the flag.
+  *value = value_str;
+  return true;
+}
+
+// The internal implementation of InitGoogleMock().
+//
+// The type parameter CharType can be instantiated to either char or
+// wchar_t.
+template <typename CharType>
+void InitGoogleMockImpl(int* argc, CharType** argv) {
+  // Makes sure Google Test is initialized.  InitGoogleTest() is
+  // idempotent, so it's fine if the user has already called it.
+  InitGoogleTest(argc, argv);
+  if (*argc <= 0) return;
+
+  for (int i = 1; i != *argc; i++) {
+    const std::string arg_string = StreamableToString(argv[i]);
+    const char* const arg = arg_string.c_str();
+
+    // Do we see a Google Mock flag?
+    if (ParseGoogleMockBoolFlag(arg, "catch_leaked_mocks",
+                                &GMOCK_FLAG(catch_leaked_mocks)) ||
+        ParseGoogleMockStringFlag(arg, "verbose", &GMOCK_FLAG(verbose))) {
+      // Yes.  Shift the remainder of the argv list left by one.  Note
+      // that argv has (*argc + 1) elements, the last one always being
+      // NULL.  The following loop moves the trailing NULL element as
+      // well.
+      for (int j = i; j != *argc; j++) {
+        argv[j] = argv[j + 1];
+      }
+
+      // Decrements the argument count.
+      (*argc)--;
+
+      // We also need to decrement the iterator as we just removed
+      // an element.
+      i--;
+    }
+  }
+}
+
+}  // namespace internal
+
+// Initializes Google Mock.  This must be called before running the
+// tests.  In particular, it parses a command line for the flags that
+// Google Mock recognizes.  Whenever a Google Mock flag is seen, it is
+// removed from argv, and *argc is decremented.
+//
+// No value is returned.  Instead, the Google Mock flag variables are
+// updated.
+//
+// Since Google Test is needed for Google Mock to work, this function
+// also initializes Google Test and parses its flags, if that hasn't
+// been done.
+GTEST_API_ void InitGoogleMock(int* argc, char** argv) {
+  internal::InitGoogleMockImpl(argc, argv);
+}
+
+// This overloaded version can be used in Windows programs compiled in
+// UNICODE mode.
+GTEST_API_ void InitGoogleMock(int* argc, wchar_t** argv) {
+  internal::InitGoogleMockImpl(argc, argv);
+}
+
 }  // namespace testing

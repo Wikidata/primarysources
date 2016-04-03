@@ -4,6 +4,8 @@
 #ifndef PRIMARYSOURCES_SYSTEMSTATUS_H
 #define PRIMARYSOURCES_SYSTEMSTATUS_H
 
+#include <thread>
+#include <condition_variable>
 #include <mutex>
 
 #include <model/Status.h>
@@ -17,6 +19,12 @@ class StatusService {
  public:
     // Initialise status. Sets up fields.
     StatusService(const std::string& connstr);
+
+    ~StatusService() {
+        std::unique_lock<std::mutex> lck(status_mutex_);
+        shutdown_ = true;
+        notify_dirty_.notify_one();
+    };
 
     void AddCacheHit();
     void AddCacheMiss();
@@ -34,11 +42,19 @@ class StatusService {
     std::string Version();
 
     void SetDirty() {
+        std::unique_lock<std::mutex> lck(status_mutex_);
         dirty_ = true;
+        notify_dirty_.notify_one();
     }
  private:
     // SQL connection string.
     std::string connstr_;
+
+    // Updater thread, fetches new data in the background when dirty is true;
+    std::thread updater_;
+
+    // Conditional variable to notify when dirty is set. Wakes up updater thread.
+    std::condition_variable notify_dirty_;
 
     // Cached copy of the current status.
     model::Status status_;
@@ -47,6 +63,8 @@ class StatusService {
 
     // True if the database status needs to be updated.
     bool dirty_;
+
+    bool shutdown_;
 };
 
 void Init();

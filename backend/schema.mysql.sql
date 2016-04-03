@@ -61,9 +61,16 @@ CREATE TABLE userlog (
         REFERENCES statement(id)
 );
 
+CREATE TABLE status (
+    id       INTEGER NOT NULL AUTO_INCREMENT,
+    created  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    data     VARBINARY(64),
+
+);
+
 CREATE INDEX idx_stmt_subject_state_dataset ON statement(subject, state, dataset);
 CREATE INDEX idx_stmt_state_dataset_subject ON statement(state, dataset, subject);
-CREATE INDEX idx_stmst_dataset ON statement(dataset);
+CREATE INDEX idx_stmt_dataset ON statement(dataset);
 CREATE INDEX idx_qualifier_stmt ON qualifier(stmt);
 CREATE INDEX idx_source_stmt ON source(stmt);
 CREATE INDEX idx_userlog_user ON userlog(user);

@@ -4,6 +4,7 @@
 #include <util/MemStat.h>
 #include <status/Version.h>
 #include <ctime>
+#include <glog/logging.h>
 
 #include "SystemStatus.h"
 
@@ -24,11 +25,25 @@ inline std::string formatGMT(time_t* time) {
 
 
 StatusService::StatusService(const std::string& connstr)
-        : connstr_(connstr), dirty_(true) {
+        : connstr_(connstr), dirty_(true), shutdown_(false) {
     // set system startup time
     time_t startupTime = std::time(nullptr);
     status_.mutable_system()->set_startup(formatGMT(&startupTime));
     status_.mutable_system()->set_version(std::string(GIT_SHA1));
+
+    updater_ = std::thread([&](){
+        LOG(INFO) << "Starting status updater thread ...";
+        while (!shutdown_) {
+            if (dirty_) {
+                LOG(INFO) << "Updating cached status ...";
+
+                // Trigger caching of values.
+                Status();
+            }
+            std::unique_lock<std::mutex> lck(status_mutex_);
+            notify_dirty_.wait(lck);
+        }
+    });
 }
 
 void StatusService::AddCacheHit() {
@@ -84,7 +99,7 @@ model::Status StatusService::Status(const std::string& dataset) {
 
     model::Status copy;
     model::Status* work;
-    
+
     // work directly on the status in case we do not request a specific 
     // dataset, otherwise make a copy.
     if (dataset == "") {
@@ -94,7 +109,7 @@ model::Status StatusService::Status(const std::string& dataset) {
         work = &copy;
     }
 
-    
+
     if (dirty_) {
         cppdb::session sql(connstr_); // released when sql is destroyed
         Persistence p(sql, true);
@@ -125,7 +140,7 @@ model::Status StatusService::Status(const std::string& dataset) {
 }
 
 std::string StatusService::Version() {
-   return std::string(GIT_SHA1);
+    return std::string(GIT_SHA1);
 }
 
 }  // namespace status

@@ -1,6 +1,6 @@
 include_directories(..)
 
-add_library(gtest STATIC gtest.h gtest-all.cc)
+add_library(gtest STATIC gtest/gtest.h gmock/gmock.h gmock-gtest-all.cc)
 
 add_executable(persistence_tests PersistenceTest.cc main.cc)
 target_link_libraries(persistence_tests gtest primarysources_persistence ${CPPDB_SQLITE_BACKEND})
@@ -14,6 +14,9 @@ target_link_libraries(parser_tests gtest primarysources_persistence ${CPPDB_SQLI
 add_executable(cache_tests CacheTest.cc main.cc)
 target_link_libraries(cache_tests gtest primarysources_model ${CPPDB_SQLITE_BACKEND})
 
+add_executable(util_tests SnowflakeTest.cc main.cc)
+target_link_libraries(util_tests gtest primarysources_util ${CMAKE_THREAD_LIBS_INIT} ${GLOG_LIBRARY})
+
 add_test(NAME ModelTest
          COMMAND model_tests)
 
@@ -26,4 +29,7 @@ add_test(NAME CacheTest
 add_test(NAME PersistenceTest
          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
          COMMAND persistence_tests)
+
+add_test(NAME UtilTest
+        COMMAND util_tests)
 

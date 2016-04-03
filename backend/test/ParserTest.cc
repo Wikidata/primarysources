@@ -1,6 +1,6 @@
 // Copyright 2015 Google Inc. All Rights Reserved.
 // Author: Sebastian Schaffert <schaffert@google.com>
-#include "gtest.h"
+#include "gtest/gtest.h"
 
 #include "model/Statement.h"
 #include "parser/Parser.h"
