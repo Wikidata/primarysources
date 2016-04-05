@@ -91,6 +91,8 @@ void StatusService::AddGetStatusRequest() {
 
 // Update the system status and return a constant reference.
 model::Status StatusService::Status(const std::string& dataset) {
+    std::lock_guard<std::mutex> lock(query_mutex_);
+
     MemStat memstat;
 
     LOG_IF(INFO, memstat.getSharedMem() > status_.system().shared_memory())

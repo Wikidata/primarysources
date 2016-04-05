@@ -69,6 +69,7 @@ class StatusService {
     model::Status status_;
 
     std::mutex status_mutex_;
+    std::mutex query_mutex_;
 
     // True if the database status needs to be updated.
     bool dirty_;
