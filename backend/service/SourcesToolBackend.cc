@@ -34,7 +34,10 @@ std::string createCacheKey(const std::string &qid, ApprovalState state, const st
 }  // namespace
 
 SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
-    : connstr(build_connection(config)) { }
+    : connstr(build_connection(config)) {
+    // trigger initialisation of the singleton
+    StatusService();
+}
 
 
 std::vector<Statement> SourcesToolBackend::getStatementsByQID(

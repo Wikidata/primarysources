@@ -34,7 +34,7 @@ class StatusService {
     model::Status Status(const std::string& dataset = "");
 
     // Return the GIT version.
-    std::string Version();
+    std::string Version() const;
 
     void SetDirty() {
         std::unique_lock<std::mutex> lck(status_mutex_);

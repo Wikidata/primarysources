@@ -150,7 +150,7 @@ model::Status StatusService::Status(const std::string& dataset) {
     return *work;
 }
 
-std::string StatusService::Version() {
+std::string StatusService::Version() const {
     return std::string(GIT_SHA1);
 }
 
