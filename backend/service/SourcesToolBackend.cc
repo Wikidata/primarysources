@@ -34,7 +34,7 @@ std::string createCacheKey(const std::string &qid, ApprovalState state, const st
 }  // namespace
 
 SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
-    : connstr(build_connection(config)), status_service_(connstr) { }
+    : connstr(build_connection(config)) { }
 
 
 std::vector<Statement> SourcesToolBackend::getStatementsByQID(
@@ -51,9 +51,9 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
         statements = p.getStatementsByQID(qid, state, dataset);
         cache.store_data(cacheKey, statements, 3600);
 
-        status_service_.AddCacheMiss();
+        StatusService().AddCacheMiss();
     } else {
-        status_service_.AddCacheHit();
+        StatusService().AddCacheHit();
     }
 
     return statements;
@@ -112,7 +112,7 @@ void SourcesToolBackend::updateStatement(
             cache.rise(createCacheKey(st.qid(), state, ""));
         }
         cache.rise("ACTIVITIES");
-        status_service_.SetDirty();
+        StatusService().SetDirty();
     } catch (PersistenceException const &e) {
         sql.rollback();
 
@@ -139,9 +139,9 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
         statements = p.getStatementsByQID(qid, state, dataset);
         cache.store_data(cacheKey, statements, 3600);
 
-        status_service_.AddCacheMiss();
+        StatusService().AddCacheMiss();
     } else {
-        status_service_.AddCacheHit();
+        StatusService().AddCacheHit();
     }
 
     return statements;
@@ -206,7 +206,7 @@ void SourcesToolBackend::deleteStatements(cache_t& cache, ApprovalState state) {
 }
 
 model::Status SourcesToolBackend::getStatus(cache_t& cache, const std::string& dataset) {
-    return status_service_.Status(dataset);
+    return StatusService().Status(dataset);
 }
 
 
@@ -221,9 +221,9 @@ Dashboard::ActivityLog SourcesToolBackend::getActivityLog(cache_t& cache) {
 
         cache.store_data("ACTIVITIES", result, 3600);
 
-        status_service_.AddCacheMiss();
+        StatusService().AddCacheMiss();
     } else {
-        status_service_.AddCacheHit();
+        StatusService().AddCacheHit();
     }
 
     return result;
@@ -241,9 +241,9 @@ std::vector<std::string> SourcesToolBackend::getDatasets(cache_t& cache) {
         datasets = p.getDatasets();
         cache.store_data("datasets", datasets, 3600);
 
-        status_service_.AddCacheMiss();
+        StatusService().AddCacheMiss();
     } else {
-        status_service_.AddCacheHit();
+        StatusService().AddCacheHit();
     }
 
     return datasets;

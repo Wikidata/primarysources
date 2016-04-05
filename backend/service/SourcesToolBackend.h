@@ -112,15 +112,13 @@ public:
      * Return a reference to the status service.
      */
     status::StatusService& StatusService() {
-        return status_service_;
+        return status::StatusService::instance(connstr);
     };
 private:
 
     // CppDB uses a connection pool internally, so we just remember the
     // connection string
     std::string connstr;
-
-    status::StatusService status_service_;
 };
 
 

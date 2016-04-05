@@ -15,16 +15,11 @@ namespace wikidata {
 namespace primarysources {
 namespace status {
 
+/**
+ * Provide system status. Should be used as a singleton using the instance() method.
+ */
 class StatusService {
  public:
-    // Initialise status. Sets up fields.
-    StatusService(const std::string& connstr);
-
-    ~StatusService() {
-        std::unique_lock<std::mutex> lck(status_mutex_);
-        shutdown_ = true;
-        notify_dirty_.notify_one();
-    };
 
     void AddCacheHit();
     void AddCacheMiss();
@@ -46,7 +41,21 @@ class StatusService {
         dirty_ = true;
         notify_dirty_.notify_one();
     }
+
+    static StatusService& instance(const std::string& connstr) {
+        static StatusService instance_(connstr);
+        return instance_;
+    }
  private:
+    // Initialise status. Sets up fields.
+    StatusService(const std::string& connstr);
+
+    ~StatusService() {
+        std::unique_lock<std::mutex> lck(status_mutex_);
+        shutdown_ = true;
+        notify_dirty_.notify_one();
+    };
+
     // SQL connection string.
     std::string connstr_;
 
