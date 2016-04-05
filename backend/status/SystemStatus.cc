@@ -90,8 +90,6 @@ void StatusService::AddGetStatusRequest() {
 
 // Update the system status and return a constant reference.
 model::Status StatusService::Status(const std::string& dataset) {
-    std::lock_guard<std::mutex> lock(status_mutex_);
-
     MemStat memstat;
 
     LOG_IF(INFO, memstat.getSharedMem() > status_.system().shared_memory())
@@ -104,9 +102,12 @@ model::Status StatusService::Status(const std::string& dataset) {
         << "Increase of resident memory from " << status_.system().resident_set_size()
         << " to " << memstat.getRSS();
 
-    status_.mutable_system()->set_shared_memory(memstat.getSharedMem());
-    status_.mutable_system()->set_private_memory(memstat.getPrivateMem());
-    status_.mutable_system()->set_resident_set_size(memstat.getRSS());
+    {
+        std::lock_guard<std::mutex> lock(status_mutex_);
+        status_.mutable_system()->set_shared_memory(memstat.getSharedMem());
+        status_.mutable_system()->set_private_memory(memstat.getPrivateMem());
+        status_.mutable_system()->set_resident_set_size(memstat.getRSS());
+    }
 
     model::Status copy;
     model::Status* work;
@@ -126,16 +127,28 @@ model::Status StatusService::Status(const std::string& dataset) {
         Persistence p(sql, true);
         sql.begin();
 
-        work->mutable_statements()->set_statements(p.countStatements(dataset));
-        work->mutable_statements()->set_approved(p.countStatements(ApprovalState::APPROVED, dataset));
-        work->mutable_statements()->set_unapproved(p.countStatements(ApprovalState::UNAPPROVED, dataset));
-        work->mutable_statements()->set_duplicate(p.countStatements(ApprovalState::DUPLICATE, dataset));
-        work->mutable_statements()->set_blacklisted(p.countStatements(ApprovalState::BLACKLISTED, dataset));
-        work->mutable_statements()->set_wrong(p.countStatements(ApprovalState::WRONG, dataset));
-        work->set_total_users(p.countUsers());
+        auto st_total = p.countStatements(dataset);
+        auto st_approved = p.countStatements(ApprovalState::APPROVED, dataset);
+        auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, dataset);
+        auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, dataset);
+        auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, dataset);
+        auto st_wrong = p.countStatements(ApprovalState::WRONG, dataset);
+        auto users = p.countUsers();
 
-        work->clear_top_users();
+        {
+            std::lock_guard<std::mutex> lock(status_mutex_);
+            work->mutable_statements()->set_statements(st_total);
+            work->mutable_statements()->set_approved(st_approved);
+            work->mutable_statements()->set_unapproved(st_unapproved);
+            work->mutable_statements()->set_duplicate(st_duplicate);
+            work->mutable_statements()->set_blacklisted(st_blacklisted);
+            work->mutable_statements()->set_wrong(st_wrong);
+            work->set_total_users(users);
+            work->clear_top_users();
+        }
+
         for (model::UserStatus &st : p.getTopUsers(10)) {
+            std::lock_guard<std::mutex> lock(status_mutex_);
             work->add_top_users()->Swap(&st);
         }
 
