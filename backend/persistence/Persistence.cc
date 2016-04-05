@@ -635,7 +635,7 @@ int32_t Persistence::countUsers() {
         sql.begin();
 
     cppdb::result res = (
-            sql << "SELECT count(distinct user) FROM userlog"
+            sql << "SELECT COUNT(DISTINCT user) FROM userlog"
     );
 
     if (!res.empty()) {
