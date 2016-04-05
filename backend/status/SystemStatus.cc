@@ -146,12 +146,15 @@ model::Status StatusService::Status(const std::string& dataset) {
                 work->mutable_statements()->set_blacklisted(st_blacklisted);
                 work->mutable_statements()->set_wrong(st_wrong);
                 work->set_total_users(users);
-                work->clear_top_users();
             }
 
-            for (model::UserStatus &st : p.getTopUsers(10)) {
+            auto topusers = p.getTopUsers(10);
+            {
                 std::lock_guard<std::mutex> lock(status_mutex_);
-                work->add_top_users()->Swap(&st);
+                work->clear_top_users();
+                for (model::UserStatus &st : topusers) {
+                    work->add_top_users()->Swap(&st);
+                }
             }
 
             if (dataset == "") {

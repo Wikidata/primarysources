@@ -33,6 +33,13 @@ TEST(RetryTest, Fail) {
     EXPECT_EQ(4, m.Calls());
 }
 
+TEST(RetryTest, Succeed) {
+    Mock m;
+    RETRY(m.Succeed(), 3, std::exception);
+    EXPECT_EQ(1, m.Calls());
+}
+
+
 }  // namespace primarysources
 }  // namespace wikidata
 
