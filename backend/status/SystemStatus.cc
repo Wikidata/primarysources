@@ -6,6 +6,7 @@
 #include <status/Version.h>
 #include <ctime>
 #include <glog/logging.h>
+#include <util/TimeLogger.h>
 
 #include "SystemStatus.h"
 
@@ -127,6 +128,8 @@ model::Status StatusService::Status(const std::string& dataset) {
 
     RETRY({
         if (dirty_) {
+            TimeLogger("Update statement status");
+
             cppdb::session sql(connstr_); // released when sql is destroyed
             Persistence p(sql, true);
             sql.begin();
