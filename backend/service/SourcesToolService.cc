@@ -20,7 +20,7 @@
 #include "util/Membuf.h"
 #include "parser/Parser.h"
 #include "util/TimeLogger.h"
-#include "util/MemStat.h"
+#include "util/Retry.h"
 
 using wikidata::primarysources::model::ApprovalState;
 using wikidata::primarysources::model::PropertyValue;
@@ -40,31 +40,31 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
         : cppcms::application(srv), backend(settings()["database"]) {
 
     dispatcher().assign("/entities/(Q\\d+)",
-            &SourcesToolService::getEntityByQID, this, 1);
+                        &SourcesToolService::getEntityByQID, this, 1);
     mapper().assign("entity_by_qid", "/entities/{1}");
 
     // map request to random entity selector
     dispatcher().assign("/entities/any",
-            &SourcesToolService::getRandomEntity, this);
+                        &SourcesToolService::getRandomEntity, this);
     mapper().assign("entity_by_topic_user", "/entities/any");
 
     // map GET and POST requests to /entities/<QID> to the respective handlers
     // we use a helper function to distinguish both cases, since cppcms
     // currently does not really support REST
     dispatcher().assign("/statements/(\\d+)",
-            &SourcesToolService::handleGetPostStatement, this, 1);
+                        &SourcesToolService::handleGetPostStatement, this, 1);
     mapper().assign("stmt_by_id", "/statements/{1}");
 
     dispatcher().assign("/statements/any",
-            &SourcesToolService::getRandomStatements, this);
+                        &SourcesToolService::getRandomStatements, this);
     mapper().assign("stmt_by_random", "/statements/any");
 
     dispatcher().assign("/statements/all",
-                &SourcesToolService::getAllStatements, this);
+                        &SourcesToolService::getAllStatements, this);
     mapper().assign("stmt_all", "/statements/all");
 
     dispatcher().assign("/import",
-            &SourcesToolService::importStatements, this);
+                        &SourcesToolService::importStatements, this);
     mapper().assign("import", "/import");
 
     dispatcher().assign("/delete",
@@ -72,8 +72,8 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
     mapper().assign("delete", "/delete");
 
     dispatcher().assign("/datasets/all",
-                            &SourcesToolService::getAllDatasets, this);
-        mapper().assign("datasets_all", "/datasets/all");
+                        &SourcesToolService::getAllDatasets, this);
+    mapper().assign("datasets_all", "/datasets/all");
 
     dispatcher().assign("/status",
                         &SourcesToolService::getStatus, this);
@@ -103,21 +103,25 @@ void SourcesToolService::getEntityByQID(std::string qid) {
             state = model::stateFromString(request().get("state"));
         }
 
-        std::vector<Statement> statements = backend
-                .getStatementsByQID(cache(), qid, state, request().get("dataset"));
+        RETRY({
+                  std::vector<Statement> statements = backend
+                          .getStatementsByQID(cache(), qid, state, request().get("dataset"));
 
-        addCORSHeaders();
-        addVersionHeaders();
+                  addCORSHeaders();
+                  addVersionHeaders();
 
-        if (statements.size() > 0) {
-            serializeStatements(statements);
-        } else {
-            RESPONSE(NOT_FOUND) << "No statements found for entity " << qid;
-        }
+                  if (statements.size() > 0) {
+                      serializeStatements(statements);
+                  } else {
+                      RESPONSE(NOT_FOUND) << "No statements found for entity " << qid;
+                  }
 
-        backend.StatusService().AddGetEntityRequest();
+                  backend.StatusService().AddGetEntityRequest();
+              }, 3, cppdb::cppdb_error);
     } catch(InvalidApprovalState const &e) {
         RESPONSE(BAD_REQUEST) << "Invalid state parameter '" << request().get("state") << "'";
+    } catch(cppdb::cppdb_error const &e) {
+        RESPONSE(SERVER_ERROR) << "internal server error";
     }
 }
 
@@ -134,13 +138,17 @@ void SourcesToolService::getRandomEntity() {
             state = stateFromString(request().get("state"));
         }
 
-        std::vector<Statement> statements =
-                backend.getStatementsByRandomQID(cache(), state, request().get("dataset"));
-        serializeStatements(statements);
+        RETRY({
+                  std::vector<Statement> statements =
+                          backend.getStatementsByRandomQID(cache(), state, request().get("dataset"));
+                  serializeStatements(statements);
+              }, 3, cppdb::cppdb_error);
     } catch(InvalidApprovalState const &e) {
         RESPONSE(BAD_REQUEST) << "invalid state parameter";
     } catch(PersistenceException const &e) {
         RESPONSE(NOT_FOUND) << "no random unapproved entity found";
+    } catch(cppdb::cppdb_error const &e) {
+        RESPONSE(SERVER_ERROR) << "internal server error";
     }
 
     backend.StatusService().AddGetRandomRequest();
@@ -161,11 +169,15 @@ void SourcesToolService::approveStatement(int64_t stid) {
 
     // check if statement exists and update it with new state
     try {
-        backend.updateStatement(cache(), stid, stateFromString(request().get("state")), request().get("user"));
+        RETRY({
+                  backend.updateStatement(cache(), stid, stateFromString(request().get("state")), request().get("user"));
+              }, 3, cppdb::cppdb_error);
     } catch(PersistenceException const &e) {
         RESPONSE(NOT_FOUND) << "Statement " << stid  << " not found";
     } catch(InvalidApprovalState const &e) {
         RESPONSE(BAD_REQUEST) << "Invalid or missing state parameter";
+    } catch(cppdb::cppdb_error const &e) {
+        RESPONSE(SERVER_ERROR) << "internal server error";
     }
 
     backend.StatusService().AddUpdateStatementRequest();
@@ -179,10 +191,14 @@ void SourcesToolService::getStatement(int64_t stid) {
 
     // query for statement, wrap it in a vector and return it
     try {
-        std::vector<Statement> statements = { backend.getStatementByID(cache(), stid) };
-        serializeStatements(statements);
+        RETRY({
+                  std::vector<Statement> statements = { backend.getStatementByID(cache(), stid) };
+                  serializeStatements(statements);
+              }, 3, cppdb::cppdb_error);
     } catch(PersistenceException const &e) {
         RESPONSE(NOT_FOUND) << "Statement " << stid  << " not found";
+    } catch(cppdb::cppdb_error const &e) {
+        RESPONSE(SERVER_ERROR) << "internal server error";
     }
 
     backend.StatusService().AddGetStatementRequest();
@@ -206,7 +222,11 @@ void SourcesToolService::getRandomStatements() {
             state = stateFromString(request().get("state"));
         }
 
-        serializeStatements(backend.getRandomStatements(cache(), count, state));
+        RETRY({
+                  serializeStatements(backend.getRandomStatements(cache(), count, state));
+              }, 3, cppdb::cppdb_error);
+    } catch(cppdb::cppdb_error const &e) {
+        RESPONSE(SERVER_ERROR) << "internal server error";
     } catch(InvalidApprovalState const &e) {
         RESPONSE(BAD_REQUEST) << "Invalid or missing state parameter";
     }
@@ -241,17 +261,21 @@ void SourcesToolService::getAllStatements() {
                     new Value(parser::parseValue(request().get("value"))));
         }
 
-        std::vector<Statement> statements =
-                backend.getAllStatements(cache(), offset, limit,
-                                         state,
-                                         request().get("dataset"),
-                                         request().get("property"),
-                                         value.get());
-        if (statements.size() > 0) {
-            serializeStatements(statements);
-        } else {
-            RESPONSE(NOT_FOUND) << "No statements found";
-        }
+        RETRY({
+                  std::vector<Statement> statements =
+                          backend.getAllStatements(cache(), offset, limit,
+                                                   state,
+                                                   request().get("dataset"),
+                                                   request().get("property"),
+                                                   value.get());
+                  if (statements.size() > 0) {
+                      serializeStatements(statements);
+                  } else {
+                      RESPONSE(NOT_FOUND) << "No statements found";
+                  }
+              }, 3, cppdb::cppdb_error);
+    } catch(cppdb::cppdb_error const &e) {
+        RESPONSE(SERVER_ERROR) << "internal server error";
     } catch(InvalidApprovalState const &e) {
         RESPONSE(BAD_REQUEST) << "Invalid or missing state parameter";
     }
@@ -315,7 +339,7 @@ void SourcesToolService::getStatus() {
 
 void SourcesToolService::serializeStatements(const std::vector<Statement> &statements) {
     if(request().http_accept() == "text/vnd.wikidata+tsv"
-            || request().http_accept() == "text/tsv") {
+       || request().http_accept() == "text/tsv") {
         response().content_type("text/vnd.wikidata+tsv");
 
         serializer::writeTSV(statements.cbegin(), statements.cend(), &response().out());
@@ -367,12 +391,12 @@ void SourcesToolService::importStatements() {
             // import statements
             int64_t count = backend.importStatements(
                     cache(), in, dataset, gzip, dedup);
-    
+
             cppcms::json::value result;
             result["count"] = count;
             result["time"] = timer.Elapsed().count();
             result["dataset"] = dataset;
-    
+
             response().content_type("application/json");
             result.save(response().out(), cppcms::json::readable);
         }
@@ -383,15 +407,15 @@ void SourcesToolService::importStatements() {
 }
 
 void SourcesToolService::getAllDatasets() {
-	addCORSHeaders();
-	addVersionHeaders();
+    addCORSHeaders();
+    addVersionHeaders();
 
-	std::vector<std::string> datasets = backend.getDatasets(cache());
+    std::vector<std::string> datasets = backend.getDatasets(cache());
 
-	cppcms::json::value result;
-	for(std::string id : datasets) {
+    cppcms::json::value result;
+    for(std::string id : datasets) {
         result[id]["id"] = id;
-	}
+    }
 
     response().content_type("application/json");
     result.save(response().out(), cppcms::json::readable);

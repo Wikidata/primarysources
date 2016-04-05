@@ -19,7 +19,7 @@ target_link_libraries(serializer_tests gtest
 add_executable(cache_tests CacheTest.cc main.cc)
 target_link_libraries(cache_tests gtest primarysources_model ${CPPDB_SQLITE_BACKEND})
 
-add_executable(util_tests SnowflakeTest.cc main.cc)
+add_executable(util_tests SnowflakeTest.cc RetryTest.cc main.cc)
 target_link_libraries(util_tests gtest primarysources_util ${CMAKE_THREAD_LIBS_INIT} ${GLOG_LIBRARY})
 
 add_test(NAME ModelTest

@@ -2,6 +2,7 @@
 // Author: Sebastian Schaffert <schaffert@google.com>
 
 #include <util/MemStat.h>
+#include <util/Retry.h>
 #include <status/Version.h>
 #include <ctime>
 #include <glog/logging.h>
@@ -122,42 +123,44 @@ model::Status StatusService::Status(const std::string& dataset) {
     }
 
 
-    if (dirty_) {
-        cppdb::session sql(connstr_); // released when sql is destroyed
-        Persistence p(sql, true);
-        sql.begin();
+    RETRY({
+        if (dirty_) {
+            cppdb::session sql(connstr_); // released when sql is destroyed
+            Persistence p(sql, true);
+            sql.begin();
 
-        auto st_total = p.countStatements(dataset);
-        auto st_approved = p.countStatements(ApprovalState::APPROVED, dataset);
-        auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, dataset);
-        auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, dataset);
-        auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, dataset);
-        auto st_wrong = p.countStatements(ApprovalState::WRONG, dataset);
-        auto users = p.countUsers();
+            auto st_total = p.countStatements(dataset);
+            auto st_approved = p.countStatements(ApprovalState::APPROVED, dataset);
+            auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, dataset);
+            auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, dataset);
+            auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, dataset);
+            auto st_wrong = p.countStatements(ApprovalState::WRONG, dataset);
+            auto users = p.countUsers();
 
-        {
-            std::lock_guard<std::mutex> lock(status_mutex_);
-            work->mutable_statements()->set_statements(st_total);
-            work->mutable_statements()->set_approved(st_approved);
-            work->mutable_statements()->set_unapproved(st_unapproved);
-            work->mutable_statements()->set_duplicate(st_duplicate);
-            work->mutable_statements()->set_blacklisted(st_blacklisted);
-            work->mutable_statements()->set_wrong(st_wrong);
-            work->set_total_users(users);
-            work->clear_top_users();
+            {
+                std::lock_guard<std::mutex> lock(status_mutex_);
+                work->mutable_statements()->set_statements(st_total);
+                work->mutable_statements()->set_approved(st_approved);
+                work->mutable_statements()->set_unapproved(st_unapproved);
+                work->mutable_statements()->set_duplicate(st_duplicate);
+                work->mutable_statements()->set_blacklisted(st_blacklisted);
+                work->mutable_statements()->set_wrong(st_wrong);
+                work->set_total_users(users);
+                work->clear_top_users();
+            }
+
+            for (model::UserStatus &st : p.getTopUsers(10)) {
+                std::lock_guard<std::mutex> lock(status_mutex_);
+                work->add_top_users()->Swap(&st);
+            }
+
+            if (dataset == "") {
+                dirty_ = false;
+            }
+
+            sql.commit();
         }
-
-        for (model::UserStatus &st : p.getTopUsers(10)) {
-            std::lock_guard<std::mutex> lock(status_mutex_);
-            work->add_top_users()->Swap(&st);
-        }
-
-        if (dataset == "") {
-            dirty_ = false;
-        }
-
-        sql.commit();
-    }
+    }, 3, cppdb::cppdb_error);
 
 
     return *work;
