@@ -57,10 +57,10 @@ TEST(ValueTest, Equality) {
 
 TEST(TimeTest, toWikidataString) {
     Value t1 = NewTime(1917, 01, 01, 0, 0, 0, 11);
-    Value t2 = NewTime(1917, 0, 0, 0, 0, 0, 9);
+    Value t2 = NewTime(19170, 0, 0, 0, 0, 0, 9);
 
-    ASSERT_EQ(toWikidataString(t1.time()), "+00000001917-01-01T00:00:00Z/11");
-    ASSERT_EQ(toWikidataString(t2.time()), "+00000001917-00-00T00:00:00Z/9");
+    ASSERT_EQ(toWikidataString(t1.time()), "+1917-01-01T00:00:00Z/11");
+    ASSERT_EQ(toWikidataString(t2.time()), "+19170-00-00T00:00:00Z/9");
 }
 
 TEST(TimeTest, toSQLString) {

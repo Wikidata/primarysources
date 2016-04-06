@@ -215,7 +215,7 @@ bool operator==(const Statement &lhs, const Statement &rhs) {
 std::string toWikidataString(const Time& t) {
     std::ostringstream out;
     out << std::setfill('0')
-        << "+" << std::setw(11) << (int) t.year()
+        << "+" << std::setw(4) << (int) t.year()
         << "-" << std::setw(2) << (int) t.month()
         << "-" << std::setw(2) << (int) t.day()
         << "T" << std::setw(2) << (int) t.hour()

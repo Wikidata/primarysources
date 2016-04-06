@@ -36,7 +36,7 @@ TEST(SerializerTest, TSV) {
     Statement s4 = NewStatement("Q123", NewPropertyValue("P123", NewTime(1967, 0, 0, 0, 0, 0, 9)));
     std::stringstream out4;
     writeStatementTSV(s4, &out4);
-    ASSERT_EQ(out4.str(), "Q123\tP123\t+00000001967-00-00T00:00:00Z/9\n");
+    ASSERT_EQ(out4.str(), "Q123\tP123\t+1967-00-00T00:00:00Z/9\n");
 
     Statement s5 = NewStatement("Q123", NewPropertyValue("P123", NewValue(47.11, -10.09)));
     std::stringstream out5;
