@@ -28,6 +28,7 @@ find_package (CPPDB REQUIRED)
 find_package (RE2 REQUIRED)
 find_package (Boost 1.53.0 REQUIRED COMPONENTS iostreams)
 find_package (Tcmalloc)
+find_package (Redox)
 
 if(DATABASE STREQUAL sqlite3 AND CPPDB_SQLITE_BACKEND)
     find_library(SQLITE3_LIB sqlite3)
