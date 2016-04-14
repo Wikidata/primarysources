@@ -22,6 +22,10 @@ target_link_libraries(cache_tests gtest primarysources_model ${CPPDB_SQLITE_BACK
 add_executable(util_tests SnowflakeTest.cc RetryTest.cc main.cc)
 target_link_libraries(util_tests gtest primarysources_util ${CMAKE_THREAD_LIBS_INIT} ${GLOG_LIBRARY})
 
+add_executable(redis_tests RedisTest.cc main.cc)
+target_link_libraries(redis_tests gtest primarysources_model primarysources_backend
+        ${CMAKE_THREAD_LIBS_INIT} ${REDOX_LIBRARY} ${HIREDIS_LIBRARY} ${EV_LIBRARY})
+
 add_test(NAME ModelTest
          COMMAND model_tests)
 

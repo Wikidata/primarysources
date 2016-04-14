@@ -1,0 +1,16 @@
+find_path(EV_INCLUDE_PATH NAMES ev.h)
+find_library(EV_LIBRARY NAMES ev)
+
+if(EV_INCLUDE_PATH AND EV_LIBRARY)
+    set(EV_FOUND TRUE)
+endif(EV_INCLUDE_PATH AND EV_LIBRARY)
+
+if(EV_FOUND)
+    if(NOT EV_FIND_QUIETLY)
+        message(STATUS "Found EV: ${EV_LIBRARY}; includes - ${EV_INCLUDE_PATH}")
+    endif(NOT EV_FIND_QUIETLY)
+else(EV_FOUND)
+    if(EV_FIND_REQUIRED)
+        message(FATAL_ERROR "Could not find EV library.")
+    endif(EV_FIND_REQUIRED)
+endif(EV_FOUND)
