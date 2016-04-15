@@ -26,17 +26,23 @@ namespace {
 // be used.
 std::string createCacheKey(const std::string &qid, ApprovalState state, const std::string &dataset) {
     if (dataset == "") {
-        return "ALL-" + qid + "-" + model::stateToString(state);
+        return "ALL-" + qid + "-" + std::to_string(state);
     } else {
-        return qid + "-" + dataset + "-" + model::stateToString(state);
+        return qid + "-" + dataset + "-" + std::to_string(state);
     }
 }
 }  // namespace
 
 SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
-    : connstr(build_connection(config)) {
+    : connstr(build_connection(config["database"])) {
     // trigger initialisation of the singleton
     StatusService();
+
+    // If redis is configured, setup the redis service.
+    if (!config["redis"].is_null()) {
+        redisSvc.reset(new RedisCacheService(config["redis"]["host"].str(),
+                                             config["redis"]["port"].number()));
+    }
 }
 
 
@@ -47,16 +53,13 @@ std::vector<Statement> SourcesToolBackend::getStatementsByQID(
     std::string cacheKey = createCacheKey(qid,state,dataset);
 
     // look up in cache and only hit backend in case of a cache miss
-    if(!cache.fetch_data(cacheKey, statements)) {
+    if(!getCachedEntity(cache, cacheKey, &statements)) {
         cppdb::session sql(connstr); // released when sql is destroyed
 
         Persistence p(sql);
         statements = p.getStatementsByQID(qid, state, dataset);
-        cache.store_data(cacheKey, statements, 3600);
 
-        StatusService().AddCacheMiss();
-    } else {
-        StatusService().AddCacheHit();
+        storeCachedEntity(cache, cacheKey, statements);
     }
 
     return statements;
@@ -111,8 +114,8 @@ void SourcesToolBackend::updateStatement(
         for (ApprovalState state : { ApprovalState::APPROVED, ApprovalState::UNAPPROVED,
                                      ApprovalState::WRONG, ApprovalState::DUPLICATE,
                                      ApprovalState::BLACKLISTED }) {
-            cache.rise(createCacheKey(st.qid(), state, st.dataset()));
-            cache.rise(createCacheKey(st.qid(), state, ""));
+            evictCachedEntity(cache, createCacheKey(st.qid(), state, st.dataset()));
+            evictCachedEntity(cache, createCacheKey(st.qid(), state, ""));
         }
         cache.rise("ACTIVITIES");
         StatusService().SetDirty();
@@ -140,7 +143,7 @@ std::vector<Statement> SourcesToolBackend::getStatementsByRandomQID(
 
         Persistence p(sql);
         statements = p.getStatementsByQID(qid, state, dataset);
-        cache.store_data(cacheKey, statements, 3600);
+        storeCachedEntity(cache, cacheKey, statements);
 
         StatusService().AddCacheMiss();
     } else {
@@ -250,6 +253,59 @@ std::vector<std::string> SourcesToolBackend::getDatasets(cache_t& cache) {
     }
 
     return datasets;
+}
+
+bool SourcesToolBackend::getCachedEntity(
+        cache_t& cache, const std::string &cacheKey,
+        std::vector<model::Statement> *result) {
+
+    if(cache.fetch_data(cacheKey, *result)) {
+        StatusService().AddCacheHit();
+        return true;
+    }
+
+    StatusService().AddCacheMiss();
+
+    if (redisSvc != nullptr) {
+        model::Statements stmts;
+        if (!redisSvc->Get(cacheKey, &stmts)) {
+            StatusService().AddRedisMiss();
+            return false;
+        }
+
+        StatusService().AddRedisHit();
+
+        *result = std::vector<Statement>(stmts.statements().cbegin(),
+                                         stmts.statements().cend());
+        cache.store_data(cacheKey, *result);
+        return true;
+    }
+
+    return false;
+}
+
+void SourcesToolBackend::evictCachedEntity(
+        cache_t& cache, const std::string &cacheKey) {
+    cache.rise(cacheKey);
+
+    if (redisSvc != nullptr) {
+        redisSvc->Evict(cacheKey);
+    }
+
+}
+
+void SourcesToolBackend::storeCachedEntity(
+        SourcesToolBackend::cache_t &cache, const std::string &cacheKey,
+        const std::vector<Statement> &value) {
+    cache.store_data(cacheKey, value);
+
+    if (redisSvc != nullptr) {
+        model::Statements stmts;
+        for (const Statement& stmt : value) {
+            *stmts.add_statements() = stmt;
+        }
+        redisSvc->Add(cacheKey, stmts);
+    }
 }
 
 

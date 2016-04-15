@@ -59,6 +59,17 @@ void StatusService::AddCacheMiss() {
             status_.system().cache_misses() + 1);
 }
 
+void StatusService::AddRedisHit() {
+    std::lock_guard<std::mutex> lock(status_mutex_);
+    status_.mutable_system()->set_redis_hits(
+            status_.system().redis_hits() + 1);
+}
+void StatusService::AddRedisMiss() {
+    std::lock_guard<std::mutex> lock(status_mutex_);
+    status_.mutable_system()->set_redis_misses(
+            status_.system().redis_misses() + 1);
+}
+
 void StatusService::AddGetEntityRequest() {
     std::lock_guard<std::mutex> lock(status_mutex_);
     status_.mutable_requests()->set_get_entity(

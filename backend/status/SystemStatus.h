@@ -23,6 +23,8 @@ class StatusService {
 
     void AddCacheHit();
     void AddCacheMiss();
+    void AddRedisHit();
+    void AddRedisMiss();
 
     void AddGetEntityRequest();
     void AddGetRandomRequest();

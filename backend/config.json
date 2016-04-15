@@ -22,5 +22,9 @@
         "user": "",
         "password": ""
     },
+    "redis": {
+        "host": "localhost",
+        "port": 6379,
+    },
     "token": "AeVeeP6U"
 }

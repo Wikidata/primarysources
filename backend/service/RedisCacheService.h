@@ -18,6 +18,8 @@ class RedisCacheService {
     RedisCacheService(const std::string& host, int port,
                       const std::string& prefix = "PST::");
 
+    ~RedisCacheService();
+
     // Add a key/value pair to the cache. The key will be prefixed by the
     // shared prefix used in this service.
     void Add(const std::string& key, const std::string& value);

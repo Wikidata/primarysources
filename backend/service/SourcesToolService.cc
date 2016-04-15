@@ -37,7 +37,7 @@ namespace primarysources {
 
 // initialise service mappings from URLs to methods
 SourcesToolService::SourcesToolService(cppcms::service &srv)
-        : cppcms::application(srv), backend(settings()["database"]) {
+        : cppcms::application(srv), backend(settings()) {
 
     dispatcher().assign("/entities/(Q\\d+)",
                         &SourcesToolService::getEntityByQID, this, 1);
@@ -320,6 +320,8 @@ void SourcesToolService::getStatus() {
     result["system"]["version"] = status.system().version();
     result["system"]["cache_hits"] = status.system().cache_hits();
     result["system"]["cache_misses"] = status.system().cache_misses();
+    result["system"]["redis_hits"] = status.system().redis_hits();
+    result["system"]["redis_misses"] = status.system().redis_misses();
     result["system"]["shared_mem"] = status.system().shared_memory();
     result["system"]["private_mem"] = status.system().private_memory();
     result["system"]["rss"] = status.system().resident_set_size();

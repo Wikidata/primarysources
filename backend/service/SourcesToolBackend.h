@@ -5,6 +5,7 @@
 #define HAVE_SOURCESTOOL_BACKEND_H_
 
 #include <model/Statement.h>
+#include <service/RedisCacheService.h>
 #include <service/DashboardService.h>
 #include <status/SystemStatus.h>
 
@@ -116,9 +117,21 @@ public:
     };
 private:
 
+    // Internal method to abstract away from different entity caching backends.
+    bool getCachedEntity(cache_t& cache,
+                         const std::string& cacheKey,
+                         std::vector<model::Statement>* result);
+    void storeCachedEntity(cache_t& cache,
+                           const std::string& cacheKey,
+                           const std::vector<model::Statement>& value);
+    void evictCachedEntity(cache_t& cache, const std::string& cacheKey);
+
     // CppDB uses a connection pool internally, so we just remember the
     // connection string
     std::string connstr;
+
+    // A pointer to a Redis cache service if Redis is configured.
+    std::unique_ptr<RedisCacheService> redisSvc;
 };
 
 

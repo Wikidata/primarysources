@@ -36,6 +36,12 @@ message SystemStatus {
 
     // Number of bytes used by process currently resident in memory.
     int64 resident_set_size = 7;
+
+    // Number of hits for cached items in the Redis server/cluster.
+    int64 redis_hits = 8;
+
+    // Number of misses for cached items in the Redis server/cluster.
+    int64 redis_misses = 9;
 }
 
 // A message describing current statement status in the database.
