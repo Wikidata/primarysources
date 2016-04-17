@@ -4,13 +4,17 @@
 #ifndef HAVE_SOURCESTOOL_BACKEND_H_
 #define HAVE_SOURCESTOOL_BACKEND_H_
 
+#include <vector>
+#include <string>
+#include <chrono>
+#include <thread>
+#include <condition_variable>
+#include <mutex>
+
 #include <model/Statement.h>
 #include <service/RedisCacheService.h>
 #include <service/DashboardService.h>
 #include <status/SystemStatus.h>
-
-#include <vector>
-#include <string>
 
 #include <cppcms/cache_interface.h>
 #include <cppcms/json.h>
@@ -29,6 +33,7 @@ public:
 
     SourcesToolBackend(const cppcms::json::value& config);
 
+    ~SourcesToolBackend();
 
     /**
     * Return a statement by ID. Throws PersistenceException if not found.
@@ -126,12 +131,21 @@ private:
                            const std::vector<model::Statement>& value);
     void evictCachedEntity(cache_t& cache, const std::string& cacheKey);
 
+    // Iterate over all statements and update the Redis cache if configured.
+    void populateCachedEntities();
+
     // CppDB uses a connection pool internally, so we just remember the
     // connection string
     std::string connstr;
 
     // A pointer to a Redis cache service if Redis is configured.
     std::unique_ptr<RedisCacheService> redisSvc;
+
+    std::thread redisUpdater;
+    std::condition_variable redisWaiter;
+    std::mutex redisMutex;
+
+    bool shutdown = false;
 };
 
 

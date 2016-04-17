@@ -3,8 +3,6 @@
 #include "RedisCacheService.h"
 
 #include <glog/logging.h>
-#include <util/TimeLogger.h>
-#include <util/Retry.h>
 
 namespace wikidata {
 namespace primarysources {
@@ -33,7 +31,6 @@ void RedisCacheService::Add(const std::string &key, const std::string &value) {
 }
 
 void RedisCacheService::Add(const std::string &key, const google::protobuf::Message &value) {
-    TimeLogger timer("Add value for " + key + " to Redis");
     std::string v = value.SerializeAsString();
     Add(key, v);
 }
@@ -54,8 +51,6 @@ bool RedisCacheService::Get(const std::string &key, std::string *result) {
 }
 
 bool RedisCacheService::Get(const std::string &key, google::protobuf::Message *result) {
-    TimeLogger timer("Retrieve value for " + key + " from Redis");
-
     std::string v;
     if (!Get(key, &v)) {
         return false;

@@ -6,7 +6,6 @@
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
-#include <chrono>
 #include <glog/logging.h>
 
 #include <model/Statement.h>
@@ -14,6 +13,7 @@
 #include <persistence/Persistence.h>
 #include <status/SystemStatus.h>
 #include <service/StatementCaching.h>
+#include <util/TimeLogger.h>
 
 using wikidata::primarysources::model::ApprovalState;
 using wikidata::primarysources::model::Statement;
@@ -43,9 +43,23 @@ SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
     if (!config["redis"].is_null()) {
         redisSvc.reset(new RedisCacheService(config["redis"]["host"].str(),
                                              config["redis"]["port"].number()));
+
+        redisUpdater = std::thread([&]{
+           while (!shutdown) {
+               populateCachedEntities();
+
+               std::unique_lock<std::mutex> lock(redisMutex);
+               redisWaiter.wait_for(lock, std::chrono::hours(1), [&]() { return shutdown; });
+           }
+        });
     }
 }
 
+SourcesToolBackend::~SourcesToolBackend() {
+    std::unique_lock<std::mutex> lock(redisMutex);
+    shutdown = true;
+    redisWaiter.notify_all();
+}
 
 std::vector<Statement> SourcesToolBackend::getStatementsByQID(
         cache_t &cache, const std::string &qid,
@@ -324,6 +338,44 @@ void SourcesToolBackend::storeCachedEntity(
     }
 }
 
+void SourcesToolBackend::populateCachedEntities() {
+    std::lock_guard<std::mutex> lock(redisMutex);
+
+    LOG(INFO) << "Start refreshing all cached Redis entries ...";
+
+    int limit = 100;
+
+    cppdb::session sql(connstr); // released when sql is destroyed
+
+    Persistence p(sql);
+
+    auto datasets = p.getDatasets();
+    datasets.insert(datasets.begin(), "");
+
+    for (const auto& dataset : datasets) {
+        TimeLogger timer("Refreshing cached Redis entries for " +
+                                 (dataset == "" ? "all datasets" : "dataset " + dataset));
+
+        int offset = 0;
+        std::vector<model::Statement> results;
+        model::Statements stmts;
+        std::string qid = "";
+        do {
+            results = p.getAllStatements(offset, limit, ApprovalState::UNAPPROVED, dataset);
+            for (const auto& s : results) {
+                if (qid != s.qid() && qid != "") {
+                    // store current batch of statements and clear it
+                    redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
+                    stmts.clear_statements();
+                }
+                *stmts.add_statements() = s;
+                qid = s.qid();
+            }
+            offset += limit;
+        } while (results.size() > 0);
+    }
+
+}
 
 }  // namespace primarysources
 }  // namespace wikidata

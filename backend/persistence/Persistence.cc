@@ -465,7 +465,7 @@ std::vector<Statement> Persistence::getAllStatements(
                    "FROM statement INNER JOIN snak ON statement.mainsnak = snak.id "
                    "WHERE (statement.state = ? OR ?) AND (statement.dataset = ? OR ?) "
                    "AND (snak.property = ? OR ?) " + valueSelector + " "
-                   "ORDER BY statement.id LIMIT ? OFFSET ?"
+                   "ORDER BY subject LIMIT ? OFFSET ?"
                 << sqlState << (sqlState == -1)
                 << dataset << (dataset == "")
                 << property << (property == ""));
