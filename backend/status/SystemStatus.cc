@@ -40,7 +40,7 @@ StatusService::StatusService(const std::string& connstr)
                 LOG(INFO) << "Updating cached status ...";
 
                 // Trigger caching of values.
-                Status();
+                Update();
             }
             std::unique_lock<std::mutex> lck(status_mutex_);
             notify_dirty_.wait(lck);
@@ -101,6 +101,71 @@ void StatusService::AddGetStatusRequest() {
             status_.requests().get_status() + 1);
 }
 
+void StatusService::Update() {
+    std::lock_guard<std::mutex> lock(query_mutex_);
+
+    MemStat memstat;
+
+    LOG_IF(INFO, memstat.getSharedMem() > status_.system().shared_memory())
+      << "Increase of shared memory from " << status_.system().shared_memory()
+      << " to " << memstat.getSharedMem();
+    LOG_IF(INFO, memstat.getPrivateMem() > status_.system().private_memory())
+      << "Increase of private memory from " << status_.system().private_memory()
+      << " to " << memstat.getPrivateMem();
+    LOG_IF(INFO, memstat.getRSS() > status_.system().resident_set_size())
+      << "Increase of resident memory from " << status_.system().resident_set_size()
+      << " to " << memstat.getRSS();
+
+    {
+        std::lock_guard<std::mutex> lock(status_mutex_);
+        status_.mutable_system()->set_shared_memory(memstat.getSharedMem());
+        status_.mutable_system()->set_private_memory(memstat.getPrivateMem());
+        status_.mutable_system()->set_resident_set_size(memstat.getRSS());
+    }
+
+    RETRY({
+        if (dirty_) {
+            TimeLogger("Update statement status");
+
+            cppdb::session sql(connstr_); // released when sql is destroyed
+            Persistence p(sql, true);
+            sql.begin();
+
+            auto st_total = p.countStatements("");
+            auto st_approved = p.countStatements(ApprovalState::APPROVED, "");
+            auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, "");
+            auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, "");
+            auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, "");
+            auto st_wrong = p.countStatements(ApprovalState::WRONG, "");
+            auto users = p.countUsers();
+
+            {
+                std::lock_guard<std::mutex> lock(status_mutex_);
+                status_.mutable_statements()->set_statements(st_total);
+                status_.mutable_statements()->set_approved(st_approved);
+                status_.mutable_statements()->set_unapproved(st_unapproved);
+                status_.mutable_statements()->set_duplicate(st_duplicate);
+                status_.mutable_statements()->set_blacklisted(st_blacklisted);
+                status_.mutable_statements()->set_wrong(st_wrong);
+                status_.set_total_users(users);
+            }
+
+            auto topusers = p.getTopUsers(10);
+            {
+                std::lock_guard<std::mutex> lock(status_mutex_);
+                status_.clear_top_users();
+                for (model::UserStatus &st : topusers) {
+                    status_.add_top_users()->Swap(&st);
+                }
+            }
+
+            dirty_ = false;
+
+            sql.commit();
+        }
+    }, 3, cppdb::cppdb_error);
+}
+
 // Update the system status and return a constant reference.
 model::Status StatusService::Status(const std::string& dataset) {
     std::lock_guard<std::mutex> lock(query_mutex_);
@@ -124,18 +189,15 @@ model::Status StatusService::Status(const std::string& dataset) {
         status_.mutable_system()->set_resident_set_size(memstat.getRSS());
     }
 
-    model::Status copy;
-    model::Status* work;
 
     // work directly on the status in case we do not request a specific 
     // dataset, otherwise make a copy.
     if (dataset == "") {
-        work = &status_;
-    } else {
-        copy = status_;
-        work = &copy;
+        return status_;
     }
 
+    model::Status copy = status_;
+    model::Status* work = &copy;
 
     RETRY({
         if (dirty_) {
@@ -180,7 +242,6 @@ model::Status StatusService::Status(const std::string& dataset) {
             sql.commit();
         }
     }, 3, cppdb::cppdb_error);
-
 
     return *work;
 }

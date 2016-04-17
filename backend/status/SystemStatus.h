@@ -58,6 +58,8 @@ class StatusService {
         notify_dirty_.notify_one();
     };
 
+    void Update();
+
     // SQL connection string.
     std::string connstr_;
 

@@ -281,7 +281,8 @@ bool SourcesToolBackend::getCachedEntity(
             cache.store_data(cacheKey, *result);
             return true;
         } catch(const CacheException& ex) {
-            LOG(ERROR) << "Redis exception when retrieving cache entry: " << ex.what();
+            LOG(ERROR) << "Redis exception when retrieving cache entry '"
+                       << cacheKey << "': " << ex.what();
             return false;
         }
     }
@@ -297,7 +298,8 @@ void SourcesToolBackend::evictCachedEntity(
         try {
             redisSvc->Evict(cacheKey);
         } catch(const CacheException& ex) {
-            LOG(ERROR) << "Redis exception when evicting cache entry: " << ex.what();
+            LOG(ERROR) << "Redis exception when evicting cache entry '"
+                       << cacheKey << "': " << ex.what();
         }
     }
 
@@ -316,7 +318,8 @@ void SourcesToolBackend::storeCachedEntity(
             }
             redisSvc->Add(cacheKey, stmts);
         } catch(const CacheException& ex) {
-            LOG(ERROR) << "Redis exception when storing cache entry: " << ex.what();
+            LOG(ERROR) << "Redis exception when storing cache entry '"
+                       << cacheKey << "': " << ex.what();
         }
     }
 }
