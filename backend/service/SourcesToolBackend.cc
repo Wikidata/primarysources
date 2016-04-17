@@ -379,7 +379,6 @@ void SourcesToolBackend::populateCachedEntities() {
             for (const auto& s : results) {
                 if (qid != s.qid() && qid != "") {
                     // store current batch of statements and clear it
-                    LOG(INFO) << stmts.statements_size() << " statements for QID " << qid;
                     redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
                     stmts.clear_statements();
                 }
