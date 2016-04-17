@@ -11,7 +11,6 @@
 #include <model/Statement.h>
 #include <parser/Parser.h>
 #include <persistence/Persistence.h>
-#include <status/SystemStatus.h>
 #include <service/StatementCaching.h>
 #include <util/TimeLogger.h>
 
@@ -44,21 +43,32 @@ SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
         redisSvc.reset(new RedisCacheService(config["redis"]["host"].str(),
                                              config["redis"]["port"].number()));
 
-        redisUpdater = std::thread([&]{
-           while (!shutdown) {
-               populateCachedEntities();
+        if (!config["redis"]["update"].is_null()) {
+            redisUpdater = std::thread([&] {
+                LOG(INFO) << "Redis updater started.";
+                while (!shutdown) {
+                    populateCachedEntities();
 
-               std::unique_lock<std::mutex> lock(redisMutex);
-               redisWaiter.wait_for(lock, std::chrono::hours(1), [&]() { return shutdown; });
-           }
-        });
+                    std::unique_lock<std::mutex> lock(redisMutex);
+                    redisWaiter.wait_for(
+                            lock,
+                            std::chrono::seconds((int64_t)config["redis"]["update"].number()),
+                            [&]() {
+                                return shutdown;
+                            });
+                }
+                LOG(INFO) << "Redis updater shutdown";
+            });
+        }
     }
 }
 
 SourcesToolBackend::~SourcesToolBackend() {
-    std::unique_lock<std::mutex> lock(redisMutex);
-    shutdown = true;
-    redisWaiter.notify_all();
+    if (redisSvc != nullptr) {
+        std::unique_lock<std::mutex> lock(redisMutex);
+        shutdown = true;
+        redisWaiter.notify_all();
+    }
 }
 
 std::vector<Statement> SourcesToolBackend::getStatementsByQID(

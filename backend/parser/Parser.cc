@@ -2,8 +2,9 @@
 // Author: Sebastian Schaffert <schaffert@google.com>
 
 #include "Parser.h"
-
 #include <re2/re2.h>
+
+#include <model/Statement.h>
 
 using wikidata::primarysources::model::ApprovalState ;
 using wikidata::primarysources::model::PropertyValue;

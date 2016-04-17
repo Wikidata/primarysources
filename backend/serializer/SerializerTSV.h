@@ -6,10 +6,12 @@
 
 #include <util/json/json.h>
 
-#include "model/Statement.h"
-
 namespace wikidata {
 namespace primarysources {
+namespace model {
+class Statement;
+}
+
 namespace serializer {
 
     void writeStatementTSV(const model::Statement& stmt, std::ostream* out);

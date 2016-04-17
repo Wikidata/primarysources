@@ -7,10 +7,12 @@
 #include <iostream>
 #include <util/json/json.h>
 
-#include "model/Statement.h"
-
 namespace wikidata {
 namespace primarysources {
+namespace model {
+class Statement;
+}
+
 namespace serializer {
 
     /**

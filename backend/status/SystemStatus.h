@@ -9,7 +9,6 @@
 #include <mutex>
 
 #include <model/Status.h>
-#include <persistence/Persistence.h>
 
 namespace wikidata {
 namespace primarysources {

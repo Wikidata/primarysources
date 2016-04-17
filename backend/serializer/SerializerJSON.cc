@@ -6,6 +6,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <model/Statement.h>
+
 namespace wikidata {
 namespace primarysources {
 namespace serializer {

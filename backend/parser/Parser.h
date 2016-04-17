@@ -5,11 +5,16 @@
 #define HAVE_PARSER_H_
 
 #include <iostream>
+#include <functional>
 
-#include "model/Statement.h"
 
 namespace wikidata {
 namespace primarysources {
+namespace model {
+class Statement;
+class Value;
+}
+
 namespace parser {
 
     /**

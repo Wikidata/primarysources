@@ -1,12 +1,13 @@
 // Copyright 2015 Google Inc. All Rights Reserved.
 // Author: Sebastian Schaffert <schaffert@google.com>
+#include <ctime>
+#include <glog/logging.h>
 
 #include <util/MemStat.h>
 #include <util/Retry.h>
 #include <status/Version.h>
-#include <ctime>
-#include <glog/logging.h>
 #include <util/TimeLogger.h>
+#include <persistence/Persistence.h>
 
 #include "SystemStatus.h"
 
