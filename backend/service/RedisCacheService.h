@@ -4,6 +4,7 @@
 #ifndef PRIMARYSOURCES_REDISCACHESERVICE_H
 #define PRIMARYSOURCES_REDISCACHESERVICE_H
 
+#include <mutex>
 #include <redox.hpp>
 #include <google/protobuf/message.h>
 
@@ -34,9 +35,16 @@ class RedisCacheService {
     // prefixed by the shared prefix used in this service.
     void Evict(const std::string& key);
  private:
-    redox::Redox redox_;
+    void Connect();
+
+    std::unique_ptr<redox::Redox> redox_;
 
     std::string prefix_;
+    std::string host_;
+    int port_;
+    bool connected_;
+
+    std::mutex redox_mutex_;
 };
 
 

@@ -4,27 +4,30 @@
 
 #include <glog/logging.h>
 #include <util/TimeLogger.h>
+#include <util/Retry.h>
 
 namespace wikidata {
 namespace primarysources {
 
 RedisCacheService::RedisCacheService(
         const std::string &host, int port, const std::string &prefix)
-        : redox_(LOG(INFO)), prefix_(prefix) {
-    if (!redox_.connect(host, port)) {
-        throw CacheException("Could not connect to Redis server!");
-    }
+        : prefix_(prefix), host_(host), port_(port), connected_(false) {
     LOG(INFO) << "Initialised Redis service (host=" << host << ", port=" << port << ")";
 }
 
 RedisCacheService::~RedisCacheService() {
-    redox_.disconnect();
+    std::lock_guard<std::mutex> lock(redox_mutex_);
+    if (connected_) {
+        redox_->disconnect();
+    }
     LOG(INFO) << "Shutdown Redis service";
 }
 
 
 void RedisCacheService::Add(const std::string &key, const std::string &value) {
-    if (!redox_.set(prefix_ + key, value)) {
+    Connect();
+
+    if (!redox_->set(prefix_ + key, value)) {
         throw CacheException("Could not store key/value on Redis server");
     };
 }
@@ -36,7 +39,9 @@ void RedisCacheService::Add(const std::string &key, const google::protobuf::Mess
 }
 
 bool RedisCacheService::Get(const std::string &key, std::string *result) {
-    auto& c = redox_.commandSync<std::string>({"GET", prefix_ + key});
+    Connect();
+
+    auto& c = redox_->commandSync<std::string>({"GET", prefix_ + key});
     if (!c.ok()) {
         c.free();
         return false;
@@ -61,7 +66,25 @@ bool RedisCacheService::Get(const std::string &key, google::protobuf::Message *r
 }
 
 void RedisCacheService::Evict(const std::string &key) {
-    redox_.del(prefix_ + key);
+    Connect();
+    redox_->del(prefix_ + key);
+}
+
+void RedisCacheService::Connect() {
+    if (connected_) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(redox_mutex_);
+    redox_.reset(new redox::Redox(LOG(INFO)));
+
+    connected_ = redox_->connect(host_, port_, [this](int state) {
+        connected_ = state == redox::Redox::CONNECTED;
+    });
+
+    if (!connected_) {
+        throw CacheException("Could not connect to Redis server");
+    }
 }
 
 

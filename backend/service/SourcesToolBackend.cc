@@ -7,6 +7,7 @@
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <chrono>
+#include <glog/logging.h>
 
 #include <model/Statement.h>
 #include <parser/Parser.h>
@@ -258,8 +259,7 @@ std::vector<std::string> SourcesToolBackend::getDatasets(cache_t& cache) {
 bool SourcesToolBackend::getCachedEntity(
         cache_t& cache, const std::string &cacheKey,
         std::vector<model::Statement> *result) {
-
-    if(cache.fetch_data(cacheKey, *result)) {
+    if (cache.fetch_data(cacheKey, *result)) {
         StatusService().AddCacheHit();
         return true;
     }
@@ -267,18 +267,23 @@ bool SourcesToolBackend::getCachedEntity(
     StatusService().AddCacheMiss();
 
     if (redisSvc != nullptr) {
-        model::Statements stmts;
-        if (!redisSvc->Get(cacheKey, &stmts)) {
-            StatusService().AddRedisMiss();
+        try {
+            model::Statements stmts;
+            if (!redisSvc->Get(cacheKey, &stmts)) {
+                StatusService().AddRedisMiss();
+                return false;
+            }
+
+            StatusService().AddRedisHit();
+
+            *result = std::vector<Statement>(stmts.statements().cbegin(),
+                                             stmts.statements().cend());
+            cache.store_data(cacheKey, *result);
+            return true;
+        } catch(const CacheException& ex) {
+            LOG(ERROR) << "Redis exception when retrieving cache entry: " << ex.what();
             return false;
         }
-
-        StatusService().AddRedisHit();
-
-        *result = std::vector<Statement>(stmts.statements().cbegin(),
-                                         stmts.statements().cend());
-        cache.store_data(cacheKey, *result);
-        return true;
     }
 
     return false;
@@ -289,7 +294,11 @@ void SourcesToolBackend::evictCachedEntity(
     cache.rise(cacheKey);
 
     if (redisSvc != nullptr) {
-        redisSvc->Evict(cacheKey);
+        try {
+            redisSvc->Evict(cacheKey);
+        } catch(const CacheException& ex) {
+            LOG(ERROR) << "Redis exception when evicting cache entry: " << ex.what();
+        }
     }
 
 }
@@ -300,11 +309,15 @@ void SourcesToolBackend::storeCachedEntity(
     cache.store_data(cacheKey, value);
 
     if (redisSvc != nullptr) {
-        model::Statements stmts;
-        for (const Statement& stmt : value) {
-            *stmts.add_statements() = stmt;
+        try {
+            model::Statements stmts;
+            for (const Statement& stmt : value) {
+                *stmts.add_statements() = stmt;
+            }
+            redisSvc->Add(cacheKey, stmts);
+        } catch(const CacheException& ex) {
+            LOG(ERROR) << "Redis exception when storing cache entry: " << ex.what();
         }
-        redisSvc->Add(cacheKey, stmts);
     }
 }
 
