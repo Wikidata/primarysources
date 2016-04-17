@@ -122,7 +122,7 @@ void writeStatementWikidataJSON(
     }
 
 
-    (*entities)[qid]["claims"][prop] = entity;
+    (*entities)[qid]["claims"][prop].append(entity);
 }
 
 }  // namespace serializer

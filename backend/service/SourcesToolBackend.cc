@@ -126,12 +126,24 @@ void SourcesToolBackend::updateStatement(
         sql.commit();
 
         // update cache
-        for (ApprovalState state : { ApprovalState::APPROVED, ApprovalState::UNAPPROVED,
-                                     ApprovalState::WRONG, ApprovalState::DUPLICATE,
-                                     ApprovalState::BLACKLISTED }) {
-            evictCachedEntity(cache, createCacheKey(st.qid(), state, st.dataset()));
-            evictCachedEntity(cache, createCacheKey(st.qid(), state, ""));
+        for (const std::string dataset : {std::string(""), st.dataset()}) {
+            std::vector<model::Statement> oldEntity, newEntity;
+            auto oldKey = createCacheKey(st.qid(), st.approval_state(), dataset);
+            auto newKey = createCacheKey(st.qid(), state, dataset);
+            if (getCachedEntity(cache, oldKey, &oldEntity)) {
+                oldEntity.erase(std::remove_if(oldEntity.begin(), oldEntity.end(),
+                                               [&st](const model::Statement &s) { return s.id() == st.id(); }),
+                                oldEntity.end());
+                storeCachedEntity(cache, oldKey, oldEntity);
+            }
+
+            st.set_approval_state(state);
+            if (getCachedEntity(cache, newKey, &newEntity)) {
+                newEntity.push_back(st);
+                storeCachedEntity(cache, newKey, newEntity);
+            }
         }
+
         cache.rise("ACTIVITIES");
         StatusService().SetDirty();
     } catch (PersistenceException const &e) {
@@ -290,8 +302,10 @@ bool SourcesToolBackend::getCachedEntity(
 
             StatusService().AddRedisHit();
 
-            *result = std::vector<Statement>(stmts.statements().cbegin(),
-                                             stmts.statements().cend());
+            std::copy(stmts.statements().begin(),
+                      stmts.statements().end(),
+                      std::back_inserter(*result));
+
             cache.store_data(cacheKey, *result);
             return true;
         } catch(const CacheException& ex) {
@@ -365,6 +379,7 @@ void SourcesToolBackend::populateCachedEntities() {
             for (const auto& s : results) {
                 if (qid != s.qid() && qid != "") {
                     // store current batch of statements and clear it
+                    LOG(INFO) << stmts.statements_size() << " statements for QID " << qid;
                     redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
                     stmts.clear_statements();
                 }
@@ -373,6 +388,8 @@ void SourcesToolBackend::populateCachedEntities() {
             }
             offset += limit;
         } while (results.size() > 0);
+
+        redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
     }
 
 }
