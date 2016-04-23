@@ -22,6 +22,7 @@ ADD_DEFINITIONS(
 #find_package (GFlags REQUIRED)
 find_package (Protobuf 10 REQUIRED)
 find_package (GLog REQUIRED)
+find_package (GFlags REQUIRED)
 find_package (Threads)
 find_package (CPPCMS REQUIRED)
 find_package (CPPDB REQUIRED)
@@ -52,6 +53,7 @@ include_directories()
 
 add_executable(primarysources_inject inject.cc)
 add_executable(primarysources_deduplicate deduplicate.cc)
+add_executable(primarysources_updatecache updatecache.cc)
 add_executable(primarysources_service main.cc)
 
 target_link_libraries(primarysources_service
@@ -62,6 +64,9 @@ target_link_libraries(primarysources_inject  primarysources_persistence
         ${DB_LIBS} ${GLOG_LIBRARY})
 target_link_libraries(primarysources_deduplicate primarysources_persistence
         ${DB_LIBS} ${GLOG_LIBRARY})
+target_link_libraries(primarysources_updatecache
+        primarysources_persistence primarysources_redis jsoncpp primarysources_util
+        ${DB_LIBS} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY})
 
 install(TARGETS primarysources_inject primarysources_deduplicate primarysources_service
         RUNTIME DESTINATION bin)

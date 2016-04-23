@@ -71,7 +71,7 @@ void RedisCacheService::Connect() {
     }
 
     std::lock_guard<std::mutex> lock(redox_mutex_);
-    redox_.reset(new redox::Redox(LOG(INFO)));
+    redox_.reset(new redox::Redox());
 
     connected_ = redox_->connect(host_, port_, [this](int state) {
         connected_ = state == redox::Redox::CONNECTED;

@@ -4,6 +4,8 @@
 #ifndef HAVE_PERSISTENCE_H_
 #define HAVE_PERSISTENCE_H_
 
+#include <functional>
+
 #include <cppdb/frontend.h>
 #include <cppcms/json.h>
 #include <exception>
@@ -87,8 +89,19 @@ class Persistence {
             int count, model::ApprovalState state);
 
     /**
-    * Return all statements.
+    * Return all statements, calling the callback function for each in turn.
     */
+    void getAllStatements(
+            std::function<void(const model::Statement&)> callback,
+            int offset = 0, int limit = 10,
+            model::ApprovalState state = model::ApprovalState::ANY,
+            const std::string& dataset = "",
+            const std::string& property = "",
+            const model::Value* value = nullptr);
+
+    /**
+     * Return all statements.
+     */
     std::vector<model::Statement> getAllStatements(
             int offset = 0, int limit = 10,
             model::ApprovalState state = model::ApprovalState::ANY,

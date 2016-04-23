@@ -430,8 +430,24 @@ std::vector<Statement> Persistence::getStatementsByQID(
     return result;
 }
 
-
 std::vector<Statement> Persistence::getAllStatements(
+        int offset, int limit,
+        ApprovalState state,
+        const std::string& dataset,
+        const std::string& property,
+        const Value* value) {
+
+    std::vector<Statement> result;
+
+    getAllStatements([&result](const Statement& stmt){
+        result.push_back(stmt);
+    }, offset, limit, state, dataset, property, value);
+
+    return result;
+}
+
+void Persistence::getAllStatements(
+        std::function<void(const model::Statement&)> callback,
         int offset, int limit,
         ApprovalState state,
         const std::string& dataset,
@@ -440,7 +456,6 @@ std::vector<Statement> Persistence::getAllStatements(
     if (!managedTransactions)
         sql.begin();
 
-    std::vector<Statement> result;
 
     std::string valueSelector = "";
     if (value != nullptr) {
@@ -487,7 +502,7 @@ std::vector<Statement> Persistence::getAllStatements(
     cppdb::result res = (statement << limit << offset);
 
     while (res.next()) {
-        result.push_back(buildStatement(
+        callback(buildStatement(
                 res.get<int64_t>("sid"), res.get<std::string>("subject"),
                 res.get<int64_t>("mainsnak"), res.get<std::string>("dataset"),
                 res.get<int64_t>("upload"), res.get<int16_t>("state")));
@@ -495,8 +510,6 @@ std::vector<Statement> Persistence::getAllStatements(
 
     if (!managedTransactions)
         sql.commit();
-
-    return result;
 }
 
 

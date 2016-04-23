@@ -42,32 +42,6 @@ SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
     if (!config["redis"].is_null()) {
         redisSvc.reset(new RedisCacheService(config["redis"]["host"].str(),
                                              config["redis"]["port"].number()));
-
-        if (!config["redis"]["update"].is_null()) {
-            redisUpdater = std::thread([&] {
-                LOG(INFO) << "Redis updater started.";
-                while (!shutdown) {
-                    populateCachedEntities();
-
-                    std::unique_lock<std::mutex> lock(redisMutex);
-                    redisWaiter.wait_for(
-                            lock,
-                            std::chrono::seconds((int64_t)config["redis"]["update"].number()));
-                }
-                LOG(INFO) << "Redis updater shutdown";
-            });
-        }
-    }
-}
-
-SourcesToolBackend::~SourcesToolBackend() {
-    if (redisSvc != nullptr) {
-        {
-            std::unique_lock<std::mutex> lock(redisMutex);
-            shutdown = true;
-            redisWaiter.notify_all();
-        }
-        redisUpdater.join();
     }
 }
 
@@ -362,9 +336,7 @@ void SourcesToolBackend::storeCachedEntity(
     }
 }
 
-void SourcesToolBackend::populateCachedEntities() {
-    std::lock_guard<std::mutex> lock(redisMutex);
-
+void SourcesToolBackend::UpdateCachedEntities(cache_t &cache) {
     LOG(INFO) << "Start refreshing all cached Redis entries ...";
 
     int limit = 100;
@@ -398,7 +370,9 @@ void SourcesToolBackend::populateCachedEntities() {
             offset += limit;
         } while (results.size() > 0);
 
-        redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
+        if (stmts.statements_size() > 0) {
+            redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
+        }
     }
 
     LOG(INFO) << "Finished refreshing all cached Redis entries.";
@@ -416,14 +390,6 @@ void SourcesToolBackend::ClearCachedEntities(cache_t &cache) {
     }
 
 }
-
-void SourcesToolBackend::UpdateCachedEntities(cache_t &cache) {
-    if (redisSvc) {
-        std::unique_lock<std::mutex> lock(redisMutex);
-        redisWaiter.notify_all();
-    }
-}
-
 
 }  // namespace primarysources
 }  // namespace wikidata
