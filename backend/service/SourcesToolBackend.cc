@@ -26,7 +26,7 @@ namespace {
 // be used.
 std::string createCacheKey(const std::string &qid, ApprovalState state, const std::string &dataset) {
     if (dataset == "") {
-        return "ALL-" + qid + "-" + std::to_string(state);
+        return qid + "-" + std::to_string(state);
     } else {
         return qid + "-" + dataset + "-" + std::to_string(state);
     }
@@ -34,7 +34,7 @@ std::string createCacheKey(const std::string &qid, ApprovalState state, const st
 }  // namespace
 
 SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
-    : connstr(build_connection(config["database"])) {
+    : connstr(build_connection(config["database"])), shutdown(false) {
     // trigger initialisation of the singleton
     StatusService();
 
@@ -52,10 +52,7 @@ SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
                     std::unique_lock<std::mutex> lock(redisMutex);
                     redisWaiter.wait_for(
                             lock,
-                            std::chrono::seconds((int64_t)config["redis"]["update"].number()),
-                            [&]() {
-                                return shutdown;
-                            });
+                            std::chrono::seconds((int64_t)config["redis"]["update"].number()));
                 }
                 LOG(INFO) << "Redis updater shutdown";
             });
@@ -65,9 +62,12 @@ SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
 
 SourcesToolBackend::~SourcesToolBackend() {
     if (redisSvc != nullptr) {
-        std::unique_lock<std::mutex> lock(redisMutex);
-        shutdown = true;
-        redisWaiter.notify_all();
+        {
+            std::unique_lock<std::mutex> lock(redisMutex);
+            shutdown = true;
+            redisWaiter.notify_all();
+        }
+        redisUpdater.join();
     }
 }
 
@@ -234,7 +234,7 @@ int64_t SourcesToolBackend::importStatements(cache_t& cache, std::istream &_in,
         sql.commit();
     }
 
-    cache.clear();
+    ClearCachedEntities(cache);
 
     return count;
 }
@@ -245,7 +245,7 @@ void SourcesToolBackend::deleteStatements(cache_t& cache, ApprovalState state) {
     Persistence p(sql);
     p.deleteStatements(state);
 
-    cache.clear();
+    ClearCachedEntities(cache);
 }
 
 model::Status SourcesToolBackend::getStatus(cache_t& cache, const std::string& dataset) {
@@ -302,7 +302,7 @@ bool SourcesToolBackend::getCachedEntity(
 
     StatusService().AddCacheMiss();
 
-    if (redisSvc != nullptr) {
+    if (redisSvc) {
         try {
             model::Statements stmts;
             if (!redisSvc->Get(cacheKey, &stmts)) {
@@ -332,7 +332,7 @@ void SourcesToolBackend::evictCachedEntity(
         cache_t& cache, const std::string &cacheKey) {
     cache.rise(cacheKey);
 
-    if (redisSvc != nullptr) {
+    if (redisSvc) {
         try {
             redisSvc->Evict(cacheKey);
         } catch(const CacheException& ex) {
@@ -348,7 +348,7 @@ void SourcesToolBackend::storeCachedEntity(
         const std::vector<Statement> &value) {
     cache.store_data(cacheKey, value);
 
-    if (redisSvc != nullptr) {
+    if (redisSvc) {
         try {
             model::Statements stmts;
             for (const Statement& stmt : value) {
@@ -401,7 +401,29 @@ void SourcesToolBackend::populateCachedEntities() {
         redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
     }
 
+    LOG(INFO) << "Finished refreshing all cached Redis entries.";
 }
+
+void SourcesToolBackend::ClearCachedEntities(cache_t &cache) {
+    cache.clear();
+
+    if (redisSvc) {
+        try {
+            redisSvc->Clear();
+        } catch(const CacheException& ex) {
+            LOG(ERROR) << "Redis exception when clearing cache: " << ex.what();
+        }
+    }
+
+}
+
+void SourcesToolBackend::UpdateCachedEntities(cache_t &cache) {
+    if (redisSvc) {
+        std::unique_lock<std::mutex> lock(redisMutex);
+        redisWaiter.notify_all();
+    }
+}
+
 
 }  // namespace primarysources
 }  // namespace wikidata

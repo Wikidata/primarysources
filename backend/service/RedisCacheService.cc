@@ -82,6 +82,23 @@ void RedisCacheService::Connect() {
     }
 }
 
+void RedisCacheService::Clear() {
+    Connect();
+
+    auto& keys = redox_->commandSync<std::vector<std::string>>({"KEYS", prefix_+"*"});
+    if (!keys.ok()) {
+        LOG(ERROR) << "Error retrieving keys from Redis server: " << keys.lastError();
+        keys.free();
+        throw CacheException(keys.lastError());
+    }
+    LOG(INFO) << "Clearing " << keys.reply().size() << " Redis entries";
+    for (const auto& key : keys.reply()) {
+        redox_->del(key);
+    }
+    keys.free();
+    LOG(INFO) << "All Redis entries cleared";
+}
+
 
 const char* CacheException::what() const noexcept {
     return message.c_str();

@@ -193,6 +193,22 @@ class SourcesToolService : public cppcms::application {
      */
     void getActivityLog();
 
+    /**
+     * Clear all cache entries.
+     *
+     * Request:
+     *     POST /cache/clear
+     */
+    void clearCache();
+
+    /**
+     * Update cache with data from database.
+     *
+     * Request:
+     *     POST /cache/update
+     */
+    void updateCache();
+
  private:
     void handleGetPostStatement(std::string);
 

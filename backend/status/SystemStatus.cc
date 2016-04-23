@@ -49,6 +49,15 @@ StatusService::StatusService(const std::string& connstr)
     });
 }
 
+StatusService::~StatusService() {
+    {
+        std::unique_lock<std::mutex> lck(status_mutex_);
+        shutdown_ = true;
+        notify_dirty_.notify_one();
+    }
+    updater_.join();
+}
+
 void StatusService::AddCacheHit() {
     std::lock_guard<std::mutex> lock(status_mutex_);
     status_.mutable_system()->set_cache_hits(

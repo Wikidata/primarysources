@@ -51,11 +51,7 @@ class StatusService {
     // Initialise status. Sets up fields.
     StatusService(const std::string& connstr);
 
-    ~StatusService() {
-        std::unique_lock<std::mutex> lck(status_mutex_);
-        shutdown_ = true;
-        notify_dirty_.notify_one();
-    };
+    ~StatusService();;
 
     void Update();
 

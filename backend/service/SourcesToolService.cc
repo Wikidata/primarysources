@@ -82,6 +82,14 @@ SourcesToolService::SourcesToolService(cppcms::service &srv)
     dispatcher().assign("/dashboard/activitylog",
                         &SourcesToolService::getActivityLog, this);
     mapper().assign("activitylog", "/dashboard/activitylog");
+
+    dispatcher().assign("/cache/clear",
+                        &SourcesToolService::clearCache, this);
+    mapper().assign("cache_clear", "/cache/clear");
+
+    dispatcher().assign("/cache/update",
+                        &SourcesToolService::updateCache, this);
+    mapper().assign("cache_update", "/cache/update");
 }
 
 
@@ -90,6 +98,40 @@ void SourcesToolService::handleGetPostStatement(std::string stid) {
         approveStatement(std::stoll(stid));
     } else {
         getStatement(std::stoll(stid));
+    }
+}
+
+void SourcesToolService::clearCache() {
+    TimeLogger timer("POST /cache/clear");
+
+    addCORSHeaders();
+    addVersionHeaders();
+
+    if (request().request_method() == "POST") {
+        // check if token matches
+        if (request().get("token") != settings()["token"].str()) {
+            RESPONSE(UNAUTHORIZED) << "Invalid authorization token";
+            return;
+        }
+
+        backend.ClearCachedEntities(cache());
+    }
+}
+
+void SourcesToolService::updateCache() {
+    TimeLogger timer("POST /cache/update");
+
+    addCORSHeaders();
+    addVersionHeaders();
+
+    if (request().request_method() == "POST") {
+        // check if token matches
+        if (request().get("token") != settings()["token"].str()) {
+            RESPONSE(UNAUTHORIZED) << "Invalid authorization token";
+            return;
+        }
+
+        backend.UpdateCachedEntities(cache());
     }
 }
 
@@ -504,6 +546,7 @@ void SourcesToolService::getActivityLog() {
 
     backend.StatusService().AddGetStatusRequest();
 }
+
 
 }  // namespace primarysources
 }  // namespace wikidata

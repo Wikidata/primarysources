@@ -120,15 +120,25 @@ public:
     status::StatusService& StatusService() {
         return status::StatusService::instance(connstr);
     };
-private:
+
+    // Clear all cached entities from all caches. Might be expensive.
+    void ClearCachedEntities(cache_t& cache);
+
+    // Update Redis entity cache with data from persistence layer.
+    void UpdateCachedEntities(cache_t& cache);
+ private:
 
     // Internal method to abstract away from different entity caching backends.
     bool getCachedEntity(cache_t& cache,
                          const std::string& cacheKey,
                          std::vector<model::Statement>* result);
+
+    // Store/update a cached entity
     void storeCachedEntity(cache_t& cache,
                            const std::string& cacheKey,
                            const std::vector<model::Statement>& value);
+
+    // Evict a single cached entity.
     void evictCachedEntity(cache_t& cache, const std::string& cacheKey);
 
     // Iterate over all statements and update the Redis cache if configured.

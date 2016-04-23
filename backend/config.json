@@ -25,6 +25,7 @@
     "redis": {
         "host": "localhost",
         "port": 6379,
+        "update": 3600,
     },
     "token": "AeVeeP6U"
 }

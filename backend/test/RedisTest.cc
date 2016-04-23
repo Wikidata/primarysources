@@ -57,6 +57,17 @@ TEST_F(RedisTest, NotFound) {
     EXPECT_FALSE(cacheService.Get(key, &result));
 }
 
+TEST_F(RedisTest, Clear) {
+    std::string key = "foo";
+    std::string value = "bar";
+
+    cacheService.Add(key, value);
+
+    cacheService.Clear();
+
+    std::string result;
+    EXPECT_FALSE(cacheService.Get(key, &result));
+}
 
 }  // namespace primarysources
 }  // namespace wikidata

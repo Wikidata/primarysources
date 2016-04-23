@@ -34,6 +34,9 @@ class RedisCacheService {
     // Remove the value with the given key from the cache. The key will be
     // prefixed by the shared prefix used in this service.
     void Evict(const std::string& key);
+
+    // Clear all primary sources tool entries from Redis (expensive operation).
+    void Clear();
  private:
     void Connect();
 
