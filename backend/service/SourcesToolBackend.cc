@@ -34,7 +34,7 @@ std::string createCacheKey(const std::string &qid, ApprovalState state, const st
 }  // namespace
 
 SourcesToolBackend::SourcesToolBackend(const cppcms::json::value& config)
-    : connstr(build_connection(config["database"])), shutdown(false) {
+    : connstr(build_connection(config["database"])) {
     // trigger initialisation of the singleton
     StatusService();
 

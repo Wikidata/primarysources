@@ -145,8 +145,6 @@ public:
 
     // A pointer to a Redis cache service if Redis is configured.
     std::unique_ptr<RedisCacheService> redisSvc;
-
-    bool shutdown = false;
 };
 
 
