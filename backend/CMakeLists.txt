@@ -68,7 +68,9 @@ target_link_libraries(primarysources_updatecache
         primarysources_persistence primarysources_redis jsoncpp primarysources_util
         ${DB_LIBS} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY})
 
-install(TARGETS primarysources_inject primarysources_deduplicate primarysources_service
+install(TARGETS
+        primarysources_inject primarysources_deduplicate primarysources_updatecache
+        primarysources_service
         RUNTIME DESTINATION bin)
 
 add_subdirectory(test)
