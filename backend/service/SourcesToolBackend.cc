@@ -114,11 +114,14 @@ void SourcesToolBackend::updateStatement(
                 storeCachedEntity(cache, oldKey, oldEntity);
             }
 
-            st.set_approval_state(state);
-            getCachedEntity(cache, newKey, &newEntity);
-
-            newEntity.push_back(st);
-            storeCachedEntity(cache, newKey, newEntity);
+            // no need to cache duplicates or blacklisted
+            if (state != ApprovalState::DUPLICATE && state != ApprovalState::BLACKLISTED) {
+                if(getCachedEntity(cache, newKey, &newEntity)) {
+                    st.set_approval_state(state);
+                    newEntity.push_back(st);
+                    storeCachedEntity(cache, newKey, newEntity);
+                }
+            }
         }
 
         // update database (after cache, it's slower)
