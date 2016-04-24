@@ -102,13 +102,6 @@ void SourcesToolBackend::updateStatement(
         // make sure statement exists; will throw an exception if not
         Statement st = p.getStatement(id);
 
-        p.updateStatement(id, state);
-        if (state != ApprovalState::DUPLICATE && state != ApprovalState::BLACKLISTED) {
-            p.addUserlog(user, id, state);
-        }
-
-        sql.commit();
-
         // update cache
         for (const std::string dataset : {std::string(""), st.dataset()}) {
             std::vector<model::Statement> oldEntity, newEntity;
@@ -127,6 +120,14 @@ void SourcesToolBackend::updateStatement(
             newEntity.push_back(st);
             storeCachedEntity(cache, newKey, newEntity);
         }
+
+        // update database (after cache, it's slower)
+        p.updateStatement(id, state);
+        if (state != ApprovalState::DUPLICATE && state != ApprovalState::BLACKLISTED) {
+            p.addUserlog(user, id, state);
+        }
+
+        sql.commit();
 
         cache.rise("ACTIVITIES");
         StatusService().SetDirty();
