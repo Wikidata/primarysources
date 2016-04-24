@@ -25,11 +25,22 @@ namespace {
 // is "", the cache key refers to all statements and the dataset name "all" will
 // be used.
 std::string createCacheKey(const std::string &qid, ApprovalState state, const std::string &dataset) {
-    if (dataset == "") {
-        return qid + "-" + std::to_string(state);
-    } else {
-        return qid + "-" + dataset + "-" + std::to_string(state);
-    }
+    std::string createCacheKey(const std::string &qid, ApprovalState state, const std::string &dataset) {
+        std::string result;
+        if (dataset == "") {
+            result.reserve(qid.size() + 2);
+            result += qid;
+            result += "-";
+            result += std::to_string(state);
+        } else {
+            result.reserve(qid.size() + dataset.size() + 3);
+            result += qid;
+            result += "-";
+            result += dataset;
+            result += "-";
+            result += std::to_string(state);
+        }
+        return result;
 }
 }  // namespace
 
@@ -102,7 +113,8 @@ void SourcesToolBackend::updateStatement(
         // make sure statement exists; will throw an exception if not
         Statement st = p.getStatement(id);
 
-        // update cache
+        // update cache; fetch entities with the QID of the statement and remove from the old state,
+        // add to the new state
         for (const std::string dataset : {std::string(""), st.dataset()}) {
             std::vector<model::Statement> oldEntity, newEntity;
             auto oldKey = createCacheKey(st.qid(), st.approval_state(), dataset);

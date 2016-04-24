@@ -76,9 +76,6 @@ class StatusService {
     bool shutdown_;
 };
 
-void Init();
-
-
 }
 }
 }
