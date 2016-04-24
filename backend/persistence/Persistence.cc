@@ -517,7 +517,7 @@ void Persistence::getAllStatements(
                 << dataset << (dataset == ""));
 
 
-    cppdb::result res = (statement << cppdb::row);
+    cppdb::result res = statement;
 
     while (res.next()) {
         callback(buildStatement(
