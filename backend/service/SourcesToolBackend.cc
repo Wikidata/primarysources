@@ -25,22 +25,21 @@ namespace {
 // is "", the cache key refers to all statements and the dataset name "all" will
 // be used.
 std::string createCacheKey(const std::string &qid, ApprovalState state, const std::string &dataset) {
-    std::string createCacheKey(const std::string &qid, ApprovalState state, const std::string &dataset) {
-        std::string result;
-        if (dataset == "") {
-            result.reserve(qid.size() + 2);
-            result += qid;
-            result += "-";
-            result += std::to_string(state);
-        } else {
-            result.reserve(qid.size() + dataset.size() + 3);
-            result += qid;
-            result += "-";
-            result += dataset;
-            result += "-";
-            result += std::to_string(state);
-        }
-        return result;
+    std::string result;
+    if (dataset == "") {
+        result.reserve(qid.size() + 2);
+        result += qid;
+        result += "-";
+        result += std::to_string(state);
+    } else {
+        result.reserve(qid.size() + dataset.size() + 3);
+        result += qid;
+        result += "-";
+        result += dataset;
+        result += "-";
+        result += std::to_string(state);
+    }
+    return result;
 }
 }  // namespace
 
