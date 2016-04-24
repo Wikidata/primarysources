@@ -96,6 +96,7 @@ int main(int argc, char **argv) {
 
             int64_t size = p.countStatements(ApprovalState::UNAPPROVED, dataset);
             ProgressBar progress(70, size);
+            progress.Update(0);
 
             p.getAllStatements([&](const Statement& s) {
                 if (qid != s.qid() && qid != "") {
