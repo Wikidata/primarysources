@@ -122,10 +122,10 @@ void SourcesToolBackend::updateStatement(
             }
 
             st.set_approval_state(state);
-            if (getCachedEntity(cache, newKey, &newEntity)) {
-                newEntity.push_back(st);
-                storeCachedEntity(cache, newKey, newEntity);
-            }
+            getCachedEntity(cache, newKey, &newEntity);
+
+            newEntity.push_back(st);
+            storeCachedEntity(cache, newKey, newEntity);
         }
 
         cache.rise("ACTIVITIES");
