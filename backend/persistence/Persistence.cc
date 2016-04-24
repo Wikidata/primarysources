@@ -439,23 +439,9 @@ std::vector<Statement> Persistence::getAllStatements(
 
     std::vector<Statement> result;
 
-    getAllStatements([&result](const Statement& stmt){
-        result.push_back(stmt);
-    }, offset, limit, state, dataset, property, value);
 
-    return result;
-}
-
-void Persistence::getAllStatements(
-        std::function<void(const model::Statement&)> callback,
-        int offset, int limit,
-        ApprovalState state,
-        const std::string& dataset,
-        const std::string& property,
-        const Value* value) {
     if (!managedTransactions)
         sql.begin();
-
 
     std::string valueSelector = "";
     if (value != nullptr) {
@@ -477,13 +463,13 @@ void Persistence::getAllStatements(
     int16_t sqlState = getSQLState(state);
     cppdb::statement statement = (
             sql << "SELECT statement.id AS sid, subject, mainsnak, state, dataset, upload "
-                   "FROM statement INNER JOIN snak ON statement.mainsnak = snak.id "
-                   "WHERE (statement.state = ? OR ?) AND (statement.dataset = ? OR ?) "
-                   "AND (snak.property = ? OR ?) " + valueSelector + " "
-                   "ORDER BY subject LIMIT ? OFFSET ?"
-                << sqlState << (sqlState == -1)
-                << dataset << (dataset == "")
-                << property << (property == ""));
+                           "FROM statement INNER JOIN snak ON statement.mainsnak = snak.id "
+                           "WHERE (statement.state = ? OR ?) AND (statement.dataset = ? OR ?) "
+                           "AND (snak.property = ? OR ?) " + valueSelector + " "
+                           "LIMIT ? OFFSET ?"
+            << sqlState << (sqlState == -1)
+            << dataset << (dataset == "")
+            << property << (property == ""));
 
     if (value != nullptr) {
         if (value->has_entity()) {
@@ -500,6 +486,38 @@ void Persistence::getAllStatements(
     }
 
     cppdb::result res = (statement << limit << offset);
+
+    while (res.next()) {
+        result.push_back(buildStatement(
+                res.get<int64_t>("sid"), res.get<std::string>("subject"),
+                res.get<int64_t>("mainsnak"), res.get<std::string>("dataset"),
+                res.get<int64_t>("upload"), res.get<int16_t>("state")));
+    }
+
+    if (!managedTransactions)
+        sql.commit();
+
+    return result;
+}
+
+void Persistence::getAllStatements(
+        std::function<void(const model::Statement&)> callback,
+        model::ApprovalState state, const std::string& dataset) {
+    if (!managedTransactions)
+        sql.begin();
+
+
+    int16_t sqlState = getSQLState(state);
+    cppdb::statement statement = (
+            sql << "SELECT statement.id AS sid, subject, mainsnak, state, dataset, upload "
+                   "FROM statement INNER JOIN snak ON statement.mainsnak = snak.id "
+                   "WHERE (statement.state = ? OR ?) AND (statement.dataset = ? OR ?) "
+                   "ORDER BY subject"
+                << sqlState << (sqlState == -1)
+                << dataset << (dataset == ""));
+
+
+    cppdb::result res = (statement << cppdb::row);
 
     while (res.next()) {
         callback(buildStatement(

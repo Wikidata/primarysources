@@ -78,32 +78,34 @@ int main(int argc, char **argv) {
 
         LOG(INFO) << "Start refreshing all cached Redis entries ...";
 
-        int limit = 100;
-
         auto datasets = p.getDatasets();
         datasets.insert(datasets.begin(), "");
 
+        long count = 0;
         for (const auto& dataset : datasets) {
             TimeLogger timer("Refreshing cached Redis entries for " +
                              (dataset == "" ? "all datasets" : "dataset " + dataset));
 
-            int offset = 0;
-            std::vector<Statement> results;
+            std::cout << "Updating Redis entries for " <<
+                    (dataset == "" ? "all datasets" : "dataset " + dataset) << std::endl;
+
             Statements stmts;
             std::string qid = "";
-            do {
-                results = p.getAllStatements(offset, limit, ApprovalState::UNAPPROVED, dataset);
-                for (const auto& s : results) {
-                    if (qid != s.qid() && qid != "") {
-                        // store current batch of statements and clear it
-                        redis.Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
-                        stmts.clear_statements();
+
+            p.getAllStatements([&redis, &qid, &dataset, &stmts, &count](const Statement& s) {
+                if (qid != s.qid() && qid != "") {
+                    // store current batch of statements and clear it
+                    redis.Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
+                    stmts.clear_statements();
+                    count++;
+
+                    if (count % 1000 == 0) {
+                        std::cout << "Updated entries: " << count << std::endl;
                     }
-                    *stmts.add_statements() = s;
-                    qid = s.qid();
                 }
-                offset += limit;
-            } while (results.size() > 0);
+                *stmts.add_statements() = s;
+                qid = s.qid();
+            }, ApprovalState::UNAPPROVED, dataset);
 
             if (stmts.statements_size() > 0) {
                 redis.Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);

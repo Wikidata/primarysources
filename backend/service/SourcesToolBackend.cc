@@ -339,8 +339,6 @@ void SourcesToolBackend::storeCachedEntity(
 void SourcesToolBackend::UpdateCachedEntities(cache_t &cache) {
     LOG(INFO) << "Start refreshing all cached Redis entries ...";
 
-    int limit = 100;
-
     cppdb::session sql(connstr); // released when sql is destroyed
 
     Persistence p(sql);
@@ -350,25 +348,20 @@ void SourcesToolBackend::UpdateCachedEntities(cache_t &cache) {
 
     for (const auto& dataset : datasets) {
         TimeLogger timer("Refreshing cached Redis entries for " +
-                                 (dataset == "" ? "all datasets" : "dataset " + dataset));
+                         (dataset == "" ? "all datasets" : "dataset " + dataset));
 
-        int offset = 0;
-        std::vector<model::Statement> results;
         model::Statements stmts;
         std::string qid = "";
-        do {
-            results = p.getAllStatements(offset, limit, ApprovalState::UNAPPROVED, dataset);
-            for (const auto& s : results) {
-                if (qid != s.qid() && qid != "") {
-                    // store current batch of statements and clear it
-                    redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
-                    stmts.clear_statements();
-                }
-                *stmts.add_statements() = s;
-                qid = s.qid();
+
+        p.getAllStatements([&](const Statement& s) {
+            if (qid != s.qid() && qid != "") {
+                // store current batch of statements and clear it
+                redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
+                stmts.clear_statements();
             }
-            offset += limit;
-        } while (results.size() > 0);
+            *stmts.add_statements() = s;
+            qid = s.qid();
+        }, ApprovalState::UNAPPROVED, dataset);
 
         if (stmts.statements_size() > 0) {
             redisSvc->Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);

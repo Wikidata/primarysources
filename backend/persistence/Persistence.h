@@ -93,11 +93,8 @@ class Persistence {
     */
     void getAllStatements(
             std::function<void(const model::Statement&)> callback,
-            int offset = 0, int limit = 10,
             model::ApprovalState state = model::ApprovalState::ANY,
-            const std::string& dataset = "",
-            const std::string& property = "",
-            const model::Value* value = nullptr);
+            const std::string& dataset = "");
 
     /**
      * Return all statements.
