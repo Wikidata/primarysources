@@ -11,14 +11,16 @@
 #include <glog/logging.h>
 
 #include <cppcms/json.h>
-#include <util/TimeLogger.h>
 #include <persistence/Persistence.h>
 #include <service/RedisCacheService.h>
+#include <util/ProgressBar.h>
+#include <util/TimeLogger.h>
 
 DEFINE_string(c, "", "backend configuration file to read database and Redisconfiguration");
 DEFINE_string(mode, "update", "cache update mode (update or clear)");
 
 using wikidata::primarysources::TimeLogger;
+using wikidata::primarysources::ProgressBar;
 using wikidata::primarysources::Persistence;
 using wikidata::primarysources::RedisCacheService;
 
@@ -92,15 +94,18 @@ int main(int argc, char **argv) {
             Statements stmts;
             std::string qid = "";
 
-            p.getAllStatements([&redis, &qid, &dataset, &stmts, &count](const Statement& s) {
+            int64_t size = p.countStatements(ApprovalState::UNAPPROVED, dataset);
+            ProgressBar progress(70, size);
+
+            p.getAllStatements([&](const Statement& s) {
                 if (qid != s.qid() && qid != "") {
                     // store current batch of statements and clear it
                     redis.Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
                     stmts.clear_statements();
                     count++;
 
-                    if (count % 1000 == 0) {
-                        std::cout << "Updated entries: " << count << std::endl;
+                    if (count % (size/100) == 0) {
+                        progress.Update(count);
                     }
                 }
                 *stmts.add_statements() = s;
@@ -110,6 +115,7 @@ int main(int argc, char **argv) {
             if (stmts.statements_size() > 0) {
                 redis.Add(createCacheKey(qid, ApprovalState::UNAPPROVED, dataset), stmts);
             }
+            progress.Update(size);
         }
 
         LOG(INFO) << "Finished refreshing all cached Redis entries.";
