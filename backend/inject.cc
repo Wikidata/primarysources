@@ -2,10 +2,12 @@
 // Author: Sebastian Schaffert <schaffert@google.com>
 
 #include <ctime>
-#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
@@ -17,58 +19,35 @@
 #include "parser/Parser.h"
 #include "persistence/Persistence.h"
 
+DEFINE_string(c, "", "backend configuration file to read database configuration");
+DEFINE_string(i, "", "input data file containing statements in TSV format");
+DEFINE_string(d, "", "name of the dataset we are importing (e,g, \"freebase\")");
+DEFINE_bool(z, false, "input is compressed with GZIP");
+
 using wikidata::primarysources::model::Statement;
 using wikidata::primarysources::parser::parseTSV;
 
-void usage(char *cmd) {
-    std::cout << "Usage: " << cmd << " [-z] -c config.json -i datafile -d dataset" << std::endl;
-    std::cout << "Options:" <<std::endl;
-    std::cout << " -c config.json     backend configuration file to read database configuration" << std::endl;
-    std::cout << " -i datafile        input data file containing statements in TSV format" << std::endl;
-    std::cout << " -d dataset         name of the dataset we are importing (e,g, \"freebase\")" << std::endl;
-    std::cout << " -z                 input is compressed with GZIP" << std::endl;
-}
-
 int main(int argc, char **argv) {
-    int opt;
-    bool gzipped = false;
-    std::string datafile, configfile, dataset;
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    gflags::SetUsageMessage(
+            std::string("Import statements into the Primary Sources database. Sample Usage: \n") +
+            argv[0] + " [-z] -c config.json -i datafile -d dataset");
+    google::InitGoogleLogging(argv[0]);
 
-    // read options from command line
-    while( (opt = getopt(argc,argv,"zc:i:d:")) != -1) {
-        switch(opt) {
-            case 'c':
-                configfile = optarg;
-                break;
-            case 'i':
-                datafile = optarg;
-                break;
-            case 'd':
-                dataset = optarg;
-                break;
-            case 'z':
-                gzipped = true;
-                break;
-            default:
-                usage(argv[0]);
-                return 1;
-        }
-    }
-
-    if (datafile == "" || configfile == "" || dataset == "") {
+    if (FLAGS_i == "" || FLAGS_c == "" || FLAGS_d == "") {
+        gflags::ShowUsageWithFlags(argv[0]);
         std::cerr << "Options -d, -c and -i are required." << std::endl << std::endl;
-        usage(argv[0]);
         return 1;
     }
 
     // read configuration
     cppcms::json::value config;
-    std::ifstream cfgfile(configfile);
+    std::ifstream cfgfile(FLAGS_c);
     cfgfile >> config;
 
     try {
 
-        std::ifstream file(datafile, std::ios_base::in | std::ios_base::binary);
+        std::ifstream file(FLAGS_i, std::ios_base::in | std::ios_base::binary);
 
         if(file.fail()) {
             std::cerr << "could not open data file" << std::endl;
@@ -76,7 +55,7 @@ int main(int argc, char **argv) {
         }
 
         boost::iostreams::filtering_istreambuf zin;
-        if (gzipped) {
+        if (FLAGS_z) {
             zin.push(boost::iostreams::gzip_decompressor());
         }
         zin.push(file);
@@ -96,7 +75,7 @@ int main(int argc, char **argv) {
                 std::chrono::system_clock::now().time_since_epoch()).count();
 
         int64_t count = 0;
-        parseTSV(dataset, upload, in, [&sql, &p, &count](Statement st) {
+        parseTSV(FLAGS_d, upload, in, [&sql, &p, &count](Statement st) {
             try {
                 p.addStatement(st);
             } catch (wikidata::primarysources::PersistenceException& e) {

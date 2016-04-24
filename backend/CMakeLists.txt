@@ -61,9 +61,9 @@ target_link_libraries(primarysources_service
         primarysources_status primarysources_util
         ${DB_LIBS} ${Tcmalloc_LIBRARIES} ${GLOG_LIBRARY})
 target_link_libraries(primarysources_inject  primarysources_persistence
-        ${DB_LIBS} ${GLOG_LIBRARY})
+        ${DB_LIBS} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY})
 target_link_libraries(primarysources_deduplicate primarysources_persistence
-        ${DB_LIBS} ${GLOG_LIBRARY})
+        ${DB_LIBS} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY})
 target_link_libraries(primarysources_updatecache
         primarysources_persistence primarysources_redis jsoncpp primarysources_util
         ${DB_LIBS} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY})

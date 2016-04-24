@@ -16,7 +16,7 @@
 #include <util/ProgressBar.h>
 #include <util/TimeLogger.h>
 
-DEFINE_string(c, "", "backend configuration file to read database and Redisconfiguration");
+DEFINE_string(c, "", "backend configuration file to read database and Redis configuration");
 DEFINE_string(mode, "update", "cache update mode (update or clear)");
 
 using wikidata::primarysources::TimeLogger;
@@ -45,9 +45,12 @@ std::string createCacheKey(const std::string &qid, ApprovalState state, const st
 int main(int argc, char **argv) {
     google::InitGoogleLogging(argv[0]);
     gflags::ParseCommandLineFlags(&argc, &argv, true);
-
+    gflags::SetUsageMessage(
+            std::string("Bulk-load or clear Redis cache. Usage: \n") +
+            argv[0] + " -c configfile -mode [update|clear]");
 
     if (FLAGS_c == "") {
+        gflags::ShowUsageWithFlags(argv[0]);
         std::cerr << "Option -c is required." << std::endl << std::endl;
         return 1;
     }

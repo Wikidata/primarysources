@@ -2,10 +2,12 @@
 // Author: Sebastian Schaffert <schaffert@google.com>
 
 #include <ctime>
-#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/copy.hpp>
@@ -15,43 +17,25 @@
 #include "parser/Parser.h"
 #include "persistence/Persistence.h"
 
-
-void usage(char *cmd) {
-    std::cout << "Usage: " << cmd << " -c config.json [-s start_id]" << std::endl;
-    std::cout << "Options:" <<std::endl;
-    std::cout << " -c config.json     backend configuration file to read database configuration" << std::endl;
-}
+DEFINE_string(c, "", "backend configuration file to read database configuration");
+DEFINE_int64(s, 0, "database ID of the statement to start with");
 
 int main(int argc, char **argv) {
-    int opt;
-    int64_t start_id = 0;
-    std::string configfile;
+    gflags::ParseCommandLineFlags(&argc, &argv, true);
+    gflags::SetUsageMessage(
+            std::string("Deduplicates statements in the Primary Sources database. Usage:\n") +
+            argv[0] + " -c config.json [-s start_id]");
+    google::InitGoogleLogging(argv[0]);
 
-    // read options from command line
-    while( (opt = getopt(argc,argv,"c:s:")) != -1) {
-        switch(opt) {
-            case 'c':
-                configfile = optarg;
-                break;
-            case 's':
-                start_id = atoi(optarg);
-                break;
-
-            default:
-                usage(argv[0]);
-                return 1;
-        }
-    }
-
-    if (configfile == "") {
+    if (FLAGS_c == "") {
+        gflags::ShowUsageWithFlags(argv[0]);
         std::cerr << "Option -c is required." << std::endl << std::endl;
-        usage(argv[0]);
         return 1;
     }
 
     // read configuration
     cppcms::json::value config;
-    std::ifstream cfgfile(configfile);
+    std::ifstream cfgfile(FLAGS_c);
     cfgfile >> config;
 
     try {
@@ -66,7 +50,7 @@ int main(int argc, char **argv) {
 
         sql.begin();
         wikidata::primarysources::Persistence p(sql, true);
-        p.markDuplicates(start_id);
+        p.markDuplicates(FLAGS_s);
         sql.commit();
 
         std::cout << "DEDUPLICATE: deduplication finished" << std::endl;
