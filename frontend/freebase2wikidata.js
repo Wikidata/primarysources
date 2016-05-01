@@ -30,11 +30,13 @@
 */
 
 /* global
-  console, mw, $, async, HTML_TEMPLATES, OO, wikibase
+  console, mw, $, module, HTML_TEMPLATES, OO, wikibase
 */
 
 $(document).ready(function() {
   'use strict';
+
+  var async = module.exports;
 
   var DEBUG = JSON.parse(localStorage.getItem('f2w_debug')) || false;
   var FAKE_OR_RANDOM_DATA =
