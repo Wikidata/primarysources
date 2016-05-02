@@ -346,7 +346,7 @@ void SourcesToolService::getStatus() {
     result["statements"]["wrong"] = status.statements().wrong();
 
     // users information
-    result["users"] = status.total_users();
+    result["total_users"] = status.total_users();
 
     Json::Value topusers(Json::arrayValue);
     for (const auto& entry : status.top_users()) {
