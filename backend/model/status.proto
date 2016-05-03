@@ -86,7 +86,7 @@ message RequestStatus {
 // A message describing the current status of the primary sources backend.
 message Status {
     // Current statement statistics.
-    StatementStatus statements = 1;
+    map<string, StatementStatus> statements = 1;
 
     // Current system statistics.
     SystemStatus system = 2;

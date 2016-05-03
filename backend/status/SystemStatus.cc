@@ -141,22 +141,37 @@ void StatusService::Update() {
             Persistence p(sql, true);
             sql.begin();
 
-            auto st_total = p.countStatements("");
-            auto st_approved = p.countStatements(ApprovalState::APPROVED, "");
-            auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, "");
-            auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, "");
-            auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, "");
-            auto st_wrong = p.countStatements(ApprovalState::WRONG, "");
-            auto users = p.countUsers();
+            std::vector<std::string> datasets = p.getDatasets();
+            datasets.push_back("");
 
+            for(auto it = datasets.begin(); it != datasets.end(); ++it) {
+                auto st_total = p.countStatements(*it);
+                auto st_approved = p.countStatements(ApprovalState::APPROVED, *it);
+                auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, *it);
+                auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, *it);
+                auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, *it);
+                auto st_wrong = p.countStatements(ApprovalState::WRONG, *it);
+
+                {
+                    std::lock_guard<std::mutex> lock(status_mutex_);
+
+                    auto statements = status_.mutable_statements();
+                    if(statements->find(*it) == statements->end()) {
+                        (*statements)[*it] = wikidata::primarysources::model::StatementStatus();
+                    }
+
+                    statements->at(*it).set_statements(st_total);
+                    statements->at(*it).set_approved(st_approved);
+                    statements->at(*it).set_unapproved(st_unapproved);
+                    statements->at(*it).set_duplicate(st_duplicate);
+                    statements->at(*it).set_blacklisted(st_blacklisted);
+                    statements->at(*it).set_wrong(st_wrong);
+                }
+            }
+
+            auto users = p.countUsers();
             {
                 std::lock_guard<std::mutex> lock(status_mutex_);
-                status_.mutable_statements()->set_statements(st_total);
-                status_.mutable_statements()->set_approved(st_approved);
-                status_.mutable_statements()->set_unapproved(st_unapproved);
-                status_.mutable_statements()->set_duplicate(st_duplicate);
-                status_.mutable_statements()->set_blacklisted(st_blacklisted);
-                status_.mutable_statements()->set_wrong(st_wrong);
                 status_.set_total_users(users);
             }
 
@@ -199,16 +214,6 @@ model::Status StatusService::Status(const std::string& dataset) {
         status_.mutable_system()->set_resident_set_size(memstat.getRSS());
     }
 
-
-    // work directly on the status in case we do not request a specific 
-    // dataset, otherwise make a copy.
-    if (dataset == "") {
-        return status_;
-    }
-
-    model::Status copy = status_;
-    model::Status* work = &copy;
-
     RETRY({
         if (dirty_) {
             TimeLogger("Update statement status");
@@ -217,41 +222,50 @@ model::Status StatusService::Status(const std::string& dataset) {
             Persistence p(sql, true);
             sql.begin();
 
-            auto st_total = p.countStatements(dataset);
-            auto st_approved = p.countStatements(ApprovalState::APPROVED, dataset);
-            auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, dataset);
-            auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, dataset);
-            auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, dataset);
-            auto st_wrong = p.countStatements(ApprovalState::WRONG, dataset);
-            auto users = p.countUsers();
+            if(p.hasDataset(dataset)) {
+                auto st_total = p.countStatements(dataset);
+                auto st_approved = p.countStatements(ApprovalState::APPROVED, dataset);
+                auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, dataset);
+                auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, dataset);
+                auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, dataset);
+                auto st_wrong = p.countStatements(ApprovalState::WRONG, dataset);
+                auto users = p.countUsers();
 
-            {
-                std::lock_guard<std::mutex> lock(status_mutex_);
-                work->mutable_statements()->set_statements(st_total);
-                work->mutable_statements()->set_approved(st_approved);
-                work->mutable_statements()->set_unapproved(st_unapproved);
-                work->mutable_statements()->set_duplicate(st_duplicate);
-                work->mutable_statements()->set_blacklisted(st_blacklisted);
-                work->mutable_statements()->set_wrong(st_wrong);
-                work->set_total_users(users);
+                {
+                    std::lock_guard<std::mutex> lock(status_mutex_);
+
+                    auto statements = status_.mutable_statements();
+                    if(statements->find(dataset) == statements->end()) {
+                        (*statements)[dataset] = wikidata::primarysources::model::StatementStatus();
+                    }
+
+                    statements->at(dataset).set_statements(st_total);
+                    statements->at(dataset).set_approved(st_approved);
+                    statements->at(dataset).set_unapproved(st_unapproved);
+                    statements->at(dataset).set_duplicate(st_duplicate);
+                    statements->at(dataset).set_blacklisted(st_blacklisted);
+                    statements->at(dataset).set_wrong(st_wrong);
+                    status_.set_total_users(users);
+                }
             }
 
             auto topusers = p.getTopUsers(10);
             {
                 std::lock_guard<std::mutex> lock(status_mutex_);
-                work->clear_top_users();
+                status_.clear_top_users();
                 for (model::UserStatus &st : topusers) {
-                    work->add_top_users()->Swap(&st);
+                    status_.add_top_users()->Swap(&st);
                 }
             }
 
-            if (dataset == "") {
-                dirty_ = false;
-            }
+            dirty_ = false;
 
             sql.commit();
         }
     }, 3, cppdb::cppdb_error);
+
+    model::Status copy = status_;
+    model::Status* work = &copy;
 
     return *work;
 }

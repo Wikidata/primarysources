@@ -38,8 +38,23 @@ bool operator==(const SystemStatus &lhs, const SystemStatus &rhs) {
 
 
 bool operator==(const Status &lhs, const Status &rhs) {
-    if (lhs.statements() != rhs.statements()) {
-        return false;
+    std::set<std::string> all_keys;
+    for(auto it = lhs.statements().begin(); it != lhs.statements().end(); ++it)
+        all_keys.insert(it->first);
+    for(auto it = rhs.statements().begin(); it != rhs.statements().end(); ++it)
+        all_keys.insert(it->first);
+
+    auto lst = lhs.statements();
+    auto rst = rhs.statements();
+
+    for(auto key = all_keys.begin(); key != all_keys.end(); ++key) {
+        auto l = lst.find(*key);
+        auto r = rst.find(*key);
+
+        if(l == lst.end() || r == rst.end())
+            return false;
+        else if(l->second != r->second)
+            return false;
     }
 
     if (lhs.system() != rhs.system()) {

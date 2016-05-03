@@ -793,6 +793,22 @@ std::vector<std::string> Persistence::getDatasets() {
 }
 
 
+bool Persistence::hasDataset(const std::string& dataset) {
+    if (!managedTransactions)
+        sql.begin();
+
+    cppdb::result res =(
+            sql << "SELECT 1 FROM statement WHERE dataset = ?"
+                << dataset);
+
+    bool result = res.next();
+
+    if (!managedTransactions)
+        sql.commit();
+
+    return result;
+}
+
 const char *PersistenceException::what() const noexcept {
     return message.c_str();
 }

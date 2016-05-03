@@ -186,6 +186,11 @@ class Persistence {
      */
     std::vector<std::string> getDatasets();
 
+    /**
+     * Whether there is at least one statement belonging to
+     * the given dataset
+     */
+    bool hasDataset(const std::string& dataset);
 
 private:
     // reference to the wrapped sql session
