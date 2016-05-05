@@ -22,6 +22,11 @@ inline bool operator!=(const RequestStatus &lhs, const RequestStatus &rhs) {
     return !(lhs == rhs);
 }
 
+bool operator==(const DatasetStatus &lhs, const DatasetStatus &rhs);
+inline bool operator!=(const DatasetStatus &lhs, const DatasetStatus &rhs) {
+    return !(lhs == rhs);
+}
+
 inline std::ostream& operator<<(std::ostream& os, const RequestStatus& s) {
     return os << s.DebugString();
 }

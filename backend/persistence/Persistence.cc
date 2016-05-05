@@ -659,15 +659,19 @@ int64_t Persistence::countStatements(ApprovalState state, const std::string& dat
 }
 
 
-int32_t Persistence::countUsers() {
+int32_t Persistence::countUsers(const std::string& dataset) {
     int32_t result = 0;
 
     if (!managedTransactions)
         sql.begin();
 
-    cppdb::result res = (
-            sql << "SELECT COUNT(DISTINCT user) FROM userlog" << cppdb::row
-    );
+    cppdb::result res;
+
+    res = sql << "SELECT COUNT(DISTINCT user)"
+                 "FROM userlog INNER JOIN statement ON userlog.stmt = statement.id"
+                 "WHERE statement.dataset = ? OR ?"
+            << dataset << (dataset == "")
+            << cppdb::row;
 
     if (!res.empty()) {
         result = res.get<int32_t>(0);
@@ -680,16 +684,23 @@ int32_t Persistence::countUsers() {
 }
 
 
-std::vector<model::UserStatus> Persistence::getTopUsers(int32_t limit) {
+std::vector<model::UserStatus> Persistence::getTopUsers(const std::string& dataset, int32_t limit) {
     std::vector<model::UserStatus> result;
 
     if (!managedTransactions)
         sql.begin();
 
     cppdb::result res = (
-            sql << "SELECT user, count(id) AS activities FROM userlog "
-                   "WHERE state != 5 AND state != 6 "
-                   "GROUP BY user ORDER BY activities DESC LIMIT ?"
+            sql << "SELECT userlog.user, count(userlog.id) AS activities"
+                   "FROM userlog INNER JOIN statement ON userlog.stmt = statement.id"
+                   "WHERE userlog.state != 5"
+                   "    AND userlog.state != 6"
+                   "    AND (statement.dataset = ? OR ?)"
+                   "GROUP BY userlog.user"
+                   "ORDER BY userlog.activities DESC"
+                   "LIMIT ?"
+                << dataset
+                << (dataset == "")
                 << limit
     );
 

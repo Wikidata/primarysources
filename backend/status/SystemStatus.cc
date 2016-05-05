@@ -145,37 +145,10 @@ void StatusService::Update() {
             datasets.push_back("");
 
             for(auto it = datasets.begin(); it != datasets.end(); ++it) {
-                auto st_total = p.countStatements(*it);
-                auto st_approved = p.countStatements(ApprovalState::APPROVED, *it);
-                auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, *it);
-                auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, *it);
-                auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, *it);
-                auto st_wrong = p.countStatements(ApprovalState::WRONG, *it);
-
-                {
-                    std::lock_guard<std::mutex> lock(status_mutex_);
-
-                    auto statements = status_.mutable_statements();
-                    if(statements->find(*it) == statements->end()) {
-                        (*statements)[*it] = wikidata::primarysources::model::StatementStatus();
-                    }
-
-                    statements->at(*it).set_statements(st_total);
-                    statements->at(*it).set_approved(st_approved);
-                    statements->at(*it).set_unapproved(st_unapproved);
-                    statements->at(*it).set_duplicate(st_duplicate);
-                    statements->at(*it).set_blacklisted(st_blacklisted);
-                    statements->at(*it).set_wrong(st_wrong);
-                }
+                updateDatasetStatistics(*it, p);
             }
 
-            auto users = p.countUsers();
-            {
-                std::lock_guard<std::mutex> lock(status_mutex_);
-                status_.set_total_users(users);
-            }
-
-            auto topusers = p.getTopUsers(10);
+            auto topusers = p.getTopUsers("", 10);
             {
                 std::lock_guard<std::mutex> lock(status_mutex_);
                 status_.clear_top_users();
@@ -223,39 +196,7 @@ model::Status StatusService::Status(const std::string& dataset) {
             sql.begin();
 
             if(p.hasDataset(dataset)) {
-                auto st_total = p.countStatements(dataset);
-                auto st_approved = p.countStatements(ApprovalState::APPROVED, dataset);
-                auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, dataset);
-                auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, dataset);
-                auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, dataset);
-                auto st_wrong = p.countStatements(ApprovalState::WRONG, dataset);
-                auto users = p.countUsers();
-
-                {
-                    std::lock_guard<std::mutex> lock(status_mutex_);
-
-                    auto statements = status_.mutable_statements();
-                    if(statements->find(dataset) == statements->end()) {
-                        (*statements)[dataset] = wikidata::primarysources::model::StatementStatus();
-                    }
-
-                    statements->at(dataset).set_statements(st_total);
-                    statements->at(dataset).set_approved(st_approved);
-                    statements->at(dataset).set_unapproved(st_unapproved);
-                    statements->at(dataset).set_duplicate(st_duplicate);
-                    statements->at(dataset).set_blacklisted(st_blacklisted);
-                    statements->at(dataset).set_wrong(st_wrong);
-                    status_.set_total_users(users);
-                }
-            }
-
-            auto topusers = p.getTopUsers(10);
-            {
-                std::lock_guard<std::mutex> lock(status_mutex_);
-                status_.clear_top_users();
-                for (model::UserStatus &st : topusers) {
-                    status_.add_top_users()->Swap(&st);
-                }
+                updateDatasetStatistics(dataset, p);
             }
 
             dirty_ = false;
@@ -268,6 +209,40 @@ model::Status StatusService::Status(const std::string& dataset) {
     model::Status* work = &copy;
 
     return *work;
+}
+
+void StatusService::updateDatasetStatistics(const std::string& dataset, Persistence& p) {
+    auto st_total = p.countStatements(dataset);
+    auto st_approved = p.countStatements(ApprovalState::APPROVED, dataset);
+    auto st_unapproved = p.countStatements(ApprovalState::UNAPPROVED, dataset);
+    auto st_duplicate = p.countStatements(ApprovalState::DUPLICATE, dataset);
+    auto st_blacklisted = p.countStatements(ApprovalState::BLACKLISTED, dataset);
+    auto st_wrong = p.countStatements(ApprovalState::WRONG, dataset);
+    auto topusers = p.getTopUsers(dataset, 10);
+    auto users = p.countUsers(dataset);
+
+    {
+        std::lock_guard<std::mutex> lock(status_mutex_);
+
+        auto datasets = status_.mutable_datasets();
+        if(datasets->find(dataset) == datasets->end()) {
+            (*datasets)[dataset] = wikidata::primarysources::model::DatasetStatus();
+        }
+
+        datasets->at(dataset).set_users(users);
+        datasets->at(dataset).clear_top_users();
+        for (model::UserStatus &st : topusers) {
+            datasets->at(dataset).add_top_users()->Swap(&st);
+        }
+
+        auto statements = datasets->at(dataset).mutable_statements();
+        statements->set_statements(st_total);
+        statements->set_approved(st_approved);
+        statements->set_unapproved(st_unapproved);
+        statements->set_duplicate(st_duplicate);
+        statements->set_blacklisted(st_blacklisted);
+        statements->set_wrong(st_wrong);
+    }
 }
 
 std::string StatusService::Version() const {

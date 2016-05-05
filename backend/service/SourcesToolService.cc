@@ -338,13 +338,13 @@ void SourcesToolService::getStatus() {
     // show dataset-specific statements count, defaulting to all datasets
     result["dataset"] = (dataset != "") ? dataset : "all";
 
-    if(status.statements().find(dataset) != status.statements().end()) {
-        result["statements"]["total"] = status.statements().at(dataset).statements();
-        result["statements"]["approved"] = status.statements().at(dataset).approved();
-        result["statements"]["unapproved"] = status.statements().at(dataset).unapproved();
-        result["statements"]["blacklisted"] = status.statements().at(dataset).blacklisted();
-        result["statements"]["duplicate"] = status.statements().at(dataset).duplicate();
-        result["statements"]["wrong"] = status.statements().at(dataset).wrong();
+    if(status.datasets().find(dataset) != status.datasets().end()) {
+        result["statements"]["total"] = status.datasets().at(dataset).statements().statements();
+        result["statements"]["approved"] = status.datasets().at(dataset).statements().approved();
+        result["statements"]["unapproved"] = status.datasets().at(dataset).statements().unapproved();
+        result["statements"]["blacklisted"] = status.datasets().at(dataset).statements().blacklisted();
+        result["statements"]["duplicate"] = status.datasets().at(dataset).statements().duplicate();
+        result["statements"]["wrong"] = status.datasets().at(dataset).statements().wrong();
     }
     else {
         result["statements"]["total"] = 0;
@@ -356,7 +356,7 @@ void SourcesToolService::getStatus() {
     }
 
     // users information
-    result["total_users"] = status.total_users();
+    result["users"] = status.datasets().at(dataset).users();
 
     Json::Value topusers(Json::arrayValue);
     for (const auto& entry : status.top_users()) {

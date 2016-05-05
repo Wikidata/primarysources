@@ -39,13 +39,13 @@ bool operator==(const SystemStatus &lhs, const SystemStatus &rhs) {
 
 bool operator==(const Status &lhs, const Status &rhs) {
     std::set<std::string> all_keys;
-    for(auto it = lhs.statements().begin(); it != lhs.statements().end(); ++it)
+    for(auto it = lhs.datasets().begin(); it != lhs.datasets().end(); ++it)
         all_keys.insert(it->first);
-    for(auto it = rhs.statements().begin(); it != rhs.statements().end(); ++it)
+    for(auto it = rhs.datasets().begin(); it != rhs.datasets().end(); ++it)
         all_keys.insert(it->first);
 
-    auto lst = lhs.statements();
-    auto rst = rhs.statements();
+    auto lst = lhs.datasets();
+    auto rst = rhs.datasets();
 
     for(auto key = all_keys.begin(); key != all_keys.end(); ++key) {
         auto l = lst.find(*key);
