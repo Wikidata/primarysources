@@ -65,6 +65,21 @@ message StatementStatus {
     int64 wrong = 6;
 }
 
+// Per-dataset statistics.
+message DatasetStatus {
+    // Name of the dataset
+    string dataset = 1;
+
+    // Current statement statistics.
+    StatementStatus statements = 2;
+
+    // User statistics for the top N users.
+    repeated UserStatus top_users = 3;
+
+    // Number of users.
+    int64 users = 5;
+}
+
 // Statistics about requests since system startup.
 message RequestStatus {
     // Number of GET /entities/<id> requests since startup.
@@ -85,8 +100,8 @@ message RequestStatus {
 
 // A message describing the current status of the primary sources backend.
 message Status {
-    // Current statement statistics.
-    StatementStatus statements = 1;
+    // Per-dataset Status (the "empty-string" dataset contains global statistics).
+    map<string, DatasetStatus> datasets = 1;
 
     // Current system statistics.
     SystemStatus system = 2;

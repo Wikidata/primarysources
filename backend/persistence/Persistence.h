@@ -152,13 +152,13 @@ class Persistence {
     /**
      * Return the total number of users in the database
      */
-    int32_t countUsers();
+    int32_t countUsers(const std::string& dataset);
 
     /**
      * Return the top users with respect to the number of approved/rejected
      * statements, ordered by descending number of activities.
      */
-    std::vector<model::UserStatus> getTopUsers(int32_t limit=10);
+    std::vector<model::UserStatus> getTopUsers(const std::string& dataset, int32_t limit=10);
 
     /**
      * Iterate over all entities in the database, and mark all duplicate
@@ -186,6 +186,11 @@ class Persistence {
      */
     std::vector<std::string> getDatasets();
 
+    /**
+     * Whether there is at least one statement belonging to
+     * the given dataset
+     */
+    bool hasDataset(const std::string& dataset);
 
 private:
     // reference to the wrapped sql session

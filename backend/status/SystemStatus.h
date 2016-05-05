@@ -9,6 +9,9 @@
 #include <mutex>
 
 #include <model/Status.h>
+#include "persistence/Persistence.h"
+
+using wikidata::primarysources::Persistence;
 
 namespace wikidata {
 namespace primarysources {
@@ -54,6 +57,8 @@ class StatusService {
     ~StatusService();;
 
     void Update();
+
+    void updateDatasetStatistics(const std::string& dataset, Persistence &p);
 
     // SQL connection string.
     std::string connstr_;
