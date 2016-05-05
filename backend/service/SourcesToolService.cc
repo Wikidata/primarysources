@@ -356,10 +356,10 @@ void SourcesToolService::getStatus() {
     }
 
     // users information
-    result["users"] = status.datasets().at(dataset).users();
+    result["total_users"] = status.datasets().at(dataset).users();
 
     Json::Value topusers(Json::arrayValue);
-    for (const auto& entry : status.top_users()) {
+    for (const auto& entry : status.datasets().at(dataset).top_users()) {
         Json::Value v;
         v["name"] = entry.name();
         v["activities"] = entry.activities();
