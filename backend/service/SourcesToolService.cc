@@ -509,6 +509,7 @@ void SourcesToolService::addCORSHeaders() {
 void SourcesToolService::addVersionHeaders() {
     response().set_header("X-Powered-By",
                           std::string("Wikidata Sources Tool/") + backend.StatusService().Version());
+    response().set_header("Cache-Control", "no-cache");
 }
 
 
