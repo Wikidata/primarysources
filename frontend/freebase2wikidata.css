@@ -26,11 +26,6 @@
   width: 21em !important;
 }
 
-/* show reference heading which is otherwise only visible in edit mode */
-.wikibase-referenceview div.wikibase-referenceview-heading {
-  display: block;
-}
-
 .mw-notification-tag-ps-error {
   background-color: #ffecec !important;
   border: 1px solid #f5aca6 !important;
