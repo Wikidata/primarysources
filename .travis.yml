@@ -32,6 +32,14 @@ before_install:
   - if [ ! -d cppdb-0.3.1 ]; then tar xjf download/cppdb-0.3.1.tar.bz2; fi
   - if [ ! -d cppcms-1.0.5 ]; then tar xjf download/cppcms-1.0.5.tar.bz2; fi
   - if [ ! -d protobuf-3.0.2 ]; then tar xzf download/protobuf-cpp-3.0.2.tar.gz; fi
+  - git clone https://github.com/google/re2.git
+  - cd re2
+  - git checkout d36f207ec3663340c3111627d13d3359b73b9208
+  - make
+  - make test
+  - sudo make install
+  - sudo make testinstall
+  - cd ..
 
 install:
   - export CXX="g++-4.9" CC="gcc-4.9"
