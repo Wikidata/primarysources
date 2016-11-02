@@ -33,7 +33,7 @@ before_install:
   - cd ..
   - if [ ! -d cppdb-0.3.1 ]; then tar xjf download/cppdb-0.3.1.tar.bz2; fi
   - if [ ! -d cppcms-1.0.5 ]; then tar xjf download/cppcms-1.0.5.tar.bz2; fi
-  - if [ ! -d protobuf-3.0.2 ]; then tar xzf protobuf-cpp-3.0.2.tar.gz; fi
+  - if [ ! -d protobuf-3.0.2 ]; then tar xzf download/protobuf-cpp-3.0.2.tar.gz; fi
 
 install:
   - export CXX="g++-4.9" CC="gcc-4.9"
