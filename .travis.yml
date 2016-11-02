@@ -41,7 +41,7 @@ install:
   - cmake .. && make && sudo make install
   - cd ../..
   - cd protobuf-3.0.2
-  - ./configure && make && make install
+  - ./configure && make && sudo make install
   - cd ..
 
 
