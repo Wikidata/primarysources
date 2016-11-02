@@ -44,7 +44,7 @@ before_install:
 
 install:
   - export CXX="g++-4.9" CC="gcc-4.9"
-  - mkdir -p cppcms-1.0.5/build && cd cppcms-1.0.5/build && cmake .. && make && sudo make install
+  - mkdir cppcms-1.0.5/build && cd cppcms-1.0.5/build && cmake .. && make && sudo make install
   - cd ../..
   - mkdir -p cppdb-0.3.1/build && cd cppdb-0.3.1/build
   - cmake .. && make && sudo make install
