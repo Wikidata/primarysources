@@ -17,8 +17,6 @@ addons:
     - gcc-4.9
     - g++-4.9
     - libboost1.55-all-dev
-    - libgoogle-glog-dev
-    - libgflags-dev
 
 cache:
   apt: true
