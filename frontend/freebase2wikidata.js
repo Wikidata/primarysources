@@ -1536,12 +1536,11 @@ $(document).ready(function() {
   function createClaim(subject, predicate, object, qualifiers) {
     var value = (tsvValueToJson(object)).value;
     var api = new mw.Api();
-    return api.post({
+    return api.postWithToken('csrf', {
       action: 'wbcreateclaim',
       entity: subject,
       property: predicate,
       snaktype: 'value',
-      token: mw.user.tokens.get('editToken'),
       value: JSON.stringify(value),
       summary: WIKIDATA_API_COMMENT
     }).then(function(data) {
@@ -1553,12 +1552,11 @@ $(document).ready(function() {
         }
 
         var value = (tsvValueToJson(qualifier.qualifierObject)).value;
-        return api.post({
+        return api.postWithToken('csrf', {
           action: 'wbsetqualifier',
           claim: data.claim.id,
           property: qualifier.qualifierProperty,
           snaktype: 'value',
-          token: mw.user.tokens.get('editToken'),
           value: JSON.stringify(value),
           summary: WIKIDATA_API_COMMENT
         }).then(saveQualifiers);
@@ -1574,11 +1572,10 @@ $(document).ready(function() {
     var api = new mw.Api();
     return createClaim(subject, predicate, object, qualifiers)
     .then(function(data) {
-      return api.post({
+      return api.postWithToken('csrf', {
         action: 'wbsetreference',
         statement: data.claim.id,
         snaks: JSON.stringify(formatSourceForSave(sourceSnaks)),
-        token: mw.user.tokens.get('editToken'),
         summary: WIKIDATA_API_COMMENT
       });
     });
@@ -1618,11 +1615,10 @@ $(document).ready(function() {
           break;
         }
       }
-      return api.post({
+      return api.postWithToken('csrf', {
         action: 'wbsetreference',
         statement: data.claims[predicate][index].id,
         snaks: JSON.stringify(formatSourceForSave(sourceSnaks)),
-        token: mw.user.tokens.get('editToken'),
         summary: WIKIDATA_API_COMMENT
       });
     }).done(function(data) {
