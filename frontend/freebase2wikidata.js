@@ -33,7 +33,7 @@
   console, mw, $, module, HTML_TEMPLATES, OO, wikibase
 */
 
-$(document).ready(function() {
+$(function() {
   'use strict';
 
   var async = module.exports;
