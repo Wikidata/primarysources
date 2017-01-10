@@ -1,7 +1,7 @@
 Primary Sources Tool for Wikidata
 =================================
 
-[![Build Status](https://travis-ci.org/google/primarysources.svg?branch=master)](https://travis-ci.org/google/primarysources)
+[![Build Status](https://travis-ci.org/Wikidata/primarysources.svg?branch=master)](https://travis-ci.org/Wikidata/primarysources)
 
 [Freebase](https://freebase.com) was launched to be a “Wikipedia for structured data”, because in
 2007 there was no such project. But now we do have Wikidata, and Wikidata
