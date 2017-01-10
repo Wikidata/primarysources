@@ -1,4 +1,5 @@
 sudo: required
+dist: trusty
 language: cpp
 
 notifications:
@@ -17,36 +18,39 @@ addons:
     - gcc-4.9
     - g++-4.9
     - libboost1.55-all-dev
-    - libgoogle-glog-dev
-    - libgflags-dev
 
 cache:
   apt: true
   directories:
   - download
-  - cppcms-1.0.5
-  - cppdb-0.3.1
 
 before_install:
-  - mkdir -p download && cd download
+  - cd download
   - if [ ! -f cppcms-1.0.5.tar.bz2 ]; then wget --no-verbose http://downloads.sourceforge.net/project/cppcms/cppcms/1.0.5/cppcms-1.0.5.tar.bz2; fi
   - if [ ! -f cppdb-0.3.1.tar.bz2 ]; then wget --no-verbose http://downloads.sourceforge.net/project/cppcms/cppdb/0.3.1/cppdb-0.3.1.tar.bz2; fi
-  - if [ ! -f protobuf-cpp-3.0.0-beta-2.tar.gz ]; then wget --no-verbose https://github.com/google/protobuf/releases/download/v3.0.0-beta-2/protobuf-cpp-3.0.0-beta-2.tar.gz; fi
+  - if [ ! -f protobuf-cpp-3.0.2.tar.gz ]; then wget --no-verbose https://github.com/google/protobuf/releases/download/v3.0.2/protobuf-cpp-3.0.2.tar.gz; fi
   - cd ..
   - if [ ! -d cppdb-0.3.1 ]; then tar xjf download/cppdb-0.3.1.tar.bz2; fi
   - if [ ! -d cppcms-1.0.5 ]; then tar xjf download/cppcms-1.0.5.tar.bz2; fi
-  - if [ ! -d protobuf-3.0.0-beta-2 ]; then tar xzf protobuf-cpp-3.0.0-beta-2.tar.gz; fi
+  - if [ ! -d protobuf-3.0.2 ]; then tar xzf download/protobuf-cpp-3.0.2.tar.gz; fi
+  - git clone https://github.com/google/re2.git
+  - cd re2
+  - git checkout d36f207ec3663340c3111627d13d3359b73b9208
+  - make
+  - make test
+  - sudo make install
+  - sudo make testinstall
+  - cd ..
 
 install:
   - export CXX="g++-4.9" CC="gcc-4.9"
-  - mkdir -p cppcms-1.0.5/build && cd cppcms-1.0.5/build
-  - cmake .. && make && sudo make install
+  - mkdir cppcms-1.0.5/build && cd cppcms-1.0.5/build && cmake .. && make && sudo make install
   - cd ../..
   - mkdir -p cppdb-0.3.1/build && cd cppdb-0.3.1/build
   - cmake .. && make && sudo make install
   - cd ../..
-  - cd protobuf-3.0.0-beta-2
-  - ./configure && make && make install
+  - cd protobuf-3.0.2
+  - ./configure && make && sudo make install
   - cd ..
 
 
