@@ -18,6 +18,10 @@ addons:
     - g++-4.9
     - libboost1.55-all-dev
     - libgoogle-perftools-dev
+    - libgoogle-glog-dev
+    - libgflags-dev
+    - libhiredis-dev 
+    - libev-dev
 
 cache:
   apt: true
@@ -40,6 +44,12 @@ before_install:
   - make test
   - sudo make install
   - sudo make testinstall
+  - cd ..
+  - git clone https://github.com/hmartiro/redox.git
+  - cd redox
+  - cmake .
+  - make
+  - sudo make install
   - cd ..
 
 install:
