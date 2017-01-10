@@ -50,7 +50,6 @@ before_install:
   - cmake .
   - make
   - sudo make install
-  - sudo make testinstall
   - cd ..
 
 install:
