@@ -11,7 +11,7 @@ notifications:
 
 addons:
   sources:
-    - ubuntu-toolchain-r-test
+  - ubuntu-toolchain-r-test
   apt:
     packages:
     - gcc-4.9
