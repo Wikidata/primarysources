@@ -1,5 +1,5 @@
 find_path(REDOX_INCLUDE_PATH NAMES redox.hpp)
-find_library(REDOX_LIBRARY NAMES libredox)
+find_library(REDOX_LIBRARY NAMES redox PATHS /usr/local/lib64)
 
 if(REDOX_INCLUDE_PATH AND REDOX_LIBRARY)
     set(REDOX_FOUND TRUE)
