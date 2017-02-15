@@ -54,13 +54,13 @@ std::string createCacheKey(const std::string &qid, ApprovalState state, const st
 
 int main(int argc, char **argv) {
     google::InitGoogleLogging(argv[0]);
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-    gflags::SetUsageMessage(
+    google::gflags::ParseCommandLineFlags(&argc, &argv, true);
+    google::gflags::SetUsageMessage(
             std::string("Bulk-load or clear Redis cache. Usage: \n") +
             argv[0] + " -c configfile -mode [update|clear]");
 
     if (FLAGS_c == "") {
-        gflags::ShowUsageWithFlags(argv[0]);
+        google::gflags::ShowUsageWithFlags(argv[0]);
         std::cerr << "Option -c is required." << std::endl << std::endl;
         return 1;
     }

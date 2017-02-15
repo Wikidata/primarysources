@@ -21,14 +21,14 @@ DEFINE_string(c, "", "backend configuration file to read database configuration"
 DEFINE_int64(s, 0, "database ID of the statement to start with");
 
 int main(int argc, char **argv) {
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-    gflags::SetUsageMessage(
+    google::gflags::ParseCommandLineFlags(&argc, &argv, true);
+    google::gflags::SetUsageMessage(
             std::string("Deduplicates statements in the Primary Sources database. Usage:\n") +
             argv[0] + " -c config.json [-s start_id]");
     google::InitGoogleLogging(argv[0]);
 
     if (FLAGS_c == "") {
-        gflags::ShowUsageWithFlags(argv[0]);
+        google::gflags::ShowUsageWithFlags(argv[0]);
         std::cerr << "Option -c is required." << std::endl << std::endl;
         return 1;
     }

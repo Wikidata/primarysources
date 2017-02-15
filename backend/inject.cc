@@ -28,14 +28,14 @@ using wikidata::primarysources::model::Statement;
 using wikidata::primarysources::parser::parseTSV;
 
 int main(int argc, char **argv) {
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-    gflags::SetUsageMessage(
+    google::gflags::ParseCommandLineFlags(&argc, &argv, true);
+    google::gflags::SetUsageMessage(
             std::string("Import statements into the Primary Sources database. Sample Usage: \n") +
             argv[0] + " [-z] -c config.json -i datafile -d dataset");
     google::InitGoogleLogging(argv[0]);
 
     if (FLAGS_i == "" || FLAGS_c == "" || FLAGS_d == "") {
-        gflags::ShowUsageWithFlags(argv[0]);
+        google::gflags::ShowUsageWithFlags(argv[0]);
         std::cerr << "Options -d, -c and -i are required." << std::endl << std::endl;
         return 1;
     }
