@@ -62,6 +62,7 @@ install:
   - cd protobuf-3.0.2
   - ./configure && make && sudo make install
   - cd ..
+  - export LD_LIBRARY_PATH=/usr/local/lib
 
 
 script: sh -c 'cd backend && mkdir build && cd build && cmake .. && make && make test'
