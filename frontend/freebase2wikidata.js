@@ -260,7 +260,56 @@ $(function() {
     var title = mw.config.get('wgTitle');
     return qidRegEx.test(title) ? title : false;
   }
+  
+ function generateNav() {
+    $('#p-ps-navigation').remove();
+    $('#mw-panel').append('<div class="portal" role="navigation" id="p-ps-navigation" aria-labelledby="p-ps-navigation-label"><h3 id="p-ps-navigation-label">PS navigation tool</h3></div>');
+    $('#p-ps-navigation').append('<div class="body"><ul id="p-ps-nav-list"></ul></div>');
+    
+    var b = [];
+    var c = [];
+    
+    $('.wikibase-statementgroupview').each(function(index, item) {
+      var a = $(item).find('.new-object')[0];
+      if (a) {
+        b.push($(item).find('.wikibase-statementgroupview-property-label').find('a'));
+        c.push($(a).find('.valueview-instaticmode')[0]);
+      }
+    });
 
+    for (var i = 0; i < b.length; i++) {
+      var text = b[i].text();
+      $('#p-ps-nav-list').append('<li id="n-ps-anchor' + text.replace(/\s+/g, '') + '"><a href="#" title="move to ' + text + '">' + text + '</a></li>');
+      $('#n-ps-anchor' + text.replace(/\s+/g, '')).click({
+        counter: i
+      }, function(e) {
+        e.preventDefault();
+        c[e.data.counter].scrollIntoView();
+      });
+    }
+
+    $(function() {
+
+      var $sidebar = $('#p-ps-navigation'),
+        $window = $(window),
+        offset = $sidebar.offset(),
+        topPadding = 15;
+
+      $window.scroll(function() {
+        if ($window.scrollTop() > offset.top) {
+          $sidebar.stop().animate({
+            marginTop: $window.scrollTop() - offset.top + topPadding
+          }, 200);
+        } else {
+          $sidebar.stop().animate({
+            marginTop: 0
+          }, 200);
+        }
+      });
+
+    });
+  }
+  
   var dataset = mw.cookie.get('ps-dataset', null, '');
   var windowManager;
 
@@ -315,6 +364,23 @@ $(function() {
             'List statements from Primary Sources'
           ));
         listDialog(listButton);
+      });
+    })();
+
+     // Add create Primary Sources nav list button
+    (function createPSNavList() {
+      var portletLink = $(mw.util.addPortletLink(
+        'p-tb',
+        '#',
+        'Generate PS navtool',
+        'n-ps-nav',
+        'Generate PS navtool',
+        '',
+        '#n-help'
+      ));
+      portletLink.children().click(function(e) {
+        e.preventDefault();
+        generateNav();
       });
     })();
 
