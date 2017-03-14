@@ -981,7 +981,30 @@ $(function() {
             }
           } else {
             // New object
-            createNewStatement(property, freebaseObject);
+            var isDuplicate = false;
+            for (var c = 0; c < wikidataClaims[property].length; c++) {
+              var wikidataObject = wikidataClaims[property][c];
+              var wikidataObjQid = wikidataObject.mainsnak.datavalue.value.id;
+              var freebaseObjQid = freebaseObject.object;
+
+              // Duplicate found
+              if (wikidataObjQid === freebaseObjQid) {
+                isDuplicate = true;
+                debug.log('Duplicate found! ' + property + ':'
+                                + wikidataObjQid);
+
+                // Add new sources to existing statement
+                prepareNewSources(
+                    property,
+                    freebaseObject,
+                    wikidataObject
+                );
+              }
+            }
+
+            if (!isDuplicate) {
+              createNewStatement(property, freebaseObject);
+            }
           }
         }
       } else {
@@ -1144,8 +1167,14 @@ $(function() {
       label.textContent = newLabel;
       // Append the references
       container = container
-          .querySelector('.wikibase-statementview-references')
-          .querySelector('.wikibase-listview');
+          .querySelector('.wikibase-statementview-references');
+      // Create wikibase-listview if not found
+      if (!container.querySelector('.wikibase-listview')) {
+        var sourcesListView = document.createElement('div');
+        sourcesListView.className = 'wikibase-listview';
+        container.insertBefore(sourcesListView, container.firstChild);
+      }
+      container = container.querySelector('.wikibase-listview');
       container.appendChild(fragment);
     });
   }
