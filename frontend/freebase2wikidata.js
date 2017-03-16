@@ -982,14 +982,11 @@ $(function() {
             var isDuplicate = false;
             for (var c = 0; c < wikidataClaims[property].length; c++) {
               var wikidataObject = wikidataClaims[property][c];
-              var wikidataObjQid = wikidataObject.mainsnak.datavalue.value.id;
-              var freebaseObjQid = freebaseObject.object;
 
-              // Duplicate found
-              if (wikidataObjQid === freebaseObjQid) {
+              if (wikidataObject.mainsnak.snaktype === 'value' &&
+                  jsonToTsvValue(wikidataObject.mainsnak.datavalue) === freebaseObject.object) {
                 isDuplicate = true;
-                debug.log('Duplicate found! ' + property + ':'
-                                + wikidataObjQid);
+                debug.log('Duplicate found! ' + property + ':' + freebaseObject.object);
 
                 // Add new sources to existing statement
                 prepareNewSources(
