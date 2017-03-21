@@ -1,25 +1,25 @@
 .existing-property {
-  background-color: #F6F6F6 !important;
+  background-color: #f8f9fa !important;
 }
 
 .new-property {
-  background-color: #A7D7F9 !important;
+  background-color: #b6c8ec !important;
 }
 
 .existing-object {
-  background-color: #F6F6F6 !important;
+  background-color: #f8f9fa !important;
 }
 
 .new-object {
-  background-color: #A7D7F9 !important;
+  background-color: #b6c8ec !important;
 }
 
 .existing-source {
-  background-color: #F6F6F6 !important;
+  background-color: #f8f9fa !important;
 }
 
 .new-source {
-  background-color: #A7D7F9 !important;
+  background-color: #b6c8ec !important;
 }
 
 .new-source .wikibase-toolbar-container {
@@ -32,8 +32,8 @@
 }
 
 .mw-notification-tag-ps-error {
-  background-color: #ffecec !important;
-  border: 1px solid #f5aca6 !important;
+  background-color: #fee7e6 !important;
+  border: 1px solid #b32424 !important;
 }
 
 #ps-config-button {
