@@ -853,7 +853,7 @@ $(function() {
     var coordinatesRegEx = /^@([+\-]?\d+(?:.\d+)?)\/([+\-]?\d+(?:.\d+))?$/;
 
     // fr:"Les Misérables"
-    var languageStringRegEx = /^(\w+):"([^"\\]*(?:\\.[^"\\]*)*)"$/;
+    var languageStringRegEx = /^(\w+):("[^"\\]*(?:\\.[^"\\]*)*")$/;
 
     // +2013-01-01T00:00:00Z/10
     /* jshint maxlen: false */
@@ -897,7 +897,7 @@ $(function() {
         type: 'monolingualtext',
         value: {
           language: value.replace(languageStringRegEx, '$1'),
-          text: value.replace(languageStringRegEx, '$2')
+          text: JSON.parse(value.replace(languageStringRegEx, '$2'))
         }
       };
     } else if (timeRegEx.test(value)) {
@@ -922,7 +922,7 @@ $(function() {
         }
       };
     } else {
-      value = value.replace(/^["']/, '').replace(/["']$/, '');
+      value = JSON.parse(value);
       if (isUrl(value)) {
         return {
           type: 'url',
@@ -1041,11 +1041,11 @@ $(function() {
     case 'globecoordinate':
       return '@' + dataValue.value.latitude + '/' + dataValue.value.longitude;
     case 'monolingualtext':
-      return dataValue.value.language + ':"' + dataValue.value.text + '"';
+      return dataValue.value.language + ':' + JSON.stringify(dataValue.value.text);
     case 'string':
       var str = (dataType === 'url') ? normalizeUrl(dataValue.value)
                                      : dataValue.value;
-      return '"' + str + '"';
+      return JSON.stringify(str);
     case 'wikibase-entityid':
       switch (dataValue.value['entity-type']) {
         case 'item':
