@@ -918,9 +918,7 @@ $(function() {
         type: 'quantity',
         value: {
           amount: value,
-          unit: '1',
-          upperBound: value,
-          lowerBound: value
+          unit: '1'
         }
       };
     } else {
