@@ -919,7 +919,7 @@ $(function() {
     var coordinatesRegEx = /^@([+\-]?\d+(?:.\d+)?)\/([+\-]?\d+(?:.\d+))?$/;
 
     // fr:"Les Misérables"
-    var languageStringRegEx = /^(\w+):"([^"\\]*(?:\\.[^"\\]*)*)"$/;
+    var languageStringRegEx = /^(\w+):("[^"\\]*(?:\\.[^"\\]*)*")$/;
 
     // +2013-01-01T00:00:00Z/10
     /* jshint maxlen: false */
@@ -963,7 +963,7 @@ $(function() {
         type: 'monolingualtext',
         value: {
           language: value.replace(languageStringRegEx, '$1'),
-          text: value.replace(languageStringRegEx, '$2')
+          text: JSON.parse(value.replace(languageStringRegEx, '$2'))
         }
       };
     } else if (timeRegEx.test(value)) {
@@ -984,13 +984,11 @@ $(function() {
         type: 'quantity',
         value: {
           amount: value,
-          unit: '1',
-          upperBound: value,
-          lowerBound: value
+          unit: '1'
         }
       };
     } else {
-      value = value.replace(/^["']/, '').replace(/["']$/, '');
+      value = JSON.parse(value);
       if (isUrl(value)) {
         return {
           type: 'url',
@@ -1047,7 +1045,27 @@ $(function() {
             }
           } else {
             // New object
-            createNewStatement(property, freebaseObject);
+            var isDuplicate = false;
+            for (var c = 0; c < wikidataClaims[property].length; c++) {
+              var wikidataObject = wikidataClaims[property][c];
+
+              if (wikidataObject.mainsnak.snaktype === 'value' &&
+                  jsonToTsvValue(wikidataObject.mainsnak.datavalue) === freebaseObject.object) {
+                isDuplicate = true;
+                debug.log('Duplicate found! ' + property + ':' + freebaseObject.object);
+
+                // Add new sources to existing statement
+                prepareNewSources(
+                    property,
+                    freebaseObject,
+                    wikidataObject
+                );
+              }
+            }
+
+            if (!isDuplicate) {
+              createNewStatement(property, freebaseObject);
+            }
           }
         }
       } else {
@@ -1109,11 +1127,11 @@ $(function() {
     case 'globecoordinate':
       return '@' + dataValue.value.latitude + '/' + dataValue.value.longitude;
     case 'monolingualtext':
-      return dataValue.value.language + ':"' + dataValue.value.text + '"';
+      return dataValue.value.language + ':' + JSON.stringify(dataValue.value.text);
     case 'string':
       var str = (dataType === 'url') ? normalizeUrl(dataValue.value)
                                      : dataValue.value;
-      return '"' + str + '"';
+      return JSON.stringify(str);
     case 'wikibase-entityid':
       switch (dataValue.value['entity-type']) {
         case 'item':
@@ -1210,8 +1228,14 @@ $(function() {
       label.textContent = newLabel;
       // Append the references
       container = container
-          .querySelector('.wikibase-statementview-references')
-          .querySelector('.wikibase-listview');
+          .querySelector('.wikibase-statementview-references');
+      // Create wikibase-listview if not found
+      if (!container.querySelector('.wikibase-listview')) {
+        var sourcesListView = document.createElement('div');
+        sourcesListView.className = 'wikibase-listview';
+        container.insertBefore(sourcesListView, container.firstChild);
+      }
+      container = container.querySelector('.wikibase-listview');
       container.appendChild(fragment);
     });
   }
