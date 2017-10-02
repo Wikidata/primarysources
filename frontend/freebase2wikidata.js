@@ -994,7 +994,13 @@ $(function() {
         }
       };
     } else {
-      value = JSON.parse(value);
+      try {
+        value = JSON.parse(value);
+      } catch(e) { //If it is an invalid JSON we assume it is the value
+      	if (!(e instanceof SyntaxError)) {
+      		throw e;
+      	}
+      }
       if (isUrl(value)) {
         return {
           type: 'url',
