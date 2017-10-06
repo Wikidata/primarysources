@@ -34,7 +34,6 @@
 */
 
 $(function() {
-  'use strict';
 
   var async = module.exports;
 
@@ -260,8 +259,8 @@ $(function() {
     var title = mw.config.get('wgTitle');
     return qidRegEx.test(title) ? title : false;
   }
-  
-  (function generateNav() { 
+
+  (function generateNav() {
     $('#mw-panel').append('<div class="portal" role="navigation" id="p-ps-navigation" aria-labelledby="p-ps-navigation-label"><h3 id="p-ps-navigation-label">Browse Primary Sources</h3></div>');
     var navigation =  $('#p-ps-navigation');
     navigation.append('<div class="body"><ul id="p-ps-nav-list"></ul></div>');
@@ -292,7 +291,7 @@ $(function() {
       }
     });
   }
-  
+
   var anchorList = [];
 
   function alphaPos(text){
@@ -331,7 +330,7 @@ $(function() {
         });
       }
     }
-  } 
+  }
 
   var dataset = mw.cookie.get('ps-dataset', null, '');
   var windowManager;
