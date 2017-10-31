@@ -46,7 +46,7 @@ $(function() {
   var WIKIDATA_ENTITY_DATA_URL =
       'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
   var FREEBASE_ENTITY_DATA_URL =
-      'https://tools.wmflabs.org/wikidata-primary-sources/entities/{{qid}}';
+      'http://it.dbpedia.org/pst/suggest?qid={{qid}}';
   var FREEBASE_STATEMENT_APPROVAL_URL =
       'https://tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
       '?state={{state}}&user={{user}}';
@@ -65,7 +65,7 @@ $(function() {
       'Added via [[Wikidata:Primary sources tool]]';
 
   var STATEMENT_STATES = {
-    new: 'new',
+    unapproved: 'new',
     approved: 'approved',
     rejected: 'rejected',
     duplicate: 'duplicate',
@@ -780,55 +780,55 @@ $(function() {
     if (FAKE_OR_RANDOM_DATA) {
       freebaseEntityData.push({
         statement: qid + '\tP31\tQ1\tP580\t+1840-01-01T00:00:00Z/9\tS143\tQ48183',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
         statement: qid + '\tP108\tQ95\tS854\t"http://research.google.com/pubs/vrandecic.html"',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
         statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http://simia.net/wiki/Denny"\tS813\t+2015-02-14T00:00:00Z/11',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
         statement: qid + '\tP1451\ten:"foo bar"\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"http://www.ebay.com/itm/GNC-Mens-Saw-Palmetto-Formula-60-Tablets/301466378726?pt=LH_DefaultDomain_0&hash=item4630cbe1e6"',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
         statement: qid + '\tP108\tQ8288\tP582\t+2013-09-30T00:00:00Z/10\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
         statement: qid + '\tP1082\t-1234',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
         statement: qid + '\tP625\t@-12.12334556/23.1234',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
         statement: qid + '\tP646\t"/m/05zhl_"',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
       freebaseEntityData.push({
         statement: qid + '\tP569\t+1840-01-01T00:00:00Z/11\tS854\t"https://lists.wikimedia.org/pipermail/wikidata-l/2013-July/002518.html"',
-        state: STATEMENT_STATES.new,
+        state: STATEMENT_STATES.unapproved,
         id: 0,
         format: STATEMENT_FORMAT
       });
@@ -850,7 +850,7 @@ $(function() {
     // Only show v1 new statements
     .filter(function(freebaseEntity) {
       return freebaseEntity.format === STATEMENT_FORMAT &&
-          freebaseEntity.state === STATEMENT_STATES.new;
+          freebaseEntity.state === STATEMENT_STATES.unapproved;
     })
     .map(function(freebaseEntity) {
       return parsePrimarySourcesStatement(freebaseEntity, isBlacklisted);
@@ -1563,7 +1563,7 @@ $(function() {
     $.ajax({
       url: FAKE_OR_RANDOM_DATA ?
           FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') :
-          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '?dataset=' +
+          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '&dataset=' +
           dataset
     }).done(function(data) {
       return callback(null, data);
