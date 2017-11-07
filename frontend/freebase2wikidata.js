@@ -2017,9 +2017,9 @@ $(function() {
       ).fail(function(error) {
         return reportError(error);
       }).done(function() {
-        if (this.statement.source.length > 0) {
-          return; // TODO add support of source review
-        }
+        // if (this.statement.source.length > 0) {
+        //   return; // TODO add support of source review
+        // }
         setStatementState(widget.statement.id, STATEMENT_STATES.approved)
         .done(function() {
           widget.toggle(false).setDisabled(true);
