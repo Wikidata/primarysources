@@ -5,6 +5,7 @@
  *
  * @author: Thomas Steiner (tomac@google.com)
  * @author: Thomas Pellissier Tanon (thomas@pellissier-tanon.fr)
+ * @author: Marco Fossati (fossati@spaziodati.eu)
  * @license: CC0 1.0 Universal (CC0 1.0)
  */
 
@@ -34,7 +35,7 @@
 */
 
 $(function() {
-
+  
   var async = module.exports;
 
   var DEBUG = JSON.parse(localStorage.getItem('f2w_debug')) || false;
@@ -45,11 +46,11 @@ $(function() {
 
   var WIKIDATA_ENTITY_DATA_URL =
       'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
+  // Temporary location of the back end v2, waiting for a VPS machine
+  // see https://phabricator.wikimedia.org/T180347
   var FREEBASE_ENTITY_DATA_URL =
-      'https://tools.wmflabs.org/wikidata-primary-sources/entities/{{qid}}';
-  var FREEBASE_STATEMENT_APPROVAL_URL =
-      'https://tools.wmflabs.org/wikidata-primary-sources/statements/{{id}}' +
-      '?state={{state}}&user={{user}}';
+      'http://it.dbpedia.org/pst/suggest?qid={{qid}}';
+  var FREEBASE_STATEMENT_APPROVAL_URL = 'http://it.dbpedia.org/pst/curate';
   var FREEBASE_STATEMENT_SEARCH_URL =
     'https://tools.wmflabs.org/wikidata-primary-sources/statements/all';
   var FREEBASE_DATASETS =
@@ -65,13 +66,13 @@ $(function() {
       'Added via [[Wikidata:Primary sources tool]]';
 
   var STATEMENT_STATES = {
+    unapproved: 'new',
     approved: 'approved',
-    wrong: 'wrong',
+    rejected: 'rejected',
     duplicate: 'duplicate',
-    blacklisted: 'blacklisted',
-    unapproved: 'unapproved'
+    blacklisted: 'blacklisted'
   };
-  var STATEMENT_FORMAT = 'v1';
+  var STATEMENT_FORMAT = 'QuickStatement';
 
   /* jshint ignore:start */
   /* jscs: disable */
@@ -105,7 +106,7 @@ $(function() {
             '<div class="wikibase-edittoolbar-container wikibase-toolbar-container">' +
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-add">' +
-                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>approve reference</a>' +
+                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>approve reference</a>' +
                 '</span>' +
               '</span>' +
               ' ' +
@@ -119,7 +120,7 @@ $(function() {
               '</span>' +*/
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-remove">' +
-                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>reject reference</a>' +
+                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>reject reference</a>' +
                 '</span>' +
               '</span>' +
             '</div>' +
@@ -183,13 +184,13 @@ $(function() {
           '<span class="wikibase-toolbar-container wikibase-edittoolbar-container">' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
               '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-add">' +
-                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>approve claim</a>' +
+                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>approve claim</a>' +
               '</span>' +
             '</span>' +
             ' ' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
               '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-remove">' +
-                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>reject claim</a>' +
+                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>reject claim</a>' +
               '</span>' +
             '</span>' +
           '</span>' +
@@ -402,26 +403,28 @@ $(function() {
         event.target.innerHTML = '<img src="https://upload.wikimedia.org/' +
             'wikipedia/commons/f/f8/Ajax-loader%282%29.gif" class="ajax"/>';
         var statement = event.target.dataset;
-        var id = statement.statementId;
+        var predicate = statement.property;
+        var object = statement.object;
+        var quickStatement = qid + '\t' + predicate + '\t' + object;
+        // BEGIN: claim curation
         if (classList.contains('f2w-property')) {
+          var currentDataset = statement.dataset;
+          var qualifiers = JSON.parse(statement.qualifiers);
+          var sources = JSON.parse(statement.sources);
+          // Claim approval
           if (classList.contains('f2w-approve')) {
-            // Approve property
-            var predicate = statement.property;
-            var object = statement.object;
-            var qualifiers = JSON.parse(statement.qualifiers);
-            var sources = JSON.parse(statement.sources);
             createClaim(qid, predicate, object, qualifiers)
               .fail(function(error) {
                 return reportError(error);
               }).done(function(data) {
-                // Sources, don't validate the statement
-                if (sources.length > 0) {
-                  return document.location.reload();
-                }
-
-                setStatementState(id, STATEMENT_STATES.approved)
+                /*
+                  The back end approves the claim + eventual qualifiers.
+                  See SPARQL queries in CurateServlet:
+                  https://github.com/marfox/pst-backend
+                */
+                setStatementState(quickStatement, STATEMENT_STATES.approved, currentDataset, 'claim')
                 .done(function() {
-                  debug.log('Approved property statement ' + id);
+                  debug.log('Approved claim [' + quickStatement + ']');
                   if (data.pageinfo && data.pageinfo.lastrevid) {
                     document.location.hash = 'revision=' +
                         data.pageinfo.lastrevid;
@@ -429,33 +432,34 @@ $(function() {
                   return document.location.reload();
                 });
               });
-          } else if (classList.contains('f2w-reject')) {
-            // Get the statements ids to reject
-            var idsSet = {};
-            idsSet[id] = true;
-            var sources = JSON.parse(statement.sources);
-            sources.forEach(function(source) {
-              idsSet[source[0].sourceId] = true;
-            });
-
-            // Reject statements
-            var rejectPromises = [];
-            for (var statementId in idsSet) {
-              rejectPromises.push(
-                  setStatementState(statementId, STATEMENT_STATES.wrong));
-            }
-            $.when.apply(this, rejectPromises).done(function() {
-              debug.log('Disapproved statement');
+          }
+          // Claim rejection
+          else if (classList.contains('f2w-reject')) {
+            // The back end rejects everything (claim, qualifiers, references)
+            setStatementState(quickStatement, STATEMENT_STATES.rejected, currentDataset, 'claim')
+            .done(function() {
+              debug.log('Rejected claim [' + quickStatement + ']');
               return document.location.reload();
             });
           }
-        } else if (classList.contains('f2w-source')) {
+        }
+        // END: claim curation
+        // BEGIN: reference curation
+        else if (classList.contains('f2w-source')) {
+          /*
+            The reference key is the property/value pair, see line 721
+            Use it to build the QuickStatement needed to change the state in the back end.
+            See CurateServlet#parseQuickStatement:
+            https://github.com/marfox/pst-backend
+          */
+          var currentDataset = statement.dataset;
+          var predicate = statement.property;
+          var object = statement.object;
+          var source = JSON.parse(statement.source);
+          var qualifiers = JSON.parse(statement.qualifiers);
+          var sourceQuickStatement = quickStatement + '\t' + source[0].key
+          // Reference approval
           if (classList.contains('f2w-approve')) {
-            // Approve source
-            var predicate = statement.property;
-            var object = statement.object;
-            var source = JSON.parse(statement.source);
-            var qualifiers = JSON.parse(statement.qualifiers);
             getClaims(qid, predicate, function(err, claims) {
               var objectExists = false;
               for (var i = 0, lenI = claims.length; i < lenI; i++) {
@@ -468,15 +472,17 @@ $(function() {
                   break;
                 }
               }
+              // Claim is already in Wikidata: only create the reference
               if (objectExists) {
                 createReference(qid, predicate, object, source,
                     function(error, data) {
                   if (error) {
                     return reportError(error);
                   }
-                  setStatementState(id, STATEMENT_STATES.approved)
+                  // The back end approves everything but sibling references
+                  setStatementState(sourceQuickStatement, STATEMENT_STATES.approved, currentDataset, 'reference')
                   .done(function() {
-                    debug.log('Approved source statement ' + id);
+                    debug.log('Approved referenced claim [' + sourceQuickStatement + ']');
                     if (data.pageinfo && data.pageinfo.lastrevid) {
                       document.location.hash = 'revision=' +
                           data.pageinfo.lastrevid;
@@ -484,16 +490,19 @@ $(function() {
                     return document.location.reload();
                   });
                 });
-              } else {
+              }
+              // New referenced claim: entirely create it
+              else {
                 createClaimWithReference(qid, predicate, object, qualifiers,
                   source)
                   .fail(function(error) {
                     return reportError(error);
                   })
                   .done(function(data) {
-                    setStatementState(id, STATEMENT_STATES.approved)
+                    // The back end approves everything but sibling references
+                    setStatementState(sourceQuickStatement, STATEMENT_STATES.approved, currentDataset, 'reference')
                     .done(function() {
-                      debug.log('Approved source statement ' + id);
+                      debug.log('Approved referenced claim [' + sourceQuickStatement + ']');
                       if (data.pageinfo && data.pageinfo.lastrevid) {
                         document.location.hash = 'revision=' +
                             data.pageinfo.lastrevid;
@@ -503,14 +512,17 @@ $(function() {
                   });
               }
             });
-          } else if (classList.contains('f2w-reject')) {
-            // Reject source
-            setStatementState(id, STATEMENT_STATES.wrong).done(function() {
-              debug.log('Disapproved source statement ' + id);
+          }
+          // Reference rejection
+          else if (classList.contains('f2w-reject')) {
+            setStatementState(sourceQuickStatement, STATEMENT_STATES.rejected, currentDataset, 'reference').done(function() {
+              debug.log('Rejected referenced claim [' + sourceQuickStatement + ']');
               return document.location.reload();
             });
-          } else if (classList.contains('f2w-edit')) {
-            var a = document.getElementById('f2w-' + id);
+          }
+          // Reference edit
+          else if (classList.contains('f2w-edit')) {
+            var a = document.getElementById('f2w-' + sourceQuickStatement);
 
             var onClick = function(e) {
               if (isUrl(e.target.textContent)) {
@@ -537,6 +549,7 @@ $(function() {
             a.contentEditable = true;
           }
         }
+        // END: reference curation
       });
     })();
 
@@ -694,7 +707,9 @@ $(function() {
   }
 
   function parsePrimarySourcesStatement(statement, isBlacklisted) {
-    var id = statement.id;
+    // The full QuickStatement acts as the ID
+    var id = statement.statement;
+    var statementDataset = statement.dataset
     var line = statement.statement.split(/\t/);
     var subject = line[0];
     var predicate = line[1];
@@ -737,15 +752,16 @@ $(function() {
           var url = source.sourceObject.replace(/^"/, '').replace(/"$/, '');
           var blacklisted = isBlacklisted(url);
           if (blacklisted) {
-            debug.log('Encountered blacklisted source url ' + url);
+            debug.log('Encountered blacklisted reference URL ' + url);
+            var sourceQuickStatement = subject + '\t' + predicate + '\t' + object + '\t' + source.key;
             (function(currentId, currentUrl) {
-              setStatementState(currentId, STATEMENT_STATES.blacklisted)
+              setStatementState(currentId, STATEMENT_STATES.blacklisted, statementDataset, 'reference')
                   .done(function() {
                 debug.log('Automatically blacklisted statement ' +
-                    currentId + ' with blacklisted source url ' +
+                    currentId + ' with blacklisted reference URL ' +
                     currentUrl);
               });
-            })(id, url);
+            })(sourceQuickStatement, url);
           }
           // Return the opposite, i.e., the whitelisted URLs
           return !blacklisted;
@@ -756,6 +772,7 @@ $(function() {
 
     return {
       id: id,
+      dataset: statementDataset,
       subject: subject,
       predicate: predicate,
       object: object,
@@ -847,7 +864,7 @@ $(function() {
     var statements = freebaseEntityData.filter(function(freebaseEntity, index, self) {
       return statementUnique(self, freebaseEntity.statement) === index;
     })
-    // Only show v1 unapproved statements
+    // Only show v1 new statements
     .filter(function(freebaseEntity) {
       return freebaseEntity.format === STATEMENT_FORMAT &&
           freebaseEntity.state === STATEMENT_STATES.unapproved;
@@ -866,6 +883,7 @@ $(function() {
       if (!freebaseClaims[predicate][key]) {
         freebaseClaims[predicate][key] = {
           id: statement.id,
+          dataset: statement.dataset,
           object: statement.object,
           qualifiers: statement.qualifiers,
           sources: []
@@ -873,7 +891,7 @@ $(function() {
       }
 
       if (statement.source.length > 0) {
-        // TODO: find duplicates
+        // TODO: find reference duplicates
         freebaseClaims[predicate][key].sources.push(statement.source);
       }
     });
@@ -1041,7 +1059,7 @@ $(function() {
             // Existing object
             if (freebaseObject.sources.length === 0) {
               // No source, duplicate statement
-              setStatementState(freebaseObject.id, STATEMENT_STATES.duplicate)
+              setStatementState(freebaseObject.id, STATEMENT_STATES.duplicate, freebaseObject.dataset, 'claim')
               .done(function() {
                 debug.log('Automatically duplicate statement ' +
                     freebaseObject.id);
@@ -1274,11 +1292,13 @@ $(function() {
     for (var key in claims) {
       var object = claims[key].object;
       var id = claims[key].id;
+      var claimDataset = claims[key].dataset;
       var sources = claims[key].sources;
       var qualifiers = claims[key].qualifiers;
       newClaim.objects.push({
         object: object,
         id: id,
+        dataset: claimDataset,
         qualifiers: qualifiers,
         sources: sources,
         key: key
@@ -1312,6 +1332,7 @@ $(function() {
             .replace(/\{\{statement-views\}\}/g, statementViewsHtml)
             .replace(/\{\{property\}\}/g, newClaim.property)
             .replace(/\{\{data-property\}\}/g, newClaim.property)
+            .replace(/\{\{data-dataset\}\}/g, newClaim.dataset)
             .replace(/\{\{property-html\}\}/g, propertyHtml);
 
         var fragment = document.createDocumentFragment();
@@ -1494,6 +1515,7 @@ $(function() {
           .replace(/\{\{data-source\}\}/g, escapeHtml(JSON.stringify(source)))
           .replace(/\{\{data-property\}\}/g, property)
           .replace(/\{\{data-object\}\}/g, escapeHtml(object.object))
+          .replace(/\{\{data-dataset\}\}/g, object.dataset)
           .replace(/\{\{statement-id\}\}/g, source[0].sourceId)
           .replace(/\{\{source-html\}\}/g,
               Array.prototype.slice.call(arguments).join(''))
@@ -1541,6 +1563,7 @@ $(function() {
         .replace(/\{\{sources\}\}/g, sourcesHtml)
         .replace(/\{\{qualifiers\}\}/g, qualifiersHtml)
         .replace(/\{\{statement-id\}\}/g, object.id)
+        .replace(/\{\{data-dataset\}\}/g, object.dataset)
         .replace(/\{\{data-qualifiers\}\}/g, escapeHtml(JSON.stringify(
             object.qualifiers)))
         .replace(/\{\{data-sources\}\}/g, escapeHtml(JSON.stringify(
@@ -1563,13 +1586,12 @@ $(function() {
     $.ajax({
       url: FAKE_OR_RANDOM_DATA ?
           FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') :
-          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '?dataset=' +
+          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '&dataset=' +
           dataset
     }).done(function(data) {
       return callback(null, data);
     });
   }
-
 
   function getEntityLabels(entityIds) {
     //Split entityIds per bucket in order to match limits
@@ -1620,17 +1642,19 @@ $(function() {
     });
   }
 
-  function setStatementState(id, state) {
+  function setStatementState(quickStatement, state, dataset, type) {
     if (!STATEMENT_STATES[state]) {
       reportError('Invalid statement state');
     }
-    var user = mw.user.getName();
-    var url = FREEBASE_STATEMENT_APPROVAL_URL
-        .replace(/\{\{user\}\}/, user)
-        .replace(/\{\{state\}\}/, state)
-        .replace(/\{\{id\}\}/, id);
-
-    return $.post(url).fail(function() {
+    var data = {
+      qs: quickStatement,
+      state: state,
+      dataset: dataset,
+      type: type,
+      user: mw.user.getName()
+    }
+    return $.post(FREEBASE_STATEMENT_APPROVAL_URL, JSON.stringify(data))
+    .fail(function() {
       reportError('Set statement state to ' + state + ' failed.');
     });
   }
@@ -1993,7 +2017,7 @@ $(function() {
                 widget.toggle(false).setDisabled(true);
                 if (widget.statement.source.length === 0) {
                   setStatementState(widget.statement.id,
-                      STATEMENT_STATES.duplicate).done(function() {
+                      STATEMENT_STATES.duplicate, dataset, 'claim').done(function() {
                     debug.log(widget.statement.id + ' tagged as duplicate');
                   });
                 }
@@ -2020,7 +2044,7 @@ $(function() {
         if (this.statement.source.length > 0) {
           return; // TODO add support of source review
         }
-        setStatementState(widget.statement.id, STATEMENT_STATES.approved)
+        setStatementState(widget.statement.id, STATEMENT_STATES.approved, dataset, 'claim')
         .done(function() {
           widget.toggle(false).setDisabled(true);
         });
@@ -2031,7 +2055,7 @@ $(function() {
       var widget = this;
 
       this.showProgressBar();
-      setStatementState(widget.statement.id, STATEMENT_STATES.wrong)
+      setStatementState(widget.statement.id, STATEMENT_STATES.rejected, dataset, 'claim')
       .done(function() {
         widget.toggle(false).setDisabled(true);
       });
