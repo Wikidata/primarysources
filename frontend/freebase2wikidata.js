@@ -36,6 +36,7 @@
 $(function() {
 
   var async = module.exports;
+  var ps = mw.ps || {};
 
   var DEBUG = JSON.parse(localStorage.getItem('f2w_debug')) || false;
   var FAKE_OR_RANDOM_DATA =
@@ -260,6 +261,84 @@ $(function() {
     return qidRegEx.test(title) ? title : false;
   }
 
+    ps.openNav = function openNav(itemLabel, propertyLabel, propertyValue, referenceURL, referenceItem) {
+        $('#myNav').width('100%');
+
+        var blackboard = $('#blackboard');
+
+        var buttons = $(referenceItem).closest('.wikibase-referenceview.listview-item.wikibase-toolbar-item.new-source').children().find('.f2w-button.f2w-source');
+        blackboard.append(buttons.eq(0).clone(true, true));
+        blackboard.append(buttons.eq(1).clone(true, true));
+
+        blackboard.append('<div class="loader"></div>');
+
+        $.ajax({
+            type: 'GET',
+            url: 'https://tools.wmflabs.org/strephit/search?url=' + encodeURI(referenceURL),
+            success: function(msg) {
+                $('.loader').remove();
+
+                if(msg != 'no preview'){
+                    var data = JSON.parse(msg);
+                    var regEx = new RegExp('(' + itemLabel + '|' + propertyLabel + '|' + propertyValue + ')(?!([^<]+)?>)', 'gi');
+
+                    if(!data.hasOwnProperty('excerpt'))
+                    {
+                        blackboard.append('<h1><a href="' + data.url + '">' + data.url + '</a></h1>');
+                        blackboard.append('<ul></ul>');
+                        
+                        var linklist = $('#blackboard > ul');
+                        for(var index in data){
+                            var item = data[index];
+                            if(index != 'url' && item !== null){
+                                if( index == 'other' ) {
+                                    while(typeof item == 'string'){
+                                        item = JSON.parse(item);
+                                    }
+                                    for(var key in item){
+                                        if(item[key] !== null){
+                                            linklist.append(('<li>' + '<strong>' + key + '</strong>' + ': ' + item[key] + '</li>').replace(regEx, '<span class="highlight">$1</span>'));
+                                        }
+                                    }
+                                }
+                                else {
+                                    linklist.append(('<li>' + '<strong>' + index + '</strong>' + ': ' + item + '</li>').replace(regEx, '<span class="highlight">$1</span>'));
+                                }
+                            }
+                        }
+                    }
+                    else{
+                        blackboard.append('<h1><a href="' + data.url + '">' + data.url + '</a></h1>');
+                        if(data.content === ''|| data.content == '<body></body>'){
+                            blackboard.append('<p>Preview not available for this reference.</p>');
+                        }
+                        else{
+                            blackboard.append($.parseHTML(data.content.replace(/<a[^>]*>(.*?)<\/a>/g, '$1').replace(/<img .*?>/g,'').replace(regEx, '<span class="highlight">$1</span>')));
+                        }
+                    }
+                }else{
+                    blackboard.append('<h1>Preview not available for this reference.</h1>');
+                }
+            },
+            error: function(er){
+                console.log(er);
+                $('.loader').remove();
+                blackboard.append('<h1>Preview not available for this reference.</h1>');
+            }
+        });
+    }
+
+    ps.closeNav = function closeNav() {
+        $('#myNav').width('0%');
+        $('#blackboard').html('');
+    }
+
+    $(document).keyup(function(e){
+        if(e.keyCode === 27){
+            mw.ps.closeNav();
+        }
+    });
+
   (function generateNav() {
     $('#mw-panel').append('<div class="portal" role="navigation" id="p-ps-navigation" aria-labelledby="p-ps-navigation-label"><h3 id="p-ps-navigation-label">Browse Primary Sources</h3></div>');
     var navigation =  $('#p-ps-navigation');
@@ -331,6 +410,13 @@ $(function() {
       }
     }
   }
+
+  (function appendOverlay (){
+    $("#content").append('<div id="myNav" class="overlay">'+
+                          '<a href="javascript:void(0)" class="closebtn" onclick="mw.ps.closeNav()">&times;</a>'+
+                          '<div id="blackboard" class="overlay-content"></div>'+
+                         '</div>');
+  })();
 
   var dataset = mw.cookie.get('ps-dataset', null, '');
   var windowManager;
@@ -1248,6 +1334,11 @@ $(function() {
       }
       container = container.querySelector('.wikibase-listview');
       container.appendChild(fragment);
+      var tmp = $(container).find(".wikibase-snakview.listview-item");
+      tmp.find(".wikibase-snakview-property").append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
+                                                                                    tmp.parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
+                                                                                    tmp.parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
+                                                                                    tmp.find(".external.free").text() + '\'' + ',' + 'this);">Preview</a>');
     });
   }
 
@@ -1261,6 +1352,16 @@ $(function() {
           .querySelector('.wikibase-statementlistview-listview');
       container.appendChild(fragment);
       appendToNav(document.getElementById(property));
+      var tmp = $(container).children().last();
+      if(tmp.find(".external.free").length > 0){
+    	  var refs = tmp.find(".wikibase-snakview-property");
+    	  refs.each(function(index, item) {
+    		  $(item).append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
+                                                                                 $(item).parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
+                                                                                 $(item).parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
+                                                                                 tmp.find(item).closest(".wikibase-snakview.listview-item").find(".external.free").text() + '\'' + ',' + 'this);">Preview</a>');
+    	  });
+      }
     });
   }
 
@@ -1320,7 +1421,17 @@ $(function() {
         fragment.appendChild(child.firstChild);
         container.appendChild(fragment);
         appendToNav(container.lastChild);
-      });
+        var tmp = $(container).children().last();
+        if(tmp.find(".external.free").length > 0){
+    	    var refs = tmp.find(".wikibase-snakview-property");
+    	    refs.each(function(index, item) {
+    		    $(item).append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
+                                                                                   $(item).parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
+                                                                                   $(item).parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
+                                                                                   tmp.find(item).closest(".wikibase-snakview.listview-item").find(".external.free").text() + '\'' + ',' + 'this);">Preview</a>');
+    	    });
+        }
+    	});
     });
   }
 
@@ -2248,4 +2359,5 @@ $(function() {
       windowManager.openWindow('ps-list');
     });
   }
+  mw.ps = ps;
 });
