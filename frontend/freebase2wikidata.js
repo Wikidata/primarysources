@@ -418,6 +418,18 @@ $(function() {
                          '</div>');
   })();
 
+  function appendPreviewButton(container){
+    if(container.find(".external.free").length > 0){
+      var refs = container.find(".wikibase-snakview-property");
+      refs.each(function(index, item) {
+        $(item).append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
+                                                                               $(item).parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
+                                                                               $(item).parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
+                                                                               container.find(item).closest(".wikibase-snakview.listview-item").find(".external.free").text() + '\'' + ',' + 'this);">Preview</a>');
+      });
+    }
+  }
+
   var dataset = mw.cookie.get('ps-dataset', null, '');
   var windowManager;
 
@@ -1334,11 +1346,7 @@ $(function() {
       }
       container = container.querySelector('.wikibase-listview');
       container.appendChild(fragment);
-      var tmp = $(container).find(".wikibase-snakview.listview-item");
-      tmp.find(".wikibase-snakview-property").append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
-                                                                                    tmp.parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
-                                                                                    tmp.parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
-                                                                                    tmp.find(".external.free").text() + '\'' + ',' + 'this);">Preview</a>');
+      appendPreviewButton($(container).children().last());
     });
   }
 
@@ -1352,16 +1360,7 @@ $(function() {
           .querySelector('.wikibase-statementlistview-listview');
       container.appendChild(fragment);
       appendToNav(document.getElementById(property));
-      var tmp = $(container).children().last();
-      if(tmp.find(".external.free").length > 0){
-    	  var refs = tmp.find(".wikibase-snakview-property");
-    	  refs.each(function(index, item) {
-    		  $(item).append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
-                                                                                 $(item).parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
-                                                                                 $(item).parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
-                                                                                 tmp.find(item).closest(".wikibase-snakview.listview-item").find(".external.free").text() + '\'' + ',' + 'this);">Preview</a>');
-    	  });
-      }
+      appendPreviewButton($(container).children().last());
     });
   }
 
@@ -1421,16 +1420,7 @@ $(function() {
         fragment.appendChild(child.firstChild);
         container.appendChild(fragment);
         appendToNav(container.lastChild);
-        var tmp = $(container).children().last();
-        if(tmp.find(".external.free").length > 0){
-    	    var refs = tmp.find(".wikibase-snakview-property");
-    	    refs.each(function(index, item) {
-    		    $(item).append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
-                                                                                   $(item).parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
-                                                                                   $(item).parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
-                                                                                   tmp.find(item).closest(".wikibase-snakview.listview-item").find(".external.free").text() + '\'' + ',' + 'this);">Preview</a>');
-    	    });
-        }
+        appendPreviewButton($(container).children().last());
     	});
     });
   }

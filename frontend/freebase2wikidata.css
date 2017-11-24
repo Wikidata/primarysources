@@ -31,6 +31,10 @@
   display: block;
 }
 
+.wikibase-referenceview .wikibase-snaklistview-listview .wikibase-snakview {
+  min-height: 2.1em;
+}
+
 .mw-notification-tag-ps-error {
   background-color: #fee7e6 !important;
   border: 1px solid #b32424 !important;
