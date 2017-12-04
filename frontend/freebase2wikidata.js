@@ -299,23 +299,20 @@ $(function() {
                                             linklist.append(('<li>' + '<strong>' + key + '</strong>' + ': ' + item[key] + '</li>').replace(regEx, '<span class="highlight">$1</span>'));
                                         }
                                     }
-                                }
-                                else {
+                                } else {
                                     linklist.append(('<li>' + '<strong>' + index + '</strong>' + ': ' + item + '</li>').replace(regEx, '<span class="highlight">$1</span>'));
                                 }
                             }
                         }
-                    }
-                    else{
+                    } else {
                         blackboard.append('<h1><a href="' + data.url + '">' + data.url + '</a></h1>');
                         if(data.content === ''|| data.content == '<body></body>'){
                             blackboard.append('<p>Preview not available for this reference.</p>');
-                        }
-                        else{
+                        } else {
                             blackboard.append($.parseHTML(data.content.replace(/<a[^>]*>(.*?)<\/a>/g, '$1').replace(/<img .*?>/g,'').replace(regEx, '<span class="highlight">$1</span>')));
                         }
                     }
-                }else{
+                } else {
                     blackboard.append('<h1>Preview not available for this reference.</h1>');
                 }
             },
@@ -398,8 +395,7 @@ $(function() {
         anchorList.splice(pos, 0, text_nospace);
         if(pos === 0){
           $('#p-ps-nav-list').prepend('<li id="n-ps-anchor-' + text_nospace + '"><a href="#" title="move to ' + text_space + '">' + text_space + '</a></li>');
-        }
-        else{
+        } else {
           $('#n-ps-anchor-' + anchorList[pos-1]).after('<li id="n-ps-anchor-' + text_nospace + '"><a href="#" title="move to ' + text_space + '">' + text_space + '</a></li>');
         }
         $('#n-ps-anchor-' + text_nospace).click(function(e) {
