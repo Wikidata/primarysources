@@ -43,7 +43,7 @@ $(function() {
   // Uncomment for gadget version
   var async = module.exports;
   // Uncomment for local testing on common.js
-  var async = window.async;
+  // var async = window.async;
 
   var ps = mw.ps || {};
 
@@ -53,24 +53,24 @@ $(function() {
 
   var CACHE_EXPIRY = 60 * 60 * 1000;
 
-  var WIKIDATA_ENTITY_DATA_URL =
-      'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
-  var RANDOM_SERVICE =
-      'https://pst.wmflabs.org/pst/random';
-  var FREEBASE_ENTITY_DATA_URL =
-      'https://pst.wmflabs.org/pst/suggest?qid={{qid}}';
-  var FREEBASE_STATEMENT_APPROVAL_URL = 'https://pst.wmflabs.org/pst/curate';
-  var FREEBASE_STATEMENT_SEARCH_URL =
-    'https://pst.wmflabs.org/pst/search';
-  var FREEBASE_DATASETS =
-    'https://pst.wmflabs.org/pst/datasets';
-  var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
+  // BEGIN: primary sources tool Web services
+  var BASE_URI = 'https://pst.wmflabs.org/pst/';
+  var DATASETS_SERVICE = BASE_URI + 'datasets';
+  var RANDOM_SERVICE = BASE_URI + 'random';
+  var SUGGEST_SERVICE = BASE_URI + 'suggest?qid={{qid}}';
+  var CURATE_SERVICE = BASE_URI + 'curate';
+  var SEARCH_SERVICE = BASE_URI + 'search';
+  // END: primary sources tool Web services
+
+  var SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
       '?action=parse&format=json&prop=text' +
       '&page=Wikidata:Primary_sources_tool/URL_blacklist';
-  var FREEBASE_SOURCE_URL_WHITELIST = 'https://www.wikidata.org/w/api.php' +
+  var SOURCE_URL_WHITELIST = 'https://www.wikidata.org/w/api.php' +
       '?action=parse&format=json&prop=text' +
       '&page=Wikidata:Primary_sources_tool/URL_whitelist';
 
+  var WIKIDATA_ENTITY_DATA_URL =
+      'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
   var WIKIDATA_API_COMMENT =
       'Added via [[Wikidata:Primary sources tool]]';
 
@@ -788,7 +788,7 @@ $(function() {
       }
     }
     $.ajax({
-      url: FREEBASE_DATASETS
+      url: DATASETS_SERVICE
     }).done(function(data) {
       localStorage.setItem('f2w_dataset', JSON.stringify({
         timestamp: now,
@@ -1700,7 +1700,7 @@ $(function() {
     $.ajax({
       url: FAKE_OR_RANDOM_DATA ?
           RANDOM_SERVICE :
-          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '&dataset=' +
+          SUGGEST_SERVICE.replace(/\{\{qid\}\}/, qid) + '&dataset=' +
           dataset
     }).done(function(data) {
       return callback(null, data);
@@ -1767,7 +1767,7 @@ $(function() {
       type: type,
       user: mw.user.getName()
     }
-    return $.post(FREEBASE_STATEMENT_APPROVAL_URL, JSON.stringify(data))
+    return $.post(CURATE_SERVICE, JSON.stringify(data))
     .fail(function() {
       reportError('Set statement state to ' + state + ' failed.');
     });
@@ -1910,7 +1910,7 @@ $(function() {
       }
     }
     return $.ajax({
-      url: FREEBASE_SOURCE_URL_BLACKLIST
+      url: SOURCE_URL_BLACKLIST
     }).then(function(data) {
       if (data && data.parse && data.parse.text && data.parse.text['*']) {
         var blacklist = data.parse.text['*']
@@ -1962,7 +1962,7 @@ $(function() {
       }
     }
     return $.ajax({
-      url: FREEBASE_SOURCE_URL_WHITELIST
+      url: SOURCE_URL_WHITELIST
     }).then(function(data) {
       if (data && data.parse && data.parse.text && data.parse.text['*']) {
         var whitelist = data.parse.text['*']
@@ -2026,7 +2026,7 @@ $(function() {
   function searchStatements(parameters) {
     return $.when(
       $.ajax({
-        url: FREEBASE_STATEMENT_SEARCH_URL,
+        url: SEARCH_SERVICE,
         data: parameters
       }).then(function(data) { return data; }),
       getBlacklistedSourceUrls()
