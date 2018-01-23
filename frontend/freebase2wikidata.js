@@ -1,3 +1,7 @@
+// Uncomment for local testing on common.js
+// var asyncSrc = 'https://www.wikidata.org/w/index.php?title=User:Kiailandi/async.js&action=raw&ctype=text%2Fjavascript';
+// $.getScript(asyncSrc).done(function() {
+
 /**
  * freebase2wikidata.js
  *
@@ -5,7 +9,7 @@
  *
  * @author: Thomas Steiner (tomac@google.com)
  * @author: Thomas Pellissier Tanon (thomas@pellissier-tanon.fr)
- * @author: Marco Fossati (fossati@spaziodati.eu)
+ * @author: Marco Fossati (fossati@fbk.eu)
  * @license: CC0 1.0 Universal (CC0 1.0)
  */
 
@@ -36,7 +40,11 @@
 
 $(function() {
   
+  // Uncomment for gadget version
   var async = module.exports;
+  // Uncomment for local testing on common.js
+  // var async = window.async;
+
   var ps = mw.ps || {};
 
   var DEBUG = JSON.parse(localStorage.getItem('f2w_debug')) || false;
@@ -47,15 +55,13 @@ $(function() {
 
   var WIKIDATA_ENTITY_DATA_URL =
       'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
-  // Temporary location of the back end v2, waiting for a VPS machine
-  // see https://phabricator.wikimedia.org/T180347
   var FREEBASE_ENTITY_DATA_URL =
-      'http://it.dbpedia.org/pst/suggest?qid={{qid}}';
-  var FREEBASE_STATEMENT_APPROVAL_URL = 'http://it.dbpedia.org/pst/curate';
+      'https://pst.wmflabs.org/pst/suggest?qid={{qid}}';
+  var FREEBASE_STATEMENT_APPROVAL_URL = 'https://pst.wmflabs.org/pst/curate';
   var FREEBASE_STATEMENT_SEARCH_URL =
     'https://tools.wmflabs.org/wikidata-primary-sources/statements/all';
   var FREEBASE_DATASETS =
-    'https://tools.wmflabs.org/wikidata-primary-sources/datasets/all';
+    'https://pst.wmflabs.org/pst/datasets';
   var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
       '?action=parse&format=json&prop=text' +
       '&page=Wikidata:Primary_sources_tool/URL_blacklist';
@@ -688,6 +694,16 @@ $(function() {
     );
   }
 
+  function datasetUriToLabel(uri) {
+    if (isUrl(uri)) {
+      // [ "http:", "", "DATASET-LABEL", "STATE" ]
+      return uri.split('/')[2];
+    } else {
+      debug.log('The dataset has an invalid URI: "' + uri + '". Will appear as is (no human-readable conversion)')
+      return uri;
+    }
+  }
+
   function configDialog(button) {
     function ConfigDialog(config) {
       ConfigDialog.super.call(this, config);
@@ -713,12 +729,13 @@ $(function() {
 
       var dialog = this;
       getPossibleDatasets(function(datasets) {
-        for (var datasetId in datasets) {
+        datasets.forEach(function(item) {
+          var uri = item['dataset'];
           dialog.dataset.addItems([new OO.ui.ButtonOptionWidget({
-            data: datasetId,
-            label: datasetId,
+            data: uri,
+            label: datasetUriToLabel(uri),
           })]);
-        }
+        });
       });
 
       this.dataset.selectItemByData(dataset);
@@ -2194,9 +2211,10 @@ $(function() {
       this.datasetInput = new OO.ui.DropdownInputWidget();
       getPossibleDatasets(function(datasets) {
         var options = [{data: '', label: 'All sources'}];
-        for (var datasetId in datasets) {
-          options.push({data: datasetId, label: datasetId});
-        }
+        datasets.forEach(function(item) {
+          var uri = item['dataset'];
+          options.push({data: uri, label: datasetUriToLabel(uri)});
+        });
         widget.datasetInput.setOptions(options)
                     .setValue(dataset);
       });
@@ -2369,4 +2387,7 @@ $(function() {
     });
   }
   mw.ps = ps;
-});
+
+  });
+// Uncomment for local testing on common.js
+// });
