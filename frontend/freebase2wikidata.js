@@ -55,6 +55,8 @@ $(function() {
 
   var WIKIDATA_ENTITY_DATA_URL =
       'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
+  var RANDOM_SERVICE =
+      'https://pst.wmflabs.org/pst/random';
   var FREEBASE_ENTITY_DATA_URL =
       'https://pst.wmflabs.org/pst/suggest?qid={{qid}}';
   var FREEBASE_STATEMENT_APPROVAL_URL = 'https://pst.wmflabs.org/pst/curate';
@@ -439,7 +441,7 @@ $(function() {
 
     // Add random Primary Sources item button
     (function createRandomFreebaseItemLink() {
-      var datasetLabel = (dataset === '') ? 'Primary Sources' : dataset;
+      var datasetLabel = (dataset === '') ? 'Primary Sources' : datasetUriToLabel(dataset);
       var portletLink = $(mw.util.addPortletLink(
         'p-navigation',
         '#',
@@ -454,8 +456,7 @@ $(function() {
         e.target.innerHTML = '<img src="https://upload.wikimedia.org/' +
             'wikipedia/commons/f/f8/Ajax-loader%282%29.gif" class="ajax"/>';
         $.ajax({
-          url: FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') +
-              '?dataset=' + dataset
+          url: RANDOM_SERVICE + '?dataset=' + dataset
         }).done(function(data) {
           var newQid = data[0].statement.split(/\t/)[0];
           document.location.href = 'https://www.wikidata.org/wiki/' + newQid;
