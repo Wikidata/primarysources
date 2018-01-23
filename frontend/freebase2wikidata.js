@@ -43,7 +43,7 @@ $(function() {
   // Uncomment for gadget version
   var async = module.exports;
   // Uncomment for local testing on common.js
-  // var async = window.async;
+  var async = window.async;
 
   var ps = mw.ps || {};
 
@@ -1699,7 +1699,7 @@ $(function() {
   function getFreebaseEntityData(qid, callback) {
     $.ajax({
       url: FAKE_OR_RANDOM_DATA ?
-          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') :
+          RANDOM_SERVICE :
           FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '&dataset=' +
           dataset
     }).done(function(data) {
