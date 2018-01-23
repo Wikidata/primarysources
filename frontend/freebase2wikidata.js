@@ -59,7 +59,7 @@ $(function() {
       'https://pst.wmflabs.org/pst/suggest?qid={{qid}}';
   var FREEBASE_STATEMENT_APPROVAL_URL = 'https://pst.wmflabs.org/pst/curate';
   var FREEBASE_STATEMENT_SEARCH_URL =
-    'https://tools.wmflabs.org/wikidata-primary-sources/statements/all';
+    'https://pst.wmflabs.org/pst/search';
   var FREEBASE_DATASETS =
     'https://pst.wmflabs.org/pst/datasets';
   var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
