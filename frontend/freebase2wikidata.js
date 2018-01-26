@@ -1255,14 +1255,6 @@ $(function() {
     case 'time':
       var time = dataValue.value.time;
 
-      // Normalize the timestamp
-      if (dataValue.value.precision < 11) {
-        time = time.replace('-01T', '-00T');
-      }
-      if (dataValue.value.precision < 10) {
-        time = time.replace('-01-', '-00-');
-      }
-
       return time + '/' + dataValue.value.precision;
     case 'globecoordinate':
       return '@' + dataValue.value.latitude + '/' + dataValue.value.longitude;
