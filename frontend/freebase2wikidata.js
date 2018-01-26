@@ -2020,6 +2020,7 @@ $(function() {
         if (this.statement.source.length > 0) {
           // TODO add support of source review
           widget.toggle(false).setDisabled(true);
+          return;
         }
         setStatementState(widget.statement.id, STATEMENT_STATES.approved)
         .done(function() {
