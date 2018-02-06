@@ -115,7 +115,7 @@ $(function() {
             '<div class="wikibase-edittoolbar-container wikibase-toolbar-container">' +
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-add">' +
-                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>approve reference</a>' +
+                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>approve</a>' +
                 '</span>' +
               '</span>' +
               ' ' +
@@ -129,7 +129,7 @@ $(function() {
               '</span>' +*/
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-remove">' +
-                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>reject reference</a>' +
+                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>reject</a>' +
                 '</span>' +
               '</span>' +
             '</div>' +
@@ -193,13 +193,11 @@ $(function() {
           '<span class="wikibase-toolbar-container wikibase-edittoolbar-container">' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
               '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-add">' +
-                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>approve claim</a>' +
               '</span>' +
             '</span>' +
             ' ' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
               '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-remove">' +
-                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>reject claim</a>' +
               '</span>' +
             '</span>' +
           '</span>' +
@@ -509,48 +507,10 @@ $(function() {
         var predicate = statement.property;
         var object = statement.object;
         var quickStatement = qid + '\t' + predicate + '\t' + object;
-        // BEGIN: claim curation
-        if (classList.contains('f2w-property')) {
-          var currentDataset = statement.dataset;
-          var qualifiers = JSON.parse(statement.qualifiers);
-          var sources = JSON.parse(statement.sources);
-          // Claim approval
-          if (classList.contains('f2w-approve')) {
-            createClaim(qid, predicate, object, qualifiers)
-              .fail(function(error) {
-                return reportError(error);
-              }).done(function(data) {
-                /*
-                  The back end approves the claim + eventual qualifiers.
-                  See SPARQL queries in CurateServlet:
-                  https://github.com/marfox/pst-backend
-                */
-                setStatementState(quickStatement, STATEMENT_STATES.approved, currentDataset, 'claim')
-                .done(function() {
-                  debug.log('Approved claim [' + quickStatement + ']');
-                  if (data.pageinfo && data.pageinfo.lastrevid) {
-                    document.location.hash = 'revision=' +
-                        data.pageinfo.lastrevid;
-                  }
-                  return document.location.reload();
-                });
-              });
-          }
-          // Claim rejection
-          else if (classList.contains('f2w-reject')) {
-            // The back end rejects everything (claim, qualifiers, references)
-            setStatementState(quickStatement, STATEMENT_STATES.rejected, currentDataset, 'claim')
-            .done(function() {
-              debug.log('Rejected claim [' + quickStatement + ']');
-              return document.location.reload();
-            });
-          }
-        }
-        // END: claim curation
         // BEGIN: reference curation
-        else if (classList.contains('f2w-source')) {
+        if (classList.contains('f2w-source')) {
           /*
-            The reference key is the property/value pair, see line 721
+            The reference key is the property/value pair, see parsePrimarySourcesStatement.
             Use it to build the QuickStatement needed to change the state in the back end.
             See CurateServlet#parseQuickStatement:
             https://github.com/marfox/pst-backend
