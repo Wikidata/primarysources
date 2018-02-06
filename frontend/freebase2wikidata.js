@@ -1217,8 +1217,14 @@ $(function() {
       return dataValue.value.amount;
     case 'time':
       var time = dataValue.value.time;
-
-      return time + '/' + dataValue.value.precision;
+      var precision = dataValue.value.precision;
+      if (precision < 11) {
+        time = time.replace('-00T', '-01T');
+      }
+      if (precision < 10) {
+        time = time.replace('-00-', '-01-');
+      }
+      return time + '/' + precision;
     case 'globecoordinate':
       return '@' + dataValue.value.latitude + '/' + dataValue.value.longitude;
     case 'monolingualtext':
