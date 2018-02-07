@@ -817,8 +817,11 @@ $(function() {
         });
       }
 
-      qualifierKeyParts.sort();
-      key += '\t' + qualifierKeyParts.join('\t');
+      // Avoid appending tabs to the statement key if there are no qualifiers
+      if (qualifierKeyParts.length !== 0) {
+        qualifierKeyParts.sort();
+        key += '\t' + qualifierKeyParts.join('\t');
+      }
 
       // Filter out blacklisted source URLs
       source = source.filter(function(source) {
