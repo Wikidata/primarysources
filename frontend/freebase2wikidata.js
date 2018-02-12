@@ -672,10 +672,10 @@ $(function() {
     function ConfigDialog(config) {
       ConfigDialog.super.call(this, config);
     }
+    // Main dialog settings
     OO.inheritClass(ConfigDialog, OO.ui.ProcessDialog);
     ConfigDialog.static.name = 'ps-config';
-    ConfigDialog.static.title = 'Primary Sources configuration';
-    ConfigDialog.static.size = 'large';
+    ConfigDialog.static.title = 'Choose a primary sources dataset';
     ConfigDialog.static.actions = [
       {action: 'save', label: 'Save', flags: ['primary', 'constructive']},
       {label: 'Cancel', flags: 'safe'}
@@ -684,52 +684,87 @@ $(function() {
     ConfigDialog.prototype.initialize = function() {
       ConfigDialog.super.prototype.initialize.apply(this, arguments);
 
-      this.dataset = new OO.ui.ButtonSelectWidget({
-        items: [new OO.ui.ButtonOptionWidget({
+      // BEGIN: datasets as radio options
+      var availableDatasets = [
+        new OO.ui.RadioOptionWidget({
           data: '',
-          label: 'All sources'
-        })]
-      });
-
-      var dialog = this;
+          label: 'All'
+        })
+      ];
+      // Fill the options with the available datasets
       getPossibleDatasets(function(datasets) {
         datasets.forEach(function(item) {
           var uri = item['dataset'];
-          dialog.dataset.addItems([new OO.ui.ButtonOptionWidget({
+          availableDatasets.push(new OO.ui.RadioOptionWidget({
             data: uri,
             label: datasetUriToLabel(uri),
-          })]);
+          }));
         });
       });
-
-      this.dataset.selectItemByData(dataset);
-
-      var fieldset = new OO.ui.FieldsetLayout({
-        label: 'Dataset to use'
+      var datasetSelection = new OO.ui.RadioSelectWidget({
+        items: availableDatasets
       });
-      fieldset.addItems([this.dataset]);
-
-      this.panel = new OO.ui.PanelLayout({
+      this.datasetSelection = datasetSelection;
+      var datasetsPanel = new OO.ui.PanelLayout({
         padded: true,
+        expanded: false,
+        scrollable: false
+      });
+      // END: datasets as radio options
+
+      // BEGIN: selected dataset info 
+      var missingStatements = new OO.ui.LabelWidget({
+        label: 'TODO'
+      });
+      var totalStatements = new OO.ui.LabelWidget({
+        label: 'TODO'
+      });
+      var infoFields = new OO.ui.FieldsetLayout();
+      infoFields.addItems([
+        new OO.ui.FieldLayout(missingStatements, {
+          align: 'top',
+          label: 'Missing statements'
+        }),
+        new OO.ui.FieldLayout(totalStatements, {
+          align: 'top',
+          label: 'Total statements'
+        })
+      ]);
+      var infoPanel = new OO.ui.PanelLayout({
+        padded: true,
+        expanded: false,
+        scrollable: false
+      });
+      // END: selected dataset info
+
+      // BEGIN: final result as a menu layout
+      // see https://doc.wikimedia.org/oojs-ui/master/js/#!/api/OO.ui.MenuLayout
+      var layout = new OO.ui.MenuLayout({
+        position: 'before',
         expanded: false
       });
-      this.panel.$element.append(fieldset.$element);
-      this.$body.append(this.panel.$element);
+      // Add the radio options to the layout
+      layout.$menu.append(
+          datasetsPanel.$element.append(datasetSelection.$element)
+      );
+      // Add the selected dataset info to the layout
+      layout.$content.append(
+          infoPanel.$element.append(infoFields.$element)
+      );
+      // Add the the menu layout to the main dialog
+      this.$body.append(layout.$element);
+      // END: final result as a menu layout
     };
 
     ConfigDialog.prototype.getActionProcess = function(action) {
       if (action === 'save') {
-        mw.cookie.set('ps-dataset', this.dataset.getSelectedItem().getData());
+        mw.cookie.set('ps-dataset', this.datasetSelection.findSelectedItem().getData());
         return new OO.ui.Process(function() {
           location.reload();
         });
       }
 
       return ConfigDialog.super.prototype.getActionProcess.call(this, action);
-    };
-
-    ConfigDialog.prototype.getBodyHeight = function() {
-      return this.panel.$element.outerHeight(true);
     };
 
     windowManager.addWindows([new ConfigDialog()]);
