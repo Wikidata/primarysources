@@ -763,7 +763,7 @@ $(function() {
     };
 
     ConfigDialog.prototype.setDatasetInfo = function () {
-      // TODO var datasetDescriptionWidget = this.datasetDescriptionWidget;
+      var datasetDescriptionWidget = this.datasetDescriptionWidget;
       var missingStatementsWidget = this.missingStatementsWidget;
       var totalStatementsWidget = this.totalStatementsWidget;
       var selected = this.datasetSelection.findSelectedItem();
@@ -778,6 +778,7 @@ $(function() {
         Replace with empty labels instead.
       */
       if (selected.getLabel() === 'All') {
+        datasetDescriptionWidget.setLabel();
         missingStatementsWidget.setLabel();
         totalStatementsWidget.setLabel();
       } else {
@@ -788,7 +789,7 @@ $(function() {
             var description = data.description == null
             ? new OO.ui.HtmlSnippet('<i>Not available</i>')
             : new OO.ui.HtmlSnippet('<i>' + data.description + '</i>');
-            // TODO datasetDescriptionWidget.setLabel(description);
+            datasetDescriptionWidget.setLabel(description);
             missingStatementsWidget.setLabel(new OO.ui.HtmlSnippet('<b>' + data.missing_statements.toLocaleString() + '</b>'));
             totalStatementsWidget.setLabel(new OO.ui.HtmlSnippet('<b>' + data.total_statements.toLocaleString() + '</b>'));
           }
