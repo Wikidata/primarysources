@@ -56,6 +56,7 @@ $(function() {
   // BEGIN: primary sources tool Web services
   var BASE_URI = 'https://pst.wmflabs.org/pst/';
   var DATASETS_SERVICE = BASE_URI + 'datasets';
+  var STATISTICS_SERVICE = BASE_URI + 'statistics';
   var RANDOM_SERVICE = BASE_URI + 'random';
   var SUGGEST_SERVICE = BASE_URI + 'suggest?qid={{qid}}';
   var CURATE_SERVICE = BASE_URI + 'curate';
@@ -685,12 +686,11 @@ $(function() {
       ConfigDialog.super.prototype.initialize.apply(this, arguments);
 
       // BEGIN: datasets as radio options
-      var availableDatasets = [
-        new OO.ui.RadioOptionWidget({
-          data: '',
-          label: 'All'
-        })
-      ];
+      var allDatasets = new OO.ui.RadioOptionWidget({
+        data: '',
+        label: 'All'
+      });
+      var availableDatasets = [allDatasets];
       // Fill the options with the available datasets
       getPossibleDatasets(function(datasets) {
         datasets.forEach(function(item) {
@@ -703,7 +703,8 @@ $(function() {
       });
       var datasetSelection = new OO.ui.RadioSelectWidget({
         items: availableDatasets
-      });
+      })
+      .connect(this, {select: 'setDatasetInfo'});
       this.datasetSelection = datasetSelection;
       var datasetsPanel = new OO.ui.PanelLayout({
         padded: true,
@@ -712,29 +713,34 @@ $(function() {
       });
       // END: datasets as radio options
 
-      // BEGIN: selected dataset info 
-      var missingStatements = new OO.ui.LabelWidget({
-        label: 'TODO'
-      });
-      var totalStatements = new OO.ui.LabelWidget({
-        label: 'TODO'
-      });
+      // BEGIN: selected dataset info
+      var datasetDescriptionWidget = new OO.ui.LabelWidget();
+      var missingStatementsWidget = new OO.ui.LabelWidget();
+      var totalStatementsWidget = new OO.ui.LabelWidget();
+      this.datasetDescriptionWidget = datasetDescriptionWidget;
+      this.missingStatementsWidget = missingStatementsWidget;
+      this.totalStatementsWidget = totalStatementsWidget;
       var infoFields = new OO.ui.FieldsetLayout();
       infoFields.addItems([
-        new OO.ui.FieldLayout(missingStatements, {
+        new OO.ui.FieldLayout(datasetDescriptionWidget, {
           align: 'top',
-          label: 'Missing statements'
+          label: 'Description:'
         }),
-        new OO.ui.FieldLayout(totalStatements, {
+        new OO.ui.FieldLayout(missingStatementsWidget, {
           align: 'top',
-          label: 'Total statements'
+          label: 'Missing statements:'
+        }),
+        new OO.ui.FieldLayout(totalStatementsWidget, {
+          align: 'top',
+          label: 'Total statements:'
         })
       ]);
       var infoPanel = new OO.ui.PanelLayout({
         padded: true,
         expanded: false,
         scrollable: false
-      });
+      })
+      this.infoPanel = infoPanel;
       // END: selected dataset info
 
       // BEGIN: final result as a menu layout
@@ -755,6 +761,41 @@ $(function() {
       this.$body.append(layout.$element);
       // END: final result as a menu layout
     };
+
+    ConfigDialog.prototype.setDatasetInfo = function () {
+      // TODO var datasetDescriptionWidget = this.datasetDescriptionWidget;
+      var missingStatementsWidget = this.missingStatementsWidget;
+      var totalStatementsWidget = this.totalStatementsWidget;
+      var selected = this.datasetSelection.findSelectedItem();
+      /*
+        IF:
+        1. we switch off the info panel;
+        2. the user clicks on 'cancel';
+        3. the user reopens the dialog;
+        4. the user selects a dataset;
+        THEN the dialog height will not fit.
+
+        Replace with empty labels instead.
+      */
+      if (selected.getLabel() === 'All') {
+        missingStatementsWidget.setLabel();
+        totalStatementsWidget.setLabel();
+      } else {
+        $.get(
+          STATISTICS_SERVICE,
+          {dataset: selected.getData()},
+          function(data) {
+            var description = data.description == null
+            ? new OO.ui.HtmlSnippet('<i>Not available</i>')
+            : new OO.ui.HtmlSnippet('<i>' + data.description + '</i>');
+            // TODO datasetDescriptionWidget.setLabel(description);
+            missingStatementsWidget.setLabel(new OO.ui.HtmlSnippet('<b>' + data.missing_statements.toLocaleString() + '</b>'));
+            totalStatementsWidget.setLabel(new OO.ui.HtmlSnippet('<b>' + data.total_statements.toLocaleString() + '</b>'));
+          }
+        );
+        this.infoPanel.toggle(true);
+      }
+    }
 
     ConfigDialog.prototype.getActionProcess = function(action) {
       if (action === 'save') {
