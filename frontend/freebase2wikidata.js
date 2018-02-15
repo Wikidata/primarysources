@@ -717,9 +717,11 @@ $(function() {
       var datasetDescriptionWidget = new OO.ui.LabelWidget();
       var missingStatementsWidget = new OO.ui.LabelWidget();
       var totalStatementsWidget = new OO.ui.LabelWidget();
+      var uploaderWidget = new OO.ui.LabelWidget();
       this.datasetDescriptionWidget = datasetDescriptionWidget;
       this.missingStatementsWidget = missingStatementsWidget;
       this.totalStatementsWidget = totalStatementsWidget;
+      this.uploaderWidget = uploaderWidget;
       var infoFields = new OO.ui.FieldsetLayout();
       infoFields.addItems([
         new OO.ui.FieldLayout(datasetDescriptionWidget, {
@@ -733,6 +735,10 @@ $(function() {
         new OO.ui.FieldLayout(totalStatementsWidget, {
           align: 'top',
           label: 'Total statements:'
+        }),
+        new OO.ui.FieldLayout(totalStatementsWidget, {
+          align: 'top',
+          label: 'Author:'
         })
       ]);
       var infoPanel = new OO.ui.PanelLayout({
@@ -766,6 +772,7 @@ $(function() {
       var datasetDescriptionWidget = this.datasetDescriptionWidget;
       var missingStatementsWidget = this.missingStatementsWidget;
       var totalStatementsWidget = this.totalStatementsWidget;
+      var uploaderWidget = this.uploaderWidget;
       var selected = this.datasetSelection.findSelectedItem();
       /*
         IF:
@@ -792,6 +799,7 @@ $(function() {
             datasetDescriptionWidget.setLabel(description);
             missingStatementsWidget.setLabel(new OO.ui.HtmlSnippet('<b>' + data.missing_statements.toLocaleString() + '</b>'));
             totalStatementsWidget.setLabel(new OO.ui.HtmlSnippet('<b>' + data.total_statements.toLocaleString() + '</b>'));
+            uploaderWidget.setLabel(new OO.ui.HtmlSnippet('<a href="' + data.uploader + '">' + data.uploader.split('User:')[1] + '</a>'));
           }
         );
         this.infoPanel.toggle(true);
