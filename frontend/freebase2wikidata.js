@@ -736,7 +736,7 @@ $(function() {
           align: 'top',
           label: 'Total statements:'
         }),
-        new OO.ui.FieldLayout(totalStatementsWidget, {
+        new OO.ui.FieldLayout(uploaderWidget, {
           align: 'top',
           label: 'Author:'
         })
@@ -788,6 +788,7 @@ $(function() {
         datasetDescriptionWidget.setLabel();
         missingStatementsWidget.setLabel();
         totalStatementsWidget.setLabel();
+        uploaderWidget.setLabel();
       } else {
         $.get(
           STATISTICS_SERVICE,
@@ -802,7 +803,6 @@ $(function() {
             uploaderWidget.setLabel(new OO.ui.HtmlSnippet('<a href="' + data.uploader + '">' + data.uploader.split('User:')[1] + '</a>'));
           }
         );
-        this.infoPanel.toggle(true);
       }
     }
 
