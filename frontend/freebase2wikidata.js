@@ -61,6 +61,7 @@ $(function() {
   var SUGGEST_SERVICE = BASE_URI + 'suggest?qid={{qid}}';
   var CURATE_SERVICE = BASE_URI + 'curate';
   var SEARCH_SERVICE = BASE_URI + 'search';
+  var SPARQL_SERVICE = BASE_URI + 'sparql';
   // END: primary sources tool Web services
 
   var SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
@@ -2090,352 +2091,715 @@ $(function() {
   }
 
   function listDialog(button) {
+      /**
+       * A row displaying a statement
+       *
+       * @class
+       * @extends OO.ui.Widget
+       * @cfg {Object} [statement] the statement to display
+       */
+      function StatementRow(config) {
+          StatementRow.super.call(this, config);
 
-    /**
-     * A row displaying a statement
-     *
-     * @class
-     * @extends OO.ui.Widget
-     * @cfg {Object} [statement] the statement to display
-     */
-    function StatementRow(config) {
-      StatementRow.super.call(this, config);
+          this.statement = config.statement;
+          var widget = this;
 
-      this.statement = config.statement;
-      var widget = this;
-      var numberOfSnaks = this.statement.qualifiers.length + 1;
+          var numberOfSource = 0;
+          var numberOfQualifier = 0;
 
-      var htmlCallbacks = [
-        getValueHtml(this.statement.subject),
-        getValueHtml(this.statement.predicate),
-        getValueHtml(this.statement.object, this.statement.predicate)
-      ];
-      this.statement.qualifiers.forEach(function(qualifier) {
-        htmlCallbacks.push(getValueHtml(qualifier.qualifierProperty));
-        htmlCallbacks.push(
-          getValueHtml(qualifier.qualifierObject, qualifier.qualifierProperty)
-        );
-      });
+          numberOfSource = this.statement.source.length;
+          numberOfQualifier = this.statement.qualifiers.length;
 
-      $.when.apply(this, htmlCallbacks).then(function() {
-        var subjectHtml = arguments[0];
-        var propertyHtml = arguments[1];
-        var objectHtml = arguments[2];
+          var htmlCallbacks = [
+              getValueHtml(this.statement.subject), //0
+              getValueHtml(this.statement.predicate), //1
+              getValueHtml(this.statement.object, this.statement.predicate) //2
+          ];
 
-        var approveButton = new OO.ui.ButtonWidget({
-          label: 'Approve',
-          flags: 'constructive'
-        });
-        approveButton.connect(widget, {click: 'approve'});
+          this.statement.qualifiers.forEach(function(qualifier) {
+              htmlCallbacks.push(getValueHtml(qualifier.qualifierProperty));
+              htmlCallbacks.push(
+                  getValueHtml(qualifier.qualifierObject, qualifier.qualifierProperty)
+              );
+          });
 
-        var rejectButton = new OO.ui.ButtonWidget({
-          label: 'Reject',
-          flags: 'destructive'
-        });
-        rejectButton.connect(widget, {click: 'reject'});
+          // Add reference to table
+          this.statement.source.forEach(function(source){
+              htmlCallbacks.push(getValueHtml(source.sourceProperty));
+              htmlCallbacks.push(
+                  getValueHtml(source.sourceObject, source.sourceProperty)
+              );
+          });
 
-        var buttonGroup = new OO.ui.ButtonGroupWidget({
-          items: [approveButton, rejectButton]
-        });
+          $.when.apply(this, htmlCallbacks).then(function() {
+              var numberOfArguments = arguments.length;
 
-        // Main row
-        widget.$element
-          .attr('data-id', widget.statement.id)
-          .append(
-            $('<tr>').append(
-              $('<td>')
-                .attr('rowspan', numberOfSnaks)
-                .html(subjectHtml),
-              $('<td>')
-                .attr('rowspan', numberOfSnaks)
-                .html(propertyHtml),
-              $('<td>')
-                .attr('colspan', 2)
-                .html(objectHtml),
-              $('<td>')
-                .attr('rowspan', numberOfSnaks)
-                .append(buttonGroup.$element)
-            )
-          );
+              // obj to array
+              var args = Object.values(arguments);
 
-        // Qualifiers
-        for (var i = 3; i < arguments.length; i += 2) {
-          widget.$element.append(
-            $('<tr>').append(
-              $('<td>').html(arguments[i]),
-              $('<td>').html(arguments[i + 1])
-            )
-          );
-        }
+              var subjectHtml = args[0];
+              var propertyHtml = args[1];
+              var objectHtml = args[2];
 
-        // Check that the statement don't already exist
-        getClaims(widget.statement.subject, widget.statement.predicate,
-          function(err, statements) {
-            for (var i in statements) {
-              buildValueKeysFromWikidataStatement(statements[i]);
-              if ($.inArray(
-                widget.statement.key,
-                buildValueKeysFromWikidataStatement(statements[i])
-              ) !== -1) {
-                widget.toggle(false).setDisabled(true);
-                if (widget.statement.source.length === 0) {
-                  setStatementState(widget.statement.id,
-                      STATEMENT_STATES.duplicate, dataset, 'claim').done(function() {
-                    debug.log(widget.statement.id + ' tagged as duplicate');
-                  });
-                }
+              var sourcePropertyHtml = null;
+              var sourceValueHtml = null;
+
+              var qualifiersHtml = [];
+              var q = [];
+
+              // Check presence of qualifiers and sources
+              if (numberOfQualifier > 0 && numberOfSource > 0) {
+                  // Qualif YES, Source YES
+                  q = args.slice(3, numberOfArguments - 2);
+                  for (var c = 0; c < q.length; c += 2) {
+                      qualifiersHtml.push([q[c], q[c + 1]]);
+                  }
+
+                  sourcePropertyHtml = args[numberOfArguments - 2];
+                  sourceValueHtml = args[numberOfArguments - 1];
+
+              } else if (numberOfQualifier > 0 && numberOfSource === 0) {
+                  // Qualif YES, Source NO
+                  q = args.slice(3, numberOfArguments);
+                  for (var k = 0; k < q.length; k += 2) {
+                      qualifiersHtml.push([q[k], q[k + 1]]);
+                  }
+
+              } else if (numberOfQualifier === 0 && numberOfSource > 0) {
+                  // Qualif NO, Source YES
+                  sourcePropertyHtml = args[numberOfArguments - 2];
+                  sourceValueHtml = args[numberOfArguments - 1];
+
+              } else if (numberOfQualifier === 0 && numberOfSource === 0) {
+                  // // Qualif NO, Source NO
               }
-            }
+
+
+              //  Qualif table
+              var $tableQualifiers = $('<table>');
+              $tableQualifiers.addClass('qualifTable')
+                  .append(
+                      $('<tr>').append(
+                          $('<td>')
+                              .attr('colspan', 2)
+                              .html(objectHtml)
+                      )
+                  );
+
+              qualifiersHtml.forEach(function (row){
+                  $tableQualifiers.append(
+                      $('<tr>').append(
+                          $('<td>').html(row[0]),
+                          $('<td>').html(row[1])
+                      )
+                  );
+              });
+
+              // Source table
+              var $tableSource = $('<table>');
+              $tableSource.append(
+                      $('<tr>').append(
+                          $('<td>')
+                              .html(sourcePropertyHtml),
+                          $('<td>')
+                              .html(sourceValueHtml)
+                      )
+                  );
+
+
+              var approveButton = new OO.ui.ButtonWidget({
+                  label: 'Approve',
+                  flags: 'constructive'
+              });
+              approveButton.connect(widget, {click: 'approve'});
+
+              var rejectButton = new OO.ui.ButtonWidget({
+                  label: 'Reject',
+                  flags: 'destructive'
+              });
+              rejectButton.connect(widget, {click: 'reject'});
+
+              var buttonGroup = new OO.ui.ButtonGroupWidget({
+                  items: [approveButton, rejectButton]
+              });
+
+              var previewButton = $('<button>').addClass('preview-button').text("Preview");
+              previewButton.click( function() {
+                  mw.ps.referencePreview.openNav(
+                      $(subjectHtml).text(),
+                      $(propertyHtml).text(),
+                      $(objectHtml).text(),
+                      $(sourceValueHtml).text(),
+                      $(buttonGroup.$element)
+                  )
+              });
+
+              //  no preview button if no source
+              var previewHtml = "";
+              if (numberOfSource > 0) {
+                  previewHtml= previewButton;
+              }
+
+              // Main row
+              widget.$element
+                  .attr('data-id', widget.statement.id)
+                  .append(
+                      $('<tr>').append(
+                          $('<td>')
+                              .html(subjectHtml),
+                          $('<td>')
+                              .html(propertyHtml),
+                          $('<td>')
+                              .html($tableQualifiers),
+                          $('<td>')
+                              .append($tableSource),
+                          $('<td>')
+                              .append(previewHtml),
+                          $('<td>')
+                              .append(buttonGroup.$element)
+                      )
+                  );
+
+              // Check that the statement don't already exist
+              getClaims(widget.statement.subject, widget.statement.predicate,
+                  function(err, statements) {
+                      for (var i in statements) {
+                          buildValueKeysFromWikidataStatement(statements[i]);
+                          if ($.inArray(
+                                  widget.statement.key,
+                                  buildValueKeysFromWikidataStatement(statements[i])
+                              ) !== -1) {
+                              widget.toggle(false).setDisabled(true);
+                              if (widget.statement.source.length === 0) {
+                                  setStatementState(widget.statement.id,
+                                      STATEMENT_STATES.duplicate).done(function() {
+                                      debug.log(widget.statement.id + ' tagged as duplicate');
+                                  });
+                              }
+                          }
+                      }
+                  });
           });
-      });
-    }
-    OO.inheritClass(StatementRow, OO.ui.Widget);
-    StatementRow.static.tagName = 'tbody';
+      }
+      OO.inheritClass(StatementRow, OO.ui.Widget);
+      StatementRow.static.tagName = 'tbody';
 
-    StatementRow.prototype.approve = function() {
-      var widget = this;
+      /**
+       * On button click "Approve"
+       */
+      StatementRow.prototype.approve = function() {
+          var widget = this;
 
-      this.showProgressBar();
-      createClaim(
-        this.statement.subject,
-        this.statement.predicate,
-        this.statement.object,
-        this.statement.qualifiers
-      ).fail(function(error) {
-        return reportError(error);
-      }).done(function() {
-        if (this.statement.source.length > 0) {
-          return; // TODO add support of source review
-        }
-        setStatementState(widget.statement.id, STATEMENT_STATES.approved, dataset, 'claim')
-        .done(function() {
-          widget.toggle(false).setDisabled(true);
-        });
-      });
-    };
+          // TODO createclaim with reference
 
-    StatementRow.prototype.reject = function() {
-      var widget = this;
+          // Check if is a duplicate (equal predicate and object)
+          console.log("S P O: ");
+          console.log(widget.statement.subject + " - " + widget.statement.predicate + " - " + widget.statement.object);
 
-      this.showProgressBar();
-      setStatementState(widget.statement.id, STATEMENT_STATES.rejected, dataset, 'claim')
-      .done(function() {
-        widget.toggle(false).setDisabled(true);
-      });
-    };
+          console.log("API CALL");
+          $.ajax( {
+              url: 'https://www.wikidata.org/w/api.php',
+              data: {
+                  action: 'wbgetclaims',
+                  entity: widget.statement.subject,
+                  property: widget.statement.predicate,
+                  format: 'json',
+                  origin: '*'
+              },
+              xhrFields: {
+                  withCredentials: false
+              },
+              dataType: 'json'
+          } ).done(function(data){
 
-    StatementRow.prototype.showProgressBar = function() {
-      var progressBar = new OO.ui.ProgressBarWidget();
-      progressBar.$element.css('max-width', '100%');
-      this.$element.empty()
-        .append(
-          $('<td>')
-            .attr('colspan', 4)
-            .append(progressBar.$element)
-        );
-    };
+              var existingClaims = data['claims'];
+              if ( Object.keys(existingClaims).length > 0 ) {
+                  // there are already some claim with this property
 
-    /**
-     * The main dialog
-     *
-     * @class
-     * @extends OO.ui.Widget
-     */
-    function ListDialog(config) {
-      ListDialog.super.call(this, config);
-    }
-    OO.inheritClass(ListDialog, OO.ui.ProcessDialog);
-    ListDialog.static.name = 'ps-list';
-    ListDialog.static.title = 'Primary Sources statement list (in development)';
-    ListDialog.static.size = 'larger';
-    ListDialog.static.actions = [
-      {label: 'Close', flags: 'safe'}
-    ];
+                  console.log("Existing claims");
+                  console.log(existingClaims);
 
-    ListDialog.prototype.initialize = function() {
-      ListDialog.super.prototype.initialize.apply(this, arguments);
+                  // array of values by widget.statement.predicate
+                  var existingValues = existingClaims[widget.statement.predicate];
 
-      var widget = this;
+                  console.log(" --- ");
+                  for ( var c = 0; c < existingValues.length; c++ ) {
+                      var existingObj = jsonToTsvValue(existingValues[c].mainsnak.datavalue);
 
-      // Selection form
-      this.datasetInput = new OO.ui.DropdownInputWidget();
-      getPossibleDatasets(function(datasets) {
-        var options = [{data: '', label: 'All sources'}];
-        datasets.forEach(function(item) {
-          var uri = item['dataset'];
-          options.push({data: uri, label: datasetUriToLabel(uri)});
-        });
-        widget.datasetInput.setOptions(options)
-                    .setValue(dataset);
-      });
+                      if (existingObj === widget.statement.object) {
+                          console.log("Duplicato ma guarda i qualif e le ref");
+                          console.log(widget.statement.object + " -> Nuovo: " + existingObj);
 
-      this.propertyInput = new OO.ui.TextInputWidget({
-        placeholder: 'PXX',
-        validate: /^[pP]\d+$/
-      });
 
-      this.valueInput = new OO.ui.TextInputWidget({
-        placeholder: 'Filter by value like item id'
-      });
+                          // se ha qualificatori aggiungilo come nuovo
+                          console.log(widget.statement.qualifiers);
+                          console.log(existingValues[c].qualifiers);
 
-      var loadButton = new OO.ui.ButtonInputWidget({
-        label: 'Load',
-        flags: 'progressive',
-        type: 'submit'
-      });
-      loadButton.connect(this, {click: 'onOptionSubmit'});
 
-      var fieldset = new OO.ui.FieldsetLayout({
-        label: 'Query options',
-        classes: ['container']
-      });
-      fieldset.addItems([
-        new OO.ui.FieldLayout(this.datasetInput, {label: 'Dataset'}),
-        new OO.ui.FieldLayout(this.propertyInput, {label: 'Property'}),
-        new OO.ui.FieldLayout(this.valueInput, {label: 'Value'}),
-        new OO.ui.FieldLayout(loadButton)
-      ]);
-      var formPanel = new OO.ui.PanelLayout({
-        padded: true,
-        framed: true
-      });
-      formPanel.$element.append(fieldset.$element);
+                          for (var z = 0; z < widget.statement.qualifiers.length; z++) {
+                              // puo essere undefined se non esiste un qulif con quella prop
+                              // oppure un array
 
-      // Main panel
-      var alertIcon = new OO.ui.IconWidget({
-        icon: 'alert'
-      });
-      var description = new OO.ui.LabelWidget({
-        label: 'This feature is currently in active development. ' +
-               'It allows to list statements contained in Primary Sources ' +
-               'and do action on them. Statements with qualifiers or sources ' +
-               'are hidden.'
-      });
-      this.mainPanel = new OO.ui.PanelLayout({
-        padded: true,
-        scrollable: true
-      });
-      this.mainPanel.$element.append(alertIcon.$element, description.$element);
+                              var qualifP = widget.statement.qualifiers[z].qualifierProperty;
+                              existingValues[c].qualifiers[qualifP];
 
-      // Final layout
-      this.stackLayout = new OO.ui.StackLayout({
-        continuous: true
-      });
-      this.stackLayout.addItems([formPanel, this.mainPanel]);
-      this.$body.append(this.stackLayout.$element);
-    };
+                              console.log("valore del qualif");
+                              console.log(jsonToTsvValue(existingValues[c].qualifiers[qualifP][0].datavalue));
+                          }
 
-    ListDialog.prototype.onOptionSubmit = function() {
-      this.mainPanel.$element.empty();
-      this.table = null;
-      this.parameters = {
-          dataset: this.datasetInput.getValue(),
-          property: this.propertyInput.getValue(),
-          value: this.valueInput.getValue(),
-          offset: 0,
-          limit: 100
-        };
-      this.alreadyDisplayedStatementKeys = {};
 
-      this.executeQuery();
-    };
+                      } else {
+                          // create new claim (same prop)
+                          console.log(widget.statement.object + " -> Nuovo: " + existingObj);
+                      }
+                  }
+                  console.log(" --- ");
 
-    ListDialog.prototype.executeQuery = function() {
-      var widget = this;
-
-      var progressBar = new OO.ui.ProgressBarWidget();
-      progressBar.$element.css('max-width', '100%');
-      widget.mainPanel.$element.append(progressBar.$element);
-
-      searchStatements(this.parameters)
-      .fail(function() {
-        progressBar.$element.remove();
-        var description = new OO.ui.LabelWidget({
-          label: 'No statements found.'
-        });
-        widget.mainPanel.$element.append(description.$element);
-      })
-      .done(function(statements) {
-        progressBar.$element.remove();
-
-        widget.parameters.offset += widget.parameters.limit;
-        widget.displayStatements(statements);
-
-        // We may assume that more statements remains
-        if (statements.length > 0) {
-          widget.nextStatementsButton = new OO.ui.ButtonWidget({
-            label: 'Load more statements',
+              } else {
+                  // in this item there are not claim with this property
+                  // create a new claim (new prop)
+              }
           });
-          widget.nextStatementsButton.connect(
-            widget,
-            {click: 'onNextButtonSubmit'}
-          );
-          widget.mainPanel.$element.append(
-            widget.nextStatementsButton.$element
-          );
-        }
-      });
-    };
 
-    ListDialog.prototype.onNextButtonSubmit = function() {
-      this.nextStatementsButton.$element.remove();
-      this.executeQuery();
-    };
+          /*
+          - create claim (this is a new claim)
+          - create claim with reference (this is a new claim)
+          - create reference (thi is a claim already exists)
+           */
 
-    ListDialog.prototype.displayStatements = function(statements) {
-      var widget = this;
+          this.showProgressBar();
+          // createClaim(
+          //     this.statement.subject,
+          //     this.statement.predicate,
+          //     this.statement.object,
+          //     this.statement.qualifiers
+          // ).fail(function(error) {
+          //     return reportError(error);
+          // }).done(function() {
+          //     // if (this.statement.source.length > 0) {
+          //     //     return; // TODO add support of source review
+          //     // }
+          //     setStatementState(widget.statement.id, STATEMENT_STATES.approved)
+          //         .done(function() {
+          //             widget.toggle(false).setDisabled(true);
+          //         });
+          // });
+      };
 
-      if (this.table === null) { // Initialize the table
-        this.initTable();
+      /**
+       * On button click "Reject"
+       */
+      StatementRow.prototype.reject = function() {
+          var widget = this;
+
+          this.showProgressBar();
+
+          // setStatementState(quickStatement, state, dataset, type)
+
+          var type = ((widget.statement.source.length > 0) ? 'reference' : 'claim');;
+
+          setStatementState(
+              widget.statement.id,
+              STATEMENT_STATES.rejected,
+              widget.statement.dataset,
+              type
+          ).done(function() {
+                  widget.toggle(false).setDisabled(true);
+              });
+      };
+
+      StatementRow.prototype.showProgressBar = function() {
+          var progressBar = new OO.ui.ProgressBarWidget();
+          progressBar.$element.css('max-width', '100%');
+          this.$element.empty()
+              .append(
+                  $('<td>')
+                      .attr('colspan', 4)
+                      .append(progressBar.$element)
+              );
+      };
+
+      /**
+       * The main dialog
+       *
+       * @class
+       * @extends OO.ui.Widget
+       */
+      function ListDialog(config) {
+          ListDialog.super.call(this, config);
       }
 
-      statements.map(function(statement) {
-        statement.key = statement.subject + '\t' +
-                        statement.predicate + '\t' +
-                        statement.object;
-        statement.qualifiers.forEach(function(qualifier) {
-          statement.key += '\t' + qualifier.qualifierProperty + '\t' +
-                                  qualifier.qualifierObject;
-        });
-        if (statement.key in widget.alreadyDisplayedStatementKeys) {
-          return; // Don't display twice the same statement
-        }
-        widget.alreadyDisplayedStatementKeys[statement.key] = true;
+      OO.inheritClass(ListDialog, OO.ui.ProcessDialog);
+      ListDialog.static.name = 'ps-list';
+      ListDialog.static.title = 'primary sources filter';
+      ListDialog.static.size = 'larger';
+      ListDialog.static.actions = [
+          {label: 'Close', flags: 'safe'}
+      ];
 
-        var row = new StatementRow({
-          statement: statement
+      ListDialog.prototype.initialize = function() {
+          ListDialog.super.prototype.initialize.apply(this, arguments);
+
+          var widget = this;
+
+          /**
+           * Dataset dropdown
+           * @type {OO.ui.DropdownInputWidget}
+           */
+          this.datasetInput = new OO.ui.DropdownInputWidget();
+          getPossibleDatasets(function(datasets) {
+              var options = [{data: '', label: 'All sources'}];
+              datasets.forEach(function(item) {
+                  var uri = item['dataset'];
+                  options.push({data: uri, label: datasetUriToLabel(uri)});
+              });
+              widget.datasetInput.setOptions(options)
+                  .setValue(dataset);
+          });
+
+          /**
+           * Property field
+           * @type {OO.ui.TextInputWidget}
+           */
+          this.propertyInput = new OO.ui.TextInputWidget({
+              placeholder: 'PXX',
+              validate: /^[pP]\d+$/
+          });
+
+          /**
+           * Value field
+           * @type {OO.ui.TextInputWidget}
+           */
+          this.valueInput = new OO.ui.TextInputWidget({
+              placeholder: 'Filter by value like item id',
+              id: 'test'
+          });
+
+          /**
+           * Domain of interest field
+           * @type {OO.ui.TextInputWidget}
+           */
+          this.domainOfInterest = new OO.ui.TextInputWidget({
+              placeholder: 'Filter by domain of interest'
+          });
+
+          /**
+           * Sparql query field
+           * @type {OO.ui.TextInputWidget}
+           */
+          this.sparqlQuery = new OO.ui.TextInputWidget( {
+              placeholder: 'Write your SPARQL query',
+              multiline: true
+          } );
+
+          var loadButton = new OO.ui.ButtonInputWidget({
+              label: 'Load',
+              flags: 'progressive',
+              type: 'submit'
+          });
+          loadButton.connect(this, {click: 'onOptionSubmit'});
+
+          var fieldset = new OO.ui.FieldsetLayout({
+              label: 'Filters',
+              classes: ['container'],
+              help: new OO.ui.HtmlSnippet('TODO help')
+          });
+          fieldset.addItems([
+              new OO.ui.FieldLayout(this.domainOfInterest, {label: 'Domain of interest'}),
+              new OO.ui.FieldLayout(this.propertyInput, {label: 'Property'}),
+              new OO.ui.FieldLayout(this.valueInput, {label: 'Value'}),
+              new OO.ui.FieldLayout(this.sparqlQuery, {label: 'SPARQL'}),
+              new OO.ui.FieldLayout(this.datasetInput, {label: 'Dataset'}),
+              new OO.ui.FieldLayout(loadButton)
+          ]);
+          var formPanel = new OO.ui.PanelLayout({
+              padded: true,
+              framed: true
+          });
+          formPanel.$element.append(fieldset.$element);
+
+          // Main panel
+          this.mainPanel = new OO.ui.PanelLayout({
+              padded: true,
+              scrollable: true
+          });
+
+          // Final layout
+          this.stackLayout = new OO.ui.StackLayout({
+              continuous: true
+          });
+          this.stackLayout.addItems([formPanel, this.mainPanel]);
+          this.$body.append(this.stackLayout.$element);
+      };
+
+      ListDialog.prototype.onOptionSubmit = function() {
+          this.mainPanel.$element.empty();
+          this.table = null;
+          var sparql = this.sparqlQuery.getValue();
+          if (sparql !==  '') {
+            // Use SPARQL endpoint
+            this.sparql = sparql;
+            this.executeSparqlQuery();
+          } else {
+            // Use /search service
+            this.parameters = {
+                dataset: this.datasetInput.getValue(),
+                property: this.propertyInput.getValue(),
+                value: this.valueInput.getValue(),
+                offset: 0,
+                limit: 100 // number of loaded statements
+            };
+            this.alreadyDisplayedStatementKeys = {};
+            this.executeQuery();            
+          }
+      };
+
+      ListDialog.prototype.executeSparqlQuery = function () {
+        // var progressBar = this.createProgressBar();
+        var widget = this;
+        var progressBar = new OO.ui.ProgressBarWidget();
+        progressBar.$element.css('max-width', '100%');
+        widget.mainPanel.$element.append(progressBar.$element);
+        // run SPARQL query
+        $.get(
+          SPARQL_SERVICE,
+          {query: widget.sparql},
+          function(data) {
+            console.log("Raw SPARQL results:");
+            console.log(data);
+            // TODO
+          },
+          'json'
+        )
+        .fail(function(xhr) {
+          // A bad request means a bad query
+          if (xhr.status === 400) {
+            // java.util.concurrent.ExecutionException: org.openrdf.query.MalformedQueryException: Encountered " "a" "a "" at line 1, column 1.
+            var exception = xhr.responseText.split('\n')[1].split('MalformedQueryException:')[1];
+            progressBar.$element.remove();
+            var alertIcon = new OO.ui.IconWidget({
+              icon: 'alert'
+            }) 
+            var malformedMessage = new OO.ui.LabelWidget({
+                label: new OO.ui.HtmlSnippet('<b>Malformed query. </b>')
+            });
+            var reasonMessage = new OO.ui.LabelWidget({
+              label: exception
+          });
+            widget.mainPanel.$element.append(alertIcon.$element, malformedMessage.$element, reasonMessage.$element);
+          }
+        })
+      };
+
+      ListDialog.prototype.createProgressBar = function() {
+        var progressBar = new OO.ui.ProgressBarWidget();
+        progressBar.$element.css('max-width', '100%');
+        this.mainPanel.$element.append(progressBar.$element);
+        return progressBar;
+      }
+
+      ListDialog.prototype.showFailure = function(progressBar, failureMessage) {
+        progressBar.$element.remove();
+        var description = new OO.ui.LabelWidget({
+            label: failureMessage
         });
-        widget.table.append(row.$element);
+        this.mainPanel.$element.append(description.$element);
+      }
+
+      /**
+       * On submit
+       */
+      ListDialog.prototype.executeQuery = function() {
+          var widget = this;
+          // var progressBar = this.createProgressBar();
+          var progressBar = new OO.ui.ProgressBarWidget();
+          progressBar.$element.css('max-width', '100%');
+          widget.mainPanel.$element.append(progressBar.$element);
+          // do research
+          searchStatements(this.parameters)
+              // .fail(this.showFailure(progressBar, 'No statements found.'))
+              .fail(function() {
+                progressBar.$element.remove();
+                var description = new OO.ui.LabelWidget({
+                  label: 'No statements found.'
+                });
+                this.mainPanel.$element.append(description.$element);
+              })
+              .done(function(statements) {
+                  progressBar.$element.remove();
+
+                  widget.parameters.offset += widget.parameters.limit;
+                  widget.displayStatements(statements);
+
+                  // We may assume that more statements remains
+                  if (statements.length > 0) {
+                      widget.nextStatementsButton = new OO.ui.ButtonWidget({
+                          label: 'Load more statements'
+                      });
+                      widget.nextStatementsButton.connect(
+                          widget,
+                          {click: 'onNextButtonSubmit'}
+                      );
+                      widget.mainPanel.$element.append(
+                          widget.nextStatementsButton.$element
+                      );
+                  }
+              });
+      };
+
+      ListDialog.prototype.onNextButtonSubmit = function() {
+          this.nextStatementsButton.$element.remove();
+          this.executeQuery();
+      };
+
+
+      function testDuplicate(newStatement) {
+
+          // statement di prova con data
+          newStatement = {"id":"Q1000154\tP570\t+00000001992-01-13T00:00:00Z/11\tS854\t\"http://ead.dartmouth.edu/html/ml85.html\"","dataset":"freebase","subject":"Q1000154","predicate":"P570","object":"+00000001992-01-13T00:00:00Z/11","qualifiers":[],"source":[{"sourceProperty":"P854","sourceObject":"\"http://ead.dartmouth.edu/html/ml85.html\"","sourceType":"url","sourceId":"Q1000154\tP570\t+00000001992-01-13T00:00:00Z/11\tS854\t\"http://ead.dartmouth.edu/html/ml85.html\"","key":"S854\t\"http://ead.dartmouth.edu/html/ml85.html\""}],"key":"Q1000154\tP570\t+00000001992-01-13T00:00:00Z/11"};
+
+          console.log("Test duplicate");
+
+          // api.get({
+          //     action: 'wbgetclaims',
+          //     entity: 'Q1000070',
+          //      property: 'P27'
+          // }).then(function(itemResult){
+          // https://www.wikidata.org/w/api.php?action=wbgetclaims&entity=Q1000070&property=P27&format=json
+          var apiResultJSON = {"claims":{"P570":[{"mainsnak":{"snaktype":"value","property":"P570","hash":"fbc2fc44af284869c248e4358f37051ca983cf5a","datavalue":{"value":{"time":"+1992-01-13T00:00:00Z","timezone":0,"before":0,"after":0,"precision":11,"calendarmodel":"http://www.wikidata.org/entity/Q1985727"},"type":"time"},"datatype":"time"},"type":"statement","id":"Q1000154$93F23E72-DB9E-454D-8AE0-4847B4B62663","rank":"normal","references":[{"hash":"fa278ebfc458360e5aed63d5058cca83c46134f1","snaks":{"P143":[{"snaktype":"value","property":"P143","hash":"e4f6d9441d0600513c4533c672b5ab472dc73694","datavalue":{"value":{"entity-type":"item","numeric-id":328,"id":"Q328"},"type":"wikibase-entityid"},"datatype":"wikibase-item"}]},"snaks-order":["P143"]}]}]}};
+
+
+
+          //test();
+
+
+
+
+          var property = newStatement.predicate;
+          console.log(property);
+
+          var currentStatement = apiResultJSON.claims[property][0];
+          // primo elemento con questa proprietà N.B. può avere piu valori con quella P
+          // quindi ciclare con un for
+
+          var a = jsonToTsvValue(currentStatement.mainsnak.datavalue);
+
+          console.log("currentStatement to TSV");
+          console.log(a);
+
+          console.log("newStatement");
+          console.log(newStatement);
+          console.log("itemResult");
+          console.log(itemResult);
+          //
+          // console.log("JSON to CSV ???");
+          // //jsonToTsvValue("test");
+          // console.log(claim);
+          // console.log("FINE");
+
+          // if (claim != null) {
+          //     // prop exist
+          //     console.log("prop esiste");
+          //
+          //     // check each value of this prop
+          //     for (var k=0; k<claim.length; k++){
+          //         // console.log(claim[k].mainsnak.datavalue);
+          //         // console.log(tsvValueToJson(newStatement.object));
+          //
+          //
+          //         if (jsonToTsvValue(claim[k].mainsnak.datavalue) === newStatement.object &&
+          //             claim[k].mainsnak.snaktype === 'value'
+          //         ) {
+          //             console.log("Valore uguale!")
+          //             // TODO CHECK QUALIF AND SOURCE
+          //
+          //         } else {
+          //             // valore diverso
+          //             // TODO create new claim
+          //         }
+          //
+          //         console.log("Cancellare sotto");
+          //         console.log(claim[k].mainsnak.datavalue);
+          //         console.log(tsvValueToJson(newStatement.object));
+          //     }
+          //
+          // } else {
+          //     // prop does not exist
+          //     console.log("prop non esiste" + statement.predicate);
+          // }
+
+      }
+
+      /**
+       * Display result
+       * @param statements
+       */
+      ListDialog.prototype.displayStatements = function(statements) {
+          var widget = this;
+
+          if (this.table === null) { // Initialize the table
+              this.initTable();
+          }
+
+          console.log("Statements");
+          console.log(statements);
+
+          // Create row for the table
+          statements.map(function(statement) {
+              statement.key = statement.subject + '\t' +
+                  statement.predicate + '\t' +
+                  statement.object;
+              statement.qualifiers.forEach(function(qualifier) {
+                  statement.key += '\t' + qualifier.qualifierProperty + '\t' +
+                      qualifier.qualifierObject;
+              });
+              if (statement.key in widget.alreadyDisplayedStatementKeys) {
+                  return; // Don't display twice the same statement
+              }
+              widget.alreadyDisplayedStatementKeys[statement.key] = true;
+
+              var row = new StatementRow({
+                  statement: statement
+              });
+              widget.table.append(row.$element);
+          });
+
+
+              testDuplicate(statements[1]); //Q1000070
+
+
+      };
+
+      ListDialog.prototype.initTable = function() {
+          this.table = $('<table>')
+              .addClass('wikitable')
+              .css('width', '100%')
+              .append(
+                  $('<thead>').append(
+                      $('<tr>').append(
+                          $('<th>').text('Subject'),
+                          $('<th>').text('Property'),
+                          $('<th>').text('Object'),
+                          $('<th>').text('Reference'),
+                          $('<th>').text('Preview'),
+                          $('<th>').text('Action')
+                      )
+                  )
+              );
+          this.mainPanel.$element.append(this.table);
+      };
+
+      ListDialog.prototype.getBodyHeight = function() {
+          return window.innerHeight - 100;
+      };
+
+      windowManager.addWindows([new ListDialog()]);
+
+      button.click(function() {
+          windowManager.openWindow('ps-list');
       });
-    };
-
-    ListDialog.prototype.initTable = function() {
-      this.table = $('<table>')
-        .addClass('wikitable')
-        .css('width', '100%')
-        .append(
-          $('<thead>').append(
-            $('<tr>').append(
-              $('<th>').text('Subject'),
-              $('<th>').text('Property'),
-              $('<th>').attr('colspan', 2).text('Object'),
-              $('<th>').text('Action')
-            )
-          )
-        );
-      this.mainPanel.$element.append(this.table);
-    };
-
-    ListDialog.prototype.getBodyHeight = function() {
-      return window.innerHeight - 100;
-    };
-
-    windowManager.addWindows([new ListDialog()]);
-
-    button.click(function() {
-      windowManager.openWindow('ps-list');
-    });
   }
+
   mw.ps = ps;
 
   });
