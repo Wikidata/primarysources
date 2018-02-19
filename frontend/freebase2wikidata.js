@@ -2284,6 +2284,23 @@ $(function() {
       OO.inheritClass(StatementRow, OO.ui.Widget);
       StatementRow.static.tagName = 'tbody';
 
+      function SparqlResultRow(headers, bindings) {
+        SparqlResultRow.super.call(this, headers, bindings);
+        var cells = [];
+        headers.forEach(function(header) {
+          // Handle empty cells in case of OPTIONAL clauses
+          var cell = bindings.hasOwnProperty(header)
+          ? $('<td>').text(bindings[header].value)
+          : $('<td>');
+          cells.push(cell);
+        });
+        this.$element.append(
+          $('<tr>').append(cells)
+        );
+      }
+      OO.inheritClass(SparqlResultRow, OO.ui.Widget);
+      SparqlResultRow.static.tagName = 'tbody';
+
       /**
        * On button click "Approve"
        */
@@ -2487,9 +2504,9 @@ $(function() {
            * Sparql query field
            * @type {OO.ui.TextInputWidget}
            */
-          this.sparqlQuery = new OO.ui.TextInputWidget( {
+          this.sparqlQuery = new OO.ui.MultilineTextInputWidget( {
               placeholder: 'Write your SPARQL query',
-              multiline: true
+              autosize: true
           } );
 
           var loadButton = new OO.ui.ButtonInputWidget({
@@ -2555,7 +2572,6 @@ $(function() {
       };
 
       ListDialog.prototype.executeSparqlQuery = function () {
-        // var progressBar = this.createProgressBar();
         var widget = this;
         var progressBar = new OO.ui.ProgressBarWidget();
         progressBar.$element.css('max-width', '100%');
@@ -2565,15 +2581,15 @@ $(function() {
           SPARQL_SERVICE,
           {query: widget.sparql},
           function(data) {
-            console.log("Raw SPARQL results:");
-            console.log(data);
-            // TODO
+            progressBar.$element.remove();
+            widget.displaySparqlResult(data.head.vars, data.results.bindings);
           },
           'json'
         )
         .fail(function(xhr) {
           // A bad request means a bad query
           if (xhr.status === 400) {
+            // TODO can also yield other exceptions, so handle this better
             // java.util.concurrent.ExecutionException: org.openrdf.query.MalformedQueryException: Encountered " "a" "a "" at line 1, column 1.
             var exception = xhr.responseText.split('\n')[1].split('MalformedQueryException:')[1];
             progressBar.$element.remove();
@@ -2590,6 +2606,18 @@ $(function() {
           }
         })
       };
+
+      ListDialog.prototype.displaySparqlResult = function(headers, bindings) {
+        var widget = this;
+        if (this.table === null) {
+          this.initSparqlResultTable(headers);
+        }
+        bindings.forEach(function(binding) {
+          var row = new SparqlResultRow(headers, binding);
+          widget.table.append(row.$element);
+        });
+
+      }
 
       ListDialog.prototype.createProgressBar = function() {
         var progressBar = new OO.ui.ProgressBarWidget();
@@ -2789,6 +2817,24 @@ $(function() {
           this.mainPanel.$element.append(this.table);
       };
 
+      ListDialog.prototype.initSparqlResultTable = function(headers) {
+        var htmlHeaders = [];
+        headers.forEach(function(header) {
+          htmlHeaders.push($('<th>').text(header));
+        });
+        this.table = $('<table>')
+            .addClass('wikitable')
+            .css('width', '100%')
+            .append(
+              $('<thead>').append(
+                $('<tr>').append(
+                  htmlHeaders
+                )
+              )
+            );
+        this.mainPanel.$element.append(this.table);
+      };
+      
       ListDialog.prototype.getBodyHeight = function() {
           return window.innerHeight - 100;
       };
