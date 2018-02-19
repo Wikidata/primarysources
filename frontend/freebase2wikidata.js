@@ -274,7 +274,7 @@ $(function() {
 
         $.ajax({
             type: 'GET',
-            url: 'https://tools.wmflabs.org/strephit/search?url=' + encodeURI(referenceURL),
+            url: 'https://tools.wmflabs.org/strephit/search?url=' + encodeURIComponent(referenceURL),
             success: function(msg) {
                 $('.loader').remove();
 
@@ -286,7 +286,7 @@ $(function() {
                     {
                         blackboard.append('<h1><a href="' + data.url + '">' + data.url + '</a></h1>');
                         blackboard.append('<ul></ul>');
-                        
+
                         var linklist = $('#blackboard > ul');
                         for(var index in data){
                             var item = data[index];
