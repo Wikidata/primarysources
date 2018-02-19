@@ -1,3 +1,7 @@
+// Uncomment for local testing on common.js
+// var asyncSrc = 'https://www.wikidata.org/w/index.php?title=User:Kiailandi/async.js&action=raw&ctype=text%2Fjavascript';
+// $.getScript(asyncSrc).done(function() {
+
 /**
  * freebase2wikidata.js
  *
@@ -5,7 +9,7 @@
  *
  * @author: Thomas Steiner (tomac@google.com)
  * @author: Thomas Pellissier Tanon (thomas@pellissier-tanon.fr)
- * @author: Marco Fossati (fossati@spaziodati.eu)
+ * @author: Marco Fossati (fossati@fbk.eu)
  * @license: CC0 1.0 Universal (CC0 1.0)
  */
 
@@ -36,7 +40,11 @@
 
 $(function() {
   
+  // Uncomment for gadget version
   var async = module.exports;
+  // Uncomment for local testing on common.js
+  // var async = window.async;
+
   var ps = mw.ps || {};
 
   var DEBUG = JSON.parse(localStorage.getItem('f2w_debug')) || false;
@@ -45,24 +53,25 @@ $(function() {
 
   var CACHE_EXPIRY = 60 * 60 * 1000;
 
-  var WIKIDATA_ENTITY_DATA_URL =
-      'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
-  // Temporary location of the back end v2, waiting for a VPS machine
-  // see https://phabricator.wikimedia.org/T180347
-  var FREEBASE_ENTITY_DATA_URL =
-      'http://it.dbpedia.org/pst/suggest?qid={{qid}}';
-  var FREEBASE_STATEMENT_APPROVAL_URL = 'http://it.dbpedia.org/pst/curate';
-  var FREEBASE_STATEMENT_SEARCH_URL =
-    'https://tools.wmflabs.org/wikidata-primary-sources/statements/all';
-  var FREEBASE_DATASETS =
-    'https://tools.wmflabs.org/wikidata-primary-sources/datasets/all';
-  var FREEBASE_SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
+  // BEGIN: primary sources tool Web services
+  var BASE_URI = 'https://pst.wmflabs.org/pst/';
+  var DATASETS_SERVICE = BASE_URI + 'datasets';
+  var STATISTICS_SERVICE = BASE_URI + 'statistics';
+  var RANDOM_SERVICE = BASE_URI + 'random';
+  var SUGGEST_SERVICE = BASE_URI + 'suggest?qid={{qid}}';
+  var CURATE_SERVICE = BASE_URI + 'curate';
+  var SEARCH_SERVICE = BASE_URI + 'search';
+  // END: primary sources tool Web services
+
+  var SOURCE_URL_BLACKLIST = 'https://www.wikidata.org/w/api.php' +
       '?action=parse&format=json&prop=text' +
       '&page=Wikidata:Primary_sources_tool/URL_blacklist';
-  var FREEBASE_SOURCE_URL_WHITELIST = 'https://www.wikidata.org/w/api.php' +
+  var SOURCE_URL_WHITELIST = 'https://www.wikidata.org/w/api.php' +
       '?action=parse&format=json&prop=text' +
       '&page=Wikidata:Primary_sources_tool/URL_whitelist';
 
+  var WIKIDATA_ENTITY_DATA_URL =
+      'https://www.wikidata.org/wiki/Special:EntityData/{{qid}}.json';
   var WIKIDATA_API_COMMENT =
       'Added via [[Wikidata:Primary sources tool]]';
 
@@ -107,7 +116,7 @@ $(function() {
             '<div class="wikibase-edittoolbar-container wikibase-toolbar-container">' +
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-add">' +
-                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>approve reference</a>' +
+                  '<a class="f2w-button f2w-source f2w-approve" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>approve</a>' +
                 '</span>' +
               '</span>' +
               ' ' +
@@ -121,7 +130,7 @@ $(function() {
               '</span>' +*/
               '<span class="wikibase-toolbar wikibase-toolbar-item wikibase-toolbar-container">' +
                 '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-remove">' +
-                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>reject reference</a>' +
+                  '<a class="f2w-button f2w-source f2w-reject" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-source="{{data-source}}" data-qualifiers="{{data-qualifiers}}"><span class="wb-icon"></span>reject</a>' +
                 '</span>' +
               '</span>' +
             '</div>' +
@@ -185,13 +194,11 @@ $(function() {
           '<span class="wikibase-toolbar-container wikibase-edittoolbar-container">' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
               '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-add">' +
-                '<a class="f2w-button f2w-property f2w-approve" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>approve claim</a>' +
               '</span>' +
             '</span>' +
             ' ' +
             '<span class="wikibase-toolbar-item wikibase-toolbar wikibase-toolbar-container">' +
               '<span class="wikibase-toolbarbutton wikibase-toolbar-item wikibase-toolbar-button wikibase-toolbar-button-remove">' +
-                '<a class="f2w-button f2w-property f2w-reject" href="#" data-statement-id="{{statement-id}}" data-dataset="{{data-dataset}}" data-property="{{data-property}}" data-object="{{data-object}}" data-qualifiers="{{data-qualifiers}}" data-sources="{{data-sources}}"><span class="wb-icon"></span>reject claim</a>' +
               '</span>' +
             '</span>' +
           '</span>' +
@@ -418,10 +425,13 @@ $(function() {
     if(container.find(".external.free").length > 0){
       var refs = container.find(".wikibase-snakview-property");
       refs.each(function(index, item) {
-        $(item).append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
-                                                                               $(item).parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
-                                                                               $(item).parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
-                                                                               container.find(item).closest(".wikibase-snakview.listview-item").find(".external.free").text() + '\'' + ',' + '$(this).closest(\'.wikibase-referenceview.listview-item.wikibase-toolbar-item.new-source\').children().find(\'.f2w-button.f2w-source\'))">Preview</a>');
+        var refLabel = $(item).children().text();
+        if(refLabel === "reference URL"){
+          $(item).append('<a class="preview-button" onclick="mw.ps.openNav(\'' + $(".wikibase-title-label").text() + '\',\'' +
+                                                                                 $(item).parents(".wikibase-statementgroupview.listview-item").find(".wikibase-statementgroupview-property-label").children().text() + '\',\'' +
+                                                                                 $(item).parents(".wikibase-statementview.listview-item.wikibase-toolbar-item").find(".wikibase-statementview-mainsnak .wikibase-snakview-value.wikibase-snakview-variation-valuesnak").children().text() + '\',\'' +
+                                                                                 container.find(item).closest(".wikibase-snakview.listview-item").find(".external.free").text() + '\'' + ',' + '$(this).closest(\'.wikibase-referenceview.listview-item.wikibase-toolbar-item.new-source\').children().find(\'.f2w-button.f2w-source\'))">Preview</a>');
+        }
       });
     }
   }
@@ -433,7 +443,7 @@ $(function() {
 
     // Add random Primary Sources item button
     (function createRandomFreebaseItemLink() {
-      var datasetLabel = (dataset === '') ? 'Primary Sources' : dataset;
+      var datasetLabel = (dataset === '') ? 'Primary Sources' : datasetUriToLabel(dataset);
       var portletLink = $(mw.util.addPortletLink(
         'p-navigation',
         '#',
@@ -448,8 +458,7 @@ $(function() {
         e.target.innerHTML = '<img src="https://upload.wikimedia.org/' +
             'wikipedia/commons/f/f8/Ajax-loader%282%29.gif" class="ajax"/>';
         $.ajax({
-          url: FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') +
-              '?dataset=' + dataset
+          url: RANDOM_SERVICE + '?dataset=' + dataset
         }).done(function(data) {
           var newQid = data[0].statement.split(/\t/)[0];
           document.location.href = 'https://www.wikidata.org/wiki/' + newQid;
@@ -499,48 +508,10 @@ $(function() {
         var predicate = statement.property;
         var object = statement.object;
         var quickStatement = qid + '\t' + predicate + '\t' + object;
-        // BEGIN: claim curation
-        if (classList.contains('f2w-property')) {
-          var currentDataset = statement.dataset;
-          var qualifiers = JSON.parse(statement.qualifiers);
-          var sources = JSON.parse(statement.sources);
-          // Claim approval
-          if (classList.contains('f2w-approve')) {
-            createClaim(qid, predicate, object, qualifiers)
-              .fail(function(error) {
-                return reportError(error);
-              }).done(function(data) {
-                /*
-                  The back end approves the claim + eventual qualifiers.
-                  See SPARQL queries in CurateServlet:
-                  https://github.com/marfox/pst-backend
-                */
-                setStatementState(quickStatement, STATEMENT_STATES.approved, currentDataset, 'claim')
-                .done(function() {
-                  debug.log('Approved claim [' + quickStatement + ']');
-                  if (data.pageinfo && data.pageinfo.lastrevid) {
-                    document.location.hash = 'revision=' +
-                        data.pageinfo.lastrevid;
-                  }
-                  return document.location.reload();
-                });
-              });
-          }
-          // Claim rejection
-          else if (classList.contains('f2w-reject')) {
-            // The back end rejects everything (claim, qualifiers, references)
-            setStatementState(quickStatement, STATEMENT_STATES.rejected, currentDataset, 'claim')
-            .done(function() {
-              debug.log('Rejected claim [' + quickStatement + ']');
-              return document.location.reload();
-            });
-          }
-        }
-        // END: claim curation
         // BEGIN: reference curation
-        else if (classList.contains('f2w-source')) {
+        if (classList.contains('f2w-source')) {
           /*
-            The reference key is the property/value pair, see line 721
+            The reference key is the property/value pair, see parsePrimarySourcesStatement.
             Use it to build the QuickStatement needed to change the state in the back end.
             See CurateServlet#parseQuickStatement:
             https://github.com/marfox/pst-backend
@@ -688,14 +659,24 @@ $(function() {
     );
   }
 
+  function datasetUriToLabel(uri) {
+    if (isUrl(uri)) {
+      // [ "http:", "", "DATASET-LABEL", "STATE" ]
+      return uri.split('/')[2];
+    } else {
+      debug.log('The dataset has an invalid URI: "' + uri + '". Will appear as is (no human-readable conversion)')
+      return uri;
+    }
+  }
+
   function configDialog(button) {
     function ConfigDialog(config) {
       ConfigDialog.super.call(this, config);
     }
+    // Main dialog settings
     OO.inheritClass(ConfigDialog, OO.ui.ProcessDialog);
     ConfigDialog.static.name = 'ps-config';
-    ConfigDialog.static.title = 'Primary Sources configuration';
-    ConfigDialog.static.size = 'large';
+    ConfigDialog.static.title = 'Choose a primary sources dataset';
     ConfigDialog.static.actions = [
       {action: 'save', label: 'Save', flags: ['primary', 'constructive']},
       {label: 'Cancel', flags: 'safe'}
@@ -704,51 +685,136 @@ $(function() {
     ConfigDialog.prototype.initialize = function() {
       ConfigDialog.super.prototype.initialize.apply(this, arguments);
 
-      this.dataset = new OO.ui.ButtonSelectWidget({
-        items: [new OO.ui.ButtonOptionWidget({
-          data: '',
-          label: 'All sources'
-        })]
+      // BEGIN: datasets as radio options
+      var allDatasets = new OO.ui.RadioOptionWidget({
+        data: '',
+        label: 'All'
       });
-
-      var dialog = this;
+      var availableDatasets = [allDatasets];
+      // Fill the options with the available datasets
       getPossibleDatasets(function(datasets) {
-        for (var datasetId in datasets) {
-          dialog.dataset.addItems([new OO.ui.ButtonOptionWidget({
-            data: datasetId,
-            label: datasetId,
-          })]);
-        }
+        datasets.forEach(function(item) {
+          var uri = item['dataset'];
+          availableDatasets.push(new OO.ui.RadioOptionWidget({
+            data: uri,
+            label: datasetUriToLabel(uri),
+          }));
+        });
       });
-
-      this.dataset.selectItemByData(dataset);
-
-      var fieldset = new OO.ui.FieldsetLayout({
-        label: 'Dataset to use'
-      });
-      fieldset.addItems([this.dataset]);
-
-      this.panel = new OO.ui.PanelLayout({
+      var datasetSelection = new OO.ui.RadioSelectWidget({
+        items: availableDatasets
+      })
+      .connect(this, {select: 'setDatasetInfo'});
+      this.datasetSelection = datasetSelection;
+      var datasetsPanel = new OO.ui.PanelLayout({
         padded: true,
+        expanded: false,
+        scrollable: false
+      });
+      // END: datasets as radio options
+
+      // BEGIN: selected dataset info
+      var datasetDescriptionWidget = new OO.ui.LabelWidget();
+      var missingStatementsWidget = new OO.ui.LabelWidget();
+      var totalStatementsWidget = new OO.ui.LabelWidget();
+      var uploaderWidget = new OO.ui.LabelWidget();
+      this.datasetDescriptionWidget = datasetDescriptionWidget;
+      this.missingStatementsWidget = missingStatementsWidget;
+      this.totalStatementsWidget = totalStatementsWidget;
+      this.uploaderWidget = uploaderWidget;
+      var infoFields = new OO.ui.FieldsetLayout();
+      infoFields.addItems([
+        new OO.ui.FieldLayout(datasetDescriptionWidget, {
+          align: 'top',
+          label: 'Description:'
+        }),
+        new OO.ui.FieldLayout(missingStatementsWidget, {
+          align: 'top',
+          label: 'Missing statements:'
+        }),
+        new OO.ui.FieldLayout(totalStatementsWidget, {
+          align: 'top',
+          label: 'Total statements:'
+        }),
+        new OO.ui.FieldLayout(uploaderWidget, {
+          align: 'top',
+          label: 'Author:'
+        })
+      ]);
+      var infoPanel = new OO.ui.PanelLayout({
+        padded: true,
+        expanded: false,
+        scrollable: false
+      })
+      this.infoPanel = infoPanel;
+      // END: selected dataset info
+
+      // BEGIN: final result as a menu layout
+      // see https://doc.wikimedia.org/oojs-ui/master/js/#!/api/OO.ui.MenuLayout
+      var layout = new OO.ui.MenuLayout({
+        position: 'before',
         expanded: false
       });
-      this.panel.$element.append(fieldset.$element);
-      this.$body.append(this.panel.$element);
+      // Add the radio options to the layout
+      layout.$menu.append(
+          datasetsPanel.$element.append(datasetSelection.$element)
+      );
+      // Add the selected dataset info to the layout
+      layout.$content.append(
+          infoPanel.$element.append(infoFields.$element)
+      );
+      // Add the the menu layout to the main dialog
+      this.$body.append(layout.$element);
+      // END: final result as a menu layout
     };
+
+    ConfigDialog.prototype.setDatasetInfo = function () {
+      var datasetDescriptionWidget = this.datasetDescriptionWidget;
+      var missingStatementsWidget = this.missingStatementsWidget;
+      var totalStatementsWidget = this.totalStatementsWidget;
+      var uploaderWidget = this.uploaderWidget;
+      var selected = this.datasetSelection.findSelectedItem();
+      /*
+        IF:
+        1. we switch off the info panel;
+        2. the user clicks on 'cancel';
+        3. the user reopens the dialog;
+        4. the user selects a dataset;
+        THEN the dialog height will not fit.
+
+        Replace with empty labels instead.
+      */
+      if (selected.getLabel() === 'All') {
+        datasetDescriptionWidget.setLabel();
+        missingStatementsWidget.setLabel();
+        totalStatementsWidget.setLabel();
+        uploaderWidget.setLabel();
+      } else {
+        $.get(
+          STATISTICS_SERVICE,
+          {dataset: selected.getData()},
+          function(data) {
+            var description = data.description == null
+            ? new OO.ui.HtmlSnippet('<i>Not available</i>')
+            : new OO.ui.HtmlSnippet('<i>' + data.description + '</i>');
+            datasetDescriptionWidget.setLabel(description);
+            missingStatementsWidget.setLabel(new OO.ui.HtmlSnippet('<b>' + data.missing_statements.toLocaleString() + '</b>'));
+            totalStatementsWidget.setLabel(new OO.ui.HtmlSnippet('<b>' + data.total_statements.toLocaleString() + '</b>'));
+            uploaderWidget.setLabel(new OO.ui.HtmlSnippet('<a href="' + data.uploader + '">' + data.uploader.split('User:')[1] + '</a>'));
+          }
+        );
+      }
+    }
 
     ConfigDialog.prototype.getActionProcess = function(action) {
       if (action === 'save') {
-        mw.cookie.set('ps-dataset', this.dataset.getSelectedItem().getData());
+        mw.cookie.set('ps-dataset', this.datasetSelection.findSelectedItem().getData());
         return new OO.ui.Process(function() {
           location.reload();
         });
       }
 
       return ConfigDialog.super.prototype.getActionProcess.call(this, action);
-    };
-
-    ConfigDialog.prototype.getBodyHeight = function() {
-      return this.panel.$element.outerHeight(true);
     };
 
     windowManager.addWindows([new ConfigDialog()]);
@@ -770,7 +836,7 @@ $(function() {
       }
     }
     $.ajax({
-      url: FREEBASE_DATASETS
+      url: DATASETS_SERVICE
     }).done(function(data) {
       localStorage.setItem('f2w_dataset', JSON.stringify({
         timestamp: now,
@@ -836,8 +902,11 @@ $(function() {
         });
       }
 
-      qualifierKeyParts.sort();
-      key += '\t' + qualifierKeyParts.join('\t');
+      // Avoid appending tabs to the statement key if there are no qualifiers
+      if (qualifierKeyParts.length !== 0) {
+        qualifierKeyParts.sort();
+        key += '\t' + qualifierKeyParts.join('\t');
+      }
 
       // Filter out blacklisted source URLs
       source = source.filter(function(source) {
@@ -1236,16 +1305,14 @@ $(function() {
       return dataValue.value.amount;
     case 'time':
       var time = dataValue.value.time;
-
-      // Normalize the timestamp
-      if (dataValue.value.precision < 11) {
-        time = time.replace('-01T', '-00T');
+      var precision = dataValue.value.precision;
+      if (precision < 11) {
+        time = time.replace('-00T', '-01T');
       }
-      if (dataValue.value.precision < 10) {
-        time = time.replace('-01-', '-00-');
+      if (precision < 10) {
+        time = time.replace('-00-', '-01-');
       }
-
-      return time + '/' + dataValue.value.precision;
+      return time + '/' + precision;
     case 'globecoordinate':
       return '@' + dataValue.value.latitude + '/' + dataValue.value.longitude;
     case 'monolingualtext':
@@ -1681,8 +1748,8 @@ $(function() {
   function getFreebaseEntityData(qid, callback) {
     $.ajax({
       url: FAKE_OR_RANDOM_DATA ?
-          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, 'any') :
-          FREEBASE_ENTITY_DATA_URL.replace(/\{\{qid\}\}/, qid) + '&dataset=' +
+          RANDOM_SERVICE :
+          SUGGEST_SERVICE.replace(/\{\{qid\}\}/, qid) + '&dataset=' +
           dataset
     }).done(function(data) {
       return callback(null, data);
@@ -1749,7 +1816,7 @@ $(function() {
       type: type,
       user: mw.user.getName()
     }
-    return $.post(FREEBASE_STATEMENT_APPROVAL_URL, JSON.stringify(data))
+    return $.post(CURATE_SERVICE, JSON.stringify(data))
     .fail(function() {
       reportError('Set statement state to ' + state + ' failed.');
     });
@@ -1892,7 +1959,7 @@ $(function() {
       }
     }
     return $.ajax({
-      url: FREEBASE_SOURCE_URL_BLACKLIST
+      url: SOURCE_URL_BLACKLIST
     }).then(function(data) {
       if (data && data.parse && data.parse.text && data.parse.text['*']) {
         var blacklist = data.parse.text['*']
@@ -1944,7 +2011,7 @@ $(function() {
       }
     }
     return $.ajax({
-      url: FREEBASE_SOURCE_URL_WHITELIST
+      url: SOURCE_URL_WHITELIST
     }).then(function(data) {
       if (data && data.parse && data.parse.text && data.parse.text['*']) {
         var whitelist = data.parse.text['*']
@@ -2008,7 +2075,7 @@ $(function() {
   function searchStatements(parameters) {
     return $.when(
       $.ajax({
-        url: FREEBASE_STATEMENT_SEARCH_URL,
+        url: SEARCH_SERVICE,
         data: parameters
       }).then(function(data) { return data; }),
       getBlacklistedSourceUrls()
@@ -2194,9 +2261,10 @@ $(function() {
       this.datasetInput = new OO.ui.DropdownInputWidget();
       getPossibleDatasets(function(datasets) {
         var options = [{data: '', label: 'All sources'}];
-        for (var datasetId in datasets) {
-          options.push({data: datasetId, label: datasetId});
-        }
+        datasets.forEach(function(item) {
+          var uri = item['dataset'];
+          options.push({data: uri, label: datasetUriToLabel(uri)});
+        });
         widget.datasetInput.setOptions(options)
                     .setValue(dataset);
       });
@@ -2369,4 +2437,7 @@ $(function() {
     });
   }
   mw.ps = ps;
-});
+
+  });
+// Uncomment for local testing on common.js
+// });
