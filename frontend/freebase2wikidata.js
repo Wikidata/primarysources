@@ -2205,7 +2205,9 @@ $(function() {
         return reportError(error);
       }).done(function() {
         if (this.statement.source.length > 0) {
-          return; // TODO add support of source review
+          // TODO add support of source review
+          widget.toggle(false).setDisabled(true);
+          return;
         }
         setStatementState(widget.statement.id, STATEMENT_STATES.approved, dataset, 'claim')
         .done(function() {
