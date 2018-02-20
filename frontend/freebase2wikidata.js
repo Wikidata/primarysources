@@ -1127,7 +1127,7 @@ $(function() {
       return {
         type: 'wikibase-property',
         value: {
-          'entity-type': 'property',
+            'entity-type': 'property',
           'numeric-id': parseInt(value.replace(/^P/, ''))
         }
       };
@@ -2288,11 +2288,33 @@ $(function() {
         SparqlResultRow.super.call(this, headers, bindings);
         var cells = [];
         headers.forEach(function(header) {
-          // Handle empty cells in case of OPTIONAL clauses
-          var cell = bindings.hasOwnProperty(header)
-          ? $('<td>').text(bindings[header].value)
-          : $('<td>');
-          cells.push(cell);
+          var cell = $('<td>');
+          // Handle empty values in case of OPTIONAL clauses
+          var value = bindings.hasOwnProperty(header)
+          ? bindings[header].value
+          : null;
+          // Empty cell
+          if (value === null) {
+            cells.push(cell);
+          }
+          // Entities
+          else if (/[QP]\d+$/.test(value)) {
+            // Format linked labels for QIDs and PIDs
+            getEntityLabel(value.split('/').pop())
+            .then(function(label) {
+              cell.append(
+                $('<a>')
+                .attr('href', value)
+                .text(label)
+              );
+            });
+            cells.push(cell);
+          }
+          // Literals: return as is
+          else {
+            cell.text(value);
+            cells.push(cell);
+          }
         });
         this.$element.append(
           $('<tr>').append(cells)
