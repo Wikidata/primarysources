@@ -2497,7 +2497,7 @@ $(function() {
       OO.inheritClass(ListDialog, OO.ui.ProcessDialog);
       ListDialog.static.name = 'ps-list';
       ListDialog.static.title = 'primary sources filter';
-      ListDialog.static.size = 'larger';
+      ListDialog.static.size = 'full';
       ListDialog.static.actions = [
           {label: 'Close', flags: 'safe'}
       ];
