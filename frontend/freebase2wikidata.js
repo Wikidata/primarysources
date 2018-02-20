@@ -2289,17 +2289,21 @@ $(function() {
         var cells = [];
         headers.forEach(function(header) {
           var cell = $('<td>');
+          var value, valueType;
           // Handle empty values in case of OPTIONAL clauses
-          var value = bindings.hasOwnProperty(header)
-          ? bindings[header].value
-          : null;
+          if (bindings.hasOwnProperty(header)) {
+            value = bindings[header].value;
+            valueType = bindings[header].type;
+          } else {
+            value = null;
+            valueType = null;
+          }
           // Empty cell
           if (value === null) {
             cells.push(cell);
           }
-          // Entities
-          else if (/[QP]\d+$/.test(value)) {
-            // Format linked labels for QIDs and PIDs
+          // Entities: format linked labels
+          else if (valueType === 'uri' && /[QP]\d+$/.test(value)) {
             getEntityLabel(value.split('/').pop())
             .then(function(label) {
               cell.append(
@@ -2308,6 +2312,28 @@ $(function() {
                 .text(label)
               );
             });
+            cells.push(cell);
+          }
+          // URIs: make a link
+          else if (valueType === 'uri') {
+            var label;
+            // Mint readable labels based on expected namespaces
+            if (value === 'http://www.w3.org/ns/prov#wasDerivedFrom') {
+              label = 'RDF reference property';
+            } else if (value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+              label = 'RDF type';
+            } else if (value.startsWith('http://www.wikidata.org/entity/statement/')) {
+              label = 'RDF statement node';
+            } else if (value.startsWith('http://www.wikidata.org/reference/')) {
+              label = 'RDF reference node';
+            } else {
+              label = value;
+            }
+            cell.append(
+              $('<a>')
+              .attr('href', value)
+              .text(label)
+            );
             cells.push(cell);
           }
           // Literals: return as is
