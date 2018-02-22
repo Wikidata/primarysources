@@ -61,6 +61,8 @@ $(function() {
   var SUGGEST_SERVICE = BASE_URI + 'suggest?qid={{qid}}';
   var CURATE_SERVICE = BASE_URI + 'curate';
   var SEARCH_SERVICE = BASE_URI + 'search';
+  var VALUES_SERVICE = BASE_URI + 'values';
+  var PROPERTIES_SERVICE = BASE_URI + 'properties';
   var SPARQL_SERVICE = BASE_URI + 'sparql';
   // END: primary sources tool Web services
 
@@ -2352,6 +2354,8 @@ $(function() {
       function AutocompleteWidget(config) {
         OO.ui.SearchInputWidget.call( this, config );
         OO.ui.mixin.LookupElement.call( this, config );
+        // The Web service returning autocompletion suggestions
+        this.service = config.service;
       };
       OO.inheritClass( AutocompleteWidget, OO.ui.SearchInputWidget );
       OO.mixinClass( AutocompleteWidget, OO.ui.mixin.LookupElement );
@@ -2362,23 +2366,25 @@ $(function() {
       AutocompleteWidget.prototype.getLookupRequest = function () {
         var value = this.getValue();
         var deferred = $.Deferred();
+        var suggestions = {};
 
-        // TODO fire call to service here
-        sample = {
-          'date of birth': 'P569',
-          'date of death': 'P570',
-          'occupation': 'P106',
-          'honorific suffix': 'P1035'
-        }
-        suggestions = {};
-        for (var label in sample) {
-          if (sample.hasOwnProperty(label)) {
-            if (label.includes(value)) {
-              suggestions[label] = sample[label];
+        $.get(
+          this.service,
+          function(data) {
+            for (var label in data) {
+              if (data.hasOwnProperty(label)) {
+                if (label.includes(value)) {
+                  suggestions[label] = data[label];
+                }
+              }
             }
+            deferred.resolve(suggestions);
           }
-        }
-        deferred.resolve(suggestions);
+        )
+        .fail(function(xhr, textStatus) {
+          reportError('Could not retrieve suggestions for autocompletion');
+          deferred.reject(textStatus);
+        })
         return deferred.promise( { abort: function () {} } );
       };
 
@@ -2408,7 +2414,7 @@ $(function() {
 
       /*
        * The method implemented in OO.ui.mixin.LookupElement sets the value of the input widget to the DATA of the chosen element.
-       * Set it to the LABEL instead.
+       * Set it to the LABEL instead (and properly set the data).
        * Also ensure the lookup menu is not displayed again when the value is set.
        * See https://doc.wikimedia.org/oojs-ui/master/js/#!/api/OO.ui.mixin.LookupElement
        */
@@ -2598,15 +2604,17 @@ $(function() {
            * @type {OO.ui.TextInputWidget}
            */
           this.propertyInput = new AutocompleteWidget({
-              placeholder: 'Type a property like "date of birth"',
+            service: PROPERTIES_SERVICE,
+            placeholder: 'Type a property like "date of birth"',
           });
 
           /**
            * Value field
            * @type {OO.ui.TextInputWidget}
            */
-          this.entityValueInput = new OO.ui.SearchInputWidget({
-              placeholder: 'Type something you are interested in, like "politician"',
+          this.entityValueInput = new AutocompleteWidget({
+            service: VALUES_SERVICE,
+            placeholder: 'Type something you are interested in, like "politician"',
           });
 
           /**
