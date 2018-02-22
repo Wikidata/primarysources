@@ -2349,6 +2349,77 @@ $(function() {
       OO.inheritClass(SparqlResultRow, OO.ui.Widget);
       SparqlResultRow.static.tagName = 'tbody';
 
+      function AutocompleteWidget(config) {
+        OO.ui.SearchInputWidget.call( this, config );
+        OO.ui.mixin.LookupElement.call( this, config );
+      };
+      OO.inheritClass( AutocompleteWidget, OO.ui.SearchInputWidget );
+      OO.mixinClass( AutocompleteWidget, OO.ui.mixin.LookupElement );
+
+      /**
+       * @inheritdoc
+       */
+      AutocompleteWidget.prototype.getLookupRequest = function () {
+        var value = this.getValue();
+        var deferred = $.Deferred();
+
+        // TODO fire call to service here
+        sample = {
+          'date of birth': 'P569',
+          'date of death': 'P570',
+          'occupation': 'P106',
+          'honorific suffix': 'P1035'
+        }
+        suggestions = {};
+        for (var label in sample) {
+          if (sample.hasOwnProperty(label)) {
+            if (label.includes(value)) {
+              suggestions[label] = sample[label];
+            }
+          }
+        }
+        deferred.resolve(suggestions);
+        return deferred.promise( { abort: function () {} } );
+      };
+
+      /**
+       * @inheritdoc
+       */
+      AutocompleteWidget.prototype.getLookupCacheDataFromResponse = function ( response ) {
+        return response || [];
+      };
+
+      /**
+       * @inheritdoc
+       */
+      AutocompleteWidget.prototype.getLookupMenuOptionsFromData = function ( data ) {
+        var items = [];
+        for (var label in data) {
+          if (data.hasOwnProperty(label)) {
+            var id = data[label];
+            items.push(new OO.ui.MenuOptionWidget({
+              data: id,
+              label: label
+            }))
+          }
+        }
+        return items;
+      };
+
+      /*
+       * The method implemented in OO.ui.mixin.LookupElement sets the value of the input widget to the DATA of the chosen element.
+       * Set it to the LABEL instead.
+       * Also ensure the lookup menu is not displayed again when the value is set.
+       * See https://doc.wikimedia.org/oojs-ui/master/js/#!/api/OO.ui.mixin.LookupElement
+       */
+      AutocompleteWidget.prototype.onLookupMenuItemChoose = function ( item ) {
+        this.setLookupsDisabled(true);
+        this
+        .setValue(item.getLabel())
+        .setData(item.getData());
+        this.setLookupsDisabled(false);
+      };
+
       /**
        * On button click "Approve"
        */
@@ -2526,26 +2597,16 @@ $(function() {
            * Property field
            * @type {OO.ui.TextInputWidget}
            */
-          this.propertyInput = new OO.ui.TextInputWidget({
-              placeholder: 'PXX',
-              validate: /^[pP]\d+$/
+          this.propertyInput = new AutocompleteWidget({
+              placeholder: 'Type a property like "date of birth"',
           });
 
           /**
            * Value field
            * @type {OO.ui.TextInputWidget}
            */
-          this.valueInput = new OO.ui.TextInputWidget({
-              placeholder: 'Filter by value like item id',
-              id: 'test'
-          });
-
-          /**
-           * Domain of interest field
-           * @type {OO.ui.TextInputWidget}
-           */
-          this.domainOfInterest = new OO.ui.TextInputWidget({
-              placeholder: 'Filter by domain of interest'
+          this.entityValueInput = new OO.ui.SearchInputWidget({
+              placeholder: 'Type something you are interested in, like "politician"',
           });
 
           /**
@@ -2553,7 +2614,7 @@ $(function() {
            * @type {OO.ui.TextInputWidget}
            */
           this.sparqlQuery = new OO.ui.MultilineTextInputWidget( {
-              placeholder: 'Write your SPARQL query',
+              placeholder: 'Browse suggestions with SPARQL',
               autosize: true
           } );
 
@@ -2570,11 +2631,10 @@ $(function() {
               help: new OO.ui.HtmlSnippet('TODO help')
           });
           fieldset.addItems([
-              new OO.ui.FieldLayout(this.domainOfInterest, {label: 'Domain of interest'}),
-              new OO.ui.FieldLayout(this.propertyInput, {label: 'Property'}),
-              new OO.ui.FieldLayout(this.valueInput, {label: 'Value'}),
-              new OO.ui.FieldLayout(this.sparqlQuery, {label: 'SPARQL'}),
               new OO.ui.FieldLayout(this.datasetInput, {label: 'Dataset'}),
+              new OO.ui.FieldLayout(this.entityValueInput, {label: 'Entity of interest'}),
+              new OO.ui.FieldLayout(this.propertyInput, {label: 'Property of interest'}),
+              new OO.ui.FieldLayout(this.sparqlQuery, {label: 'SPARQL query'}),
               new OO.ui.FieldLayout(loadButton)
           ]);
           var formPanel = new OO.ui.PanelLayout({
@@ -2609,8 +2669,8 @@ $(function() {
             // Use /search service
             this.parameters = {
                 dataset: this.datasetInput.getValue(),
-                property: this.propertyInput.getValue(),
-                value: this.valueInput.getValue(),
+                property: this.propertyInput.getData(),
+                value: this.entityValueInput.getData(),
                 offset: 0,
                 limit: 100 // number of loaded statements
             };
