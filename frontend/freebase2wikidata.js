@@ -2371,11 +2371,17 @@ $(function() {
         $.get(
           this.service,
           function(data) {
-            for (var label in data) {
-              if (data.hasOwnProperty(label)) {
-                if (label.includes(value)) {
-                  suggestions[label] = data[label];
-                }
+            for (var ds in data) {
+              if (data.hasOwnProperty(ds)) {
+                var entities = data[ds];
+                entities.forEach(function (id) {
+                  getEntityLabel(id)
+                  .then(function(label) {
+                    if (label.includes(value)) {
+                      suggestions[id] = label;
+                    }
+                  });
+                });
               }
             }
             deferred.resolve(suggestions);
@@ -2392,7 +2398,7 @@ $(function() {
        * @inheritdoc
        */
       AutocompleteWidget.prototype.getLookupCacheDataFromResponse = function ( response ) {
-        return response || [];
+        return response || {};
       };
 
       /**
@@ -2400,9 +2406,9 @@ $(function() {
        */
       AutocompleteWidget.prototype.getLookupMenuOptionsFromData = function ( data ) {
         var items = [];
-        for (var label in data) {
-          if (data.hasOwnProperty(label)) {
-            var id = data[label];
+        for (var id in data) {
+          if (data.hasOwnProperty(id)) {
+            var label = data[id];
             items.push(new OO.ui.MenuOptionWidget({
               data: id,
               label: label
