@@ -1,0 +1,6 @@
+[submodule "backend"]
+	path = backend
+	url = git@github.com:marfox/wikidata-query-rdf.git
+[submodule "frontend"]
+	path = frontend
+	url = git@github.com:marfox/pst-frontend.git
